@@ -16,6 +16,11 @@ def try_add_column(table, col, col_type):
 def update_schema():
     print("Starting robust schema update...")
     
+    # Users table
+    try_add_column("users", "contact_number", "VARCHAR")
+    try_add_column("users", "full_name", "VARCHAR")
+    try_add_column("users", "role", "VARCHAR DEFAULT 'student'")
+    
     # Appointments table
     try_add_column("appointments", "razorpay_order_id", "VARCHAR")
     try_add_column("appointments", "razorpay_payment_id", "VARCHAR")
@@ -27,6 +32,18 @@ def update_schema():
     
     # Counsellor Profiles
     try_add_column("counsellor_profiles", "account_details", "JSON")
+    
+    # Assessment Results
+    try_add_column("assessment_results", "selected_class", "VARCHAR")
+    try_add_column("assessment_results", "phase3_result", "VARCHAR")
+    try_add_column("assessment_results", "phase3_answers", "JSON")
+    try_add_column("assessment_results", "phase3_analysis", "TEXT")
+    try_add_column("assessment_results", "final_answers", "JSON")
+    try_add_column("assessment_results", "stream_scores", "JSON")
+    try_add_column("assessment_results", "recommended_stream", "VARCHAR")
+    try_add_column("assessment_results", "final_analysis", "TEXT")
+    try_add_column("assessment_results", "stream_pros", "JSON")
+    try_add_column("assessment_results", "stream_cons", "JSON")
     
     print("Schema update complete.")
 

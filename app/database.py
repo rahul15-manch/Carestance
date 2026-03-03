@@ -16,7 +16,10 @@ if DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     SQLALCHEMY_DATABASE_URL = DATABASE_URL
 else:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./learnloop.db"
+    if os.getenv("VERCEL"):
+        SQLALCHEMY_DATABASE_URL = "sqlite:////tmp/learnloop.db"
+    else:
+        SQLALCHEMY_DATABASE_URL = "sqlite:///./learnloop.db"
 
 engine_args = {
     "connect_args": {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}

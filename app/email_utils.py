@@ -74,7 +74,7 @@ def get_booking_template(user_name, other_name, appointment_time, meeting_link, 
         </div>
         
         <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 24px;">
-            &copy; 2026 NextStep. Empowering your career choices.
+            &copy; 2026 CareStance. Empowering your career choices.
         </p>
     </div>
     """
@@ -106,7 +106,35 @@ def get_cancellation_template(user_name, other_name, appointment_time, role="stu
         </div>
         
         <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 24px;">
-            &copy; 2026 NextStep.
+            &copy; 2026 CareStance.
+        </p>
+    </div>
+    """
+    return html
+
+def get_reset_password_template(user_name, reset_link):
+    """
+    Returns a professional HTML template for password reset.
+    """
+    html = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #f8fafc;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #4f46e5; margin-bottom: 8px;">Reset Your Password 🔒</h1>
+            <p style="color: #64748b; font-size: 16px;">Hello {user_name}, we received a request to reset your password.</p>
+        </div>
+        
+        <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <p style="color: #1e293b; line-height: 1.6; text-align: center;">
+                If you didn't make this request, you can safely ignore this email. Otherwise, use the button below to set a new password. This link is valid for 1 hour.
+            </p>
+            
+            <div style="margin-top: 24px; text-align: center;">
+                <a href="{reset_link}" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">Reset Password</a>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 24px;">
+            &copy; 2026 CareStance. Security first.
         </p>
     </div>
     """
