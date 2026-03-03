@@ -625,33 +625,39 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
-    # 1. Check if user is logged in
-    user = get_current_user(request, db)
-    if not user:
-         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    
-    # Safety Check: Allow access if user email matches ADMIN_EMAIL env var
-    admin_email = os.getenv("ADMIN_EMAIL")
-    if user.role != "admin" and (not admin_email or user.email != admin_email):
-        print(f"DEBUG: Admin access denied for {user.email}. Role: {user.role}, ADMIN_EMAIL: {admin_email}")
-        return RedirectResponse(url="/dashboard?error=Admin access denied", status_code=status.HTTP_302_FOUND)
+    try:
+        # 1. Check if user is logged in
+        user = get_current_user(request, db)
+        if not user:
+             return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        
+        # Safety Check: Allow access if user email matches ADMIN_EMAIL env var
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if user.role != "admin" and (not admin_email or user.email != admin_email):
+            print(f"DEBUG: Admin access denied for {user.email}. Role: {user.role}, ADMIN_EMAIL: {admin_email}")
+            return RedirectResponse(url="/dashboard?error=Admin access denied", status_code=status.HTTP_302_FOUND)
 
-    # 2. Fetch all users
-    all_users = db.query(models.User).all()
+        # 2. Fetch all users
+        all_users = db.query(models.User).all()
 
-    # 3. Fetch all feedback and tickets
-    all_feedback = db.query(models.Feedback).order_by(models.Feedback.timestamp.desc()).all()
-    all_tickets = db.query(models.Ticket).order_by(models.Ticket.timestamp.desc()).all()
-    pending_counsellors = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.verification_status == "pending").all()
-    
-    return templates.TemplateResponse("admin_dashboard.html", {
-        "request": request, 
-        "user": user, 
-        "users": all_users,
-        "feedbacks": all_feedback,
-        "tickets": all_tickets,
-        "pending_counsellors": pending_counsellors
-    })
+        # 3. Fetch all feedback and tickets
+        all_feedback = db.query(models.Feedback).order_by(models.Feedback.timestamp.desc()).all()
+        all_tickets = db.query(models.Ticket).order_by(models.Ticket.timestamp.desc()).all()
+        pending_counsellors = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.verification_status == "pending").all()
+        
+        return templates.TemplateResponse("admin_dashboard.html", {
+            "request": request, 
+            "user": user, 
+            "users": all_users,
+            "feedbacks": all_feedback,
+            "tickets": all_tickets,
+            "pending_counsellors": pending_counsellors
+        })
+    except Exception as e:
+        import traceback
+        print("ADMIN DASHBOARD ERROR:")
+        print(traceback.format_exc())
+        return HTMLResponse(content=f"<h1>Admin Dashboard Error</h1><pre>{str(e)}</pre>", status_code=500)
 
 @app.post("/admin/users/{user_id}/delete")
 async def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
