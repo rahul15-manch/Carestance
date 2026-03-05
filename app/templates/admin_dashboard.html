@@ -24,27 +24,31 @@
                 {% for prof in pending_counsellors %}
                 <div class="bg-white rounded-3xl p-6 shadow-xl border border-indigo-100 relative overflow-hidden">
                     <div class="flex items-start gap-4 mb-4">
-                        <img src="{{ prof.user.profile_photo if prof.user.profile_photo else 'https://ui-avatars.com/api/?name=' + prof.user.full_name }}" 
-                             class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-md">
+                        <img src="{{ prof.user.profile_photo if prof.user.profile_photo else 'https://ui-avatars.com/api/?name=' + prof.user.full_name }}"
+                            class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-md">
                         <div>
                             <h3 class="font-bold text-slate-900 text-lg">{{ prof.user.full_name }}</h3>
                             <p class="text-sm text-slate-500">{{ prof.user.email }}</p>
-                            <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mt-1 inline-block">Counsellor</span>
+                            <span
+                                class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mt-1 inline-block">Counsellor</span>
                         </div>
                     </div>
-                    
+
                     <div class="space-y-3 mb-6">
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Professional Experience</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Professional
+                                Experience</p>
                             <p class="text-sm text-slate-700 leading-relaxed">{{ prof.experience }}</p>
                         </div>
-                        
+
                         <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Certificates</p>
                             <div class="flex flex-wrap gap-2 mt-1">
                                 {% for cert in prof.certificates or [] %}
-                                <a href="{{ cert }}" target="_blank" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-colors flex items-center gap-1">
-                                    <i class="fas {% if cert.endswith('.pdf') %}fa-file-pdf text-red-500{% else %}fa-image text-blue-500{% endif %}"></i>
+                                <a href="{{ cert }}" target="_blank"
+                                    class="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-colors flex items-center gap-1">
+                                    <i
+                                        class="fas {% if cert.endswith('.pdf') %}fa-file-pdf text-red-500{% else %}fa-image text-blue-500{% endif %}"></i>
                                     View Doc {{ loop.index }}
                                 </a>
                                 {% endfor %}
@@ -55,13 +59,15 @@
                     <div class="flex gap-3 pt-4 border-t border-slate-50">
                         <form action="/admin/verify-counsellor/{{ prof.user.id }}" method="POST" class="flex-1">
                             <input type="hidden" name="verification_status" value="approved">
-                            <button type="submit" class="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 transition-all text-sm uppercase tracking-wider">
+                            <button type="submit"
+                                class="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 transition-all text-sm uppercase tracking-wider">
                                 Approve
                             </button>
                         </form>
                         <form action="/admin/verify-counsellor/{{ prof.user.id }}" method="POST" class="flex-1">
                             <input type="hidden" name="verification_status" value="rejected">
-                            <button type="submit" class="w-full py-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold rounded-xl transition-all text-sm uppercase tracking-wider">
+                            <button type="submit"
+                                class="w-full py-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 font-bold rounded-xl transition-all text-sm uppercase tracking-wider">
                                 Reject
                             </button>
                         </form>
@@ -71,6 +77,247 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Life Coach Management Section -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-violet-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Life Coach Management
+                <span class="text-sm font-medium text-slate-400 ml-2">({{ all_counsellors|length }} total)</span>
+            </h2>
+            <div class="shadow-xl overflow-hidden border border-slate-200 sm:rounded-2xl">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-gradient-to-r from-violet-50 to-indigo-50">
+                            <tr>
+                                <th
+                                    class="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Coach</th>
+                                <th
+                                    class="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Bank Details</th>
+                                <th
+                                    class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    T&C Accepted</th>
+                                <th
+                                    class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Sessions</th>
+                                <th
+                                    class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Fee / Session</th>
+                                <th
+                                    class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th
+                                    class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">
+                            {% for cp in all_counsellors %}
+                            <tr class="hover:bg-slate-50 transition-colors {{ 'bg-red-50/50' if cp.is_blocked }}">
+                                <!-- Coach Info -->
+                                <td class="px-5 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-3">
+                                        <img src="{{ cp.user.profile_photo if cp.user.profile_photo else 'https://ui-avatars.com/api/?name=' + cp.user.full_name + '&background=8b5cf6&color=fff&bold=true' }}"
+                                            class="w-10 h-10 rounded-xl object-cover border-2 border-violet-100 shadow-sm">
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-900">{{ cp.user.full_name }}</div>
+                                            <div class="text-xs text-slate-400">{{ cp.user.email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Bank Details -->
+                                <td class="px-5 py-4">
+                                    {% if cp.account_details %}
+                                    <div class="space-y-0.5 text-xs">
+                                        {% if cp.account_details.bank_name %}
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-slate-400 font-semibold">🏦</span>
+                                            <span class="text-slate-700 font-medium">{{ cp.account_details.bank_name
+                                                }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if cp.account_details.account_num %}
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-slate-400 font-semibold">#</span>
+                                            <span class="text-slate-500 font-mono">{{
+                                                cp.account_details.account_num[-4:] if
+                                                cp.account_details.account_num|length > 4 else
+                                                cp.account_details.account_num }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if cp.account_details.upi %}
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-slate-400 font-semibold">📱</span>
+                                            <span class="text-slate-500">{{ cp.account_details.upi }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300 italic">Not provided</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- T&C Status -->
+                                <td class="px-5 py-4 text-center">
+                                    {% if cp.tnc_accepted %}
+                                    <div class="flex flex-col items-center">
+                                        <span
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                                    d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Accepted
+                                        </span>
+                                        {% if cp.tnc_accepted_at %}
+                                        <span class="text-[10px] text-slate-400 mt-1">{{ cp.tnc_accepted_at.strftime('%b
+                                            %d, %Y') }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-600 border border-rose-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Not Accepted
+                                    </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Sessions -->
+                                <td class="px-5 py-4 text-center">
+                                    <div class="flex flex-col items-center">
+                                        <span class="text-lg font-extrabold text-slate-800">{{ cp.session_count
+                                            }}</span>
+                                        <span
+                                            class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">completed</span>
+                                        <span class="text-[10px] text-slate-300 mt-0.5">{{ cp.total_sessions }}
+                                            total</span>
+                                    </div>
+                                </td>
+
+                                <!-- Fee -->
+                                <td class="px-5 py-4 text-center">
+                                    {% if cp.fee > 0 %}
+                                    <span class="text-sm font-extrabold text-slate-800">₹{{ "%.0f"|format(cp.fee)
+                                        }}</span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">FREE</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Verification Status -->
+                                <td class="px-5 py-4 text-center">
+                                    {% if cp.verification_status == 'approved' %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✅
+                                        Verified</span>
+                                    {% elif cp.verification_status == 'rejected' %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-600 border border-rose-200">❌
+                                        Rejected</span>
+                                    {% else %}
+                                    <span
+                                        class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">⏳
+                                        Pending</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="px-5 py-4 text-center" x-data="{ showBlockForm: false }">
+                                    {% if cp.is_blocked %}
+                                    <div class="space-y-2">
+                                        <span
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                            🚫 Blocked
+                                        </span>
+                                        <p class="text-[10px] text-red-500 font-medium max-w-[140px] mx-auto">{{
+                                            cp.block_reason }}</p>
+                                        <form action="/admin/unblock-counsellor/{{ cp.user.id }}" method="POST"
+                                            onsubmit="return confirm('Unblock this counsellor?');">
+                                            <button type="submit"
+                                                class="mt-1 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors">
+                                                <i class="fas fa-unlock mr-1"></i> Unblock
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    <div class="relative">
+                                        <button @click="showBlockForm = !showBlockForm" type="button"
+                                            class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors">
+                                            <i class="fas fa-ban mr-1"></i> Block
+                                        </button>
+
+                                        <!-- Block Reason Dropdown -->
+                                        <div x-show="showBlockForm" x-transition @click.outside="showBlockForm = false"
+                                            class="absolute right-0 top-10 z-30 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 space-y-3"
+                                            style="display: none;">
+                                            <p class="text-xs font-bold text-slate-700">Select reason for blocking:</p>
+                                            <form action="/admin/block-counsellor/{{ cp.user.id }}" method="POST"
+                                                class="space-y-2">
+                                                <select name="block_reason" required
+                                                    class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none">
+                                                    <option value="" disabled selected>Choose reason...</option>
+                                                    <option value="Violation of Terms & Conditions">Violation of Terms &
+                                                        Conditions</option>
+                                                    <option value="Abusive or inappropriate behavior">Abusive or
+                                                        inappropriate behavior</option>
+                                                    <option value="Sharing misleading information">Sharing misleading
+                                                        information</option>
+                                                    <option value="Attempting to move users off-platform">Attempting to
+                                                        move users off-platform</option>
+                                                    <option value="Fake credentials or certificates">Fake credentials or
+                                                        certificates</option>
+                                                    <option value="Multiple user complaints">Multiple user complaints
+                                                    </option>
+                                                    <option value="Fraudulent activity detected">Fraudulent activity
+                                                        detected</option>
+                                                    <option value="Non-compliance with platform policies">Non-compliance
+                                                        with platform policies</option>
+                                                </select>
+                                                <div class="flex gap-2">
+                                                    <button @click="showBlockForm = false" type="button"
+                                                        class="flex-1 py-1.5 text-[10px] font-bold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit"
+                                                        class="flex-1 py-1.5 text-[10px] font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition">
+                                                        Confirm Block
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <span class="text-3xl opacity-30">🧠</span>
+                                        <span>No life coaches registered yet.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <div class="flex flex-col">
             <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">

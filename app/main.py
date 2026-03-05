@@ -107,13 +107,80 @@ try:
 except Exception as e:
     print(f"Database initialization error: {e}")
 
+# Auto-migrate: add missing columns to existing tables
+def run_migrations():
+    """Add new columns to existing tables if they don't exist."""
+    from sqlalchemy import text, inspect
+    
+    try:
+        inspector = inspect(engine)
+        
+        # Get existing columns for each table
+        def get_columns(table_name):
+            try:
+                return [col['name'] for col in inspector.get_columns(table_name)]
+            except Exception:
+                return []
+        
+        migrations = []
+        
+        # Users table migrations
+        user_cols = get_columns('users')
+        if user_cols and 'profile_photo' not in user_cols:
+            migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
+        
+        # CounsellorProfile table migrations
+        cp_cols = get_columns('counsellor_profiles')
+        if cp_cols:
+            if 'tnc_accepted' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN tnc_accepted BOOLEAN DEFAULT FALSE")
+            if 'tnc_accepted_at' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN tnc_accepted_at TIMESTAMP")
+            if 'is_blocked' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE")
+            if 'block_reason' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN block_reason VARCHAR")
+            if 'certificates' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN certificates TEXT")
+            if 'experience' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN experience TEXT")
+            if 'is_verified' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN is_verified BOOLEAN DEFAULT FALSE")
+            if 'verification_status' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN verification_status VARCHAR DEFAULT 'pending'")
+        
+        if migrations:
+            with engine.connect() as conn:
+                for sql in migrations:
+                    try:
+                        conn.execute(text(sql))
+                        print(f"Migration OK: {sql}")
+                    except Exception as me:
+                        print(f"Migration skip: {me}")
+                conn.commit()
+            print(f"Ran {len(migrations)} migrations successfully")
+        else:
+            print("No migrations needed")
+    except Exception as e:
+        print(f"Migration check error: {e}")
+
+run_migrations()
+
 app = FastAPI(title="CareStance")
 
 from fastapi.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Add Session Middleware (needed for OAuth)
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "a_very_secret_key_for_sessions"))
+# On Vercel (HTTPS), cookies must have Secure flag to survive cross-site OAuth redirects
+_is_production = bool(os.getenv("VERCEL") or os.getenv("BASE_URL", "").startswith("https"))
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY", "a_very_secret_key_for_sessions"),
+    same_site="lax",
+    https_only=_is_production,
+    max_age=14 * 24 * 60 * 60,  # 14 days
+)
 
 # Mount Static & Templates
 # Mount Static & Templates
@@ -283,40 +350,33 @@ async def reset_password(
 
 @app.get("/login/google")
 async def login_google(request: Request):
-    # Redirect to Google for authorization
+    if not os.getenv('GOOGLE_CLIENT_ID'):
+        print("ERROR: GOOGLE_CLIENT_ID not found in environment!")
+        return RedirectResponse(url='/login?error=Configuration missing', status_code=status.HTTP_302_FOUND)
+    
+    # Build redirect_uri: prefer BASE_URL env var, fallback to request-based URL
     base_url = os.getenv("BASE_URL")
     if base_url:
         redirect_uri = f"{base_url.rstrip('/')}/auth/callback"
     else:
         redirect_uri = str(request.url_for('auth_callback'))
-        # Force https on Vercel to avoid 'invalid_client' or redirect mapping issues
         if "vercel.app" in str(request.base_url) or os.getenv("VERCEL"):
             redirect_uri = redirect_uri.replace("http://", "https://")
-        
-    print(f"DEBUG: OAuth Redirect URI: {redirect_uri}")
     
-    if not os.getenv('GOOGLE_CLIENT_ID'):
-        print("ERROR: GOOGLE_CLIENT_ID not found in environment!")
-        return RedirectResponse(url='/login?error=Configuration missing', status_code=status.HTTP_302_FOUND)
-        
+    print(f"DEBUG: OAuth Redirect URI: {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 @app.get("/auth/callback")
 async def auth_callback(request: Request, db: Session = Depends(get_db)):
-    # Same redirect_uri logic as login_google to ensure they match
-    base_url = os.getenv("BASE_URL")
-    if base_url:
-        redirect_uri = f"{base_url.rstrip('/')}/auth/callback"
-    else:
-        redirect_uri = str(request.url_for('auth_callback'))
-        if "vercel.app" in str(request.base_url) or os.getenv("VERCEL"):
-            redirect_uri = redirect_uri.replace("http://", "https://")
-
     try:
-        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
+        # authlib retrieves redirect_uri from session automatically — do NOT pass it again
+        token = await oauth.google.authorize_access_token(request)
     except Exception as e:
-        print(f"OAuth Error: {e}")
-        return RedirectResponse(url='/login?error=OAuth failed', status_code=status.HTTP_302_FOUND)
+        import traceback
+        print(f"OAuth Token Exchange Error: {e}")
+        traceback.print_exc()
+        error_msg = str(e).replace(" ", "+")[:200]
+        return RedirectResponse(url=f'/login?error={error_msg}', status_code=status.HTTP_302_FOUND)
     
     user_info = token.get('userinfo')
     if not user_info:
@@ -325,19 +385,67 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     email = user_info.get('email')
     full_name = user_info.get('name', 'Google User')
     
-    # Check if user exists, otherwise create
+    # Check if user exists, otherwise create with no role (will be selected next)
     user = db.query(models.User).filter(models.User.email == email).first()
+    is_new_user = False
     if not user:
-        # Create Google User with a random password since they use OAuth
         hashed_pw = get_password_hash(os.urandom(24).hex())
-        user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=None)
+        user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=None, role=None)
         db.add(user)
         db.commit()
         db.refresh(user)
+        is_new_user = True
     
-    response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    # New users must select their role first
+    redirect_url = "/select-role" if is_new_user else "/dashboard"
+    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
     response.set_cookie(key="user_id", value=str(user.id))
     return response
+
+@app.get("/select-role", response_class=HTMLResponse)
+async def select_role_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    # If user already has a role, skip this page
+    if user.role:
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse("select_role.html", {"request": request, "user": user})
+
+@app.post("/select-role")
+async def select_role(
+    request: Request,
+    role: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    # Validate role
+    if role not in ("student", "counsellor"):
+        return RedirectResponse(url="/select-role", status_code=status.HTTP_302_FOUND)
+    
+    user.role = role
+    db.commit()
+    
+    # Create counsellor profile if needed
+    if role == "counsellor":
+        existing_profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
+        if not existing_profile:
+            c_profile = models.CounsellorProfile(
+                user_id=user.id,
+                tnc_accepted=True,
+                tnc_accepted_at=datetime.datetime.utcnow()
+            )
+            db.add(c_profile)
+            db.commit()
+        else:
+            existing_profile.tnc_accepted = True
+            existing_profile.tnc_accepted_at = datetime.datetime.utcnow()
+            db.commit()
+    
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
 # --- Assessment Data ---
 
@@ -594,6 +702,10 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
+    # New OAuth users must select a role first
+    if not user.role:
+        return RedirectResponse(url="/select-role", status_code=status.HTTP_302_FOUND)
+    
     if user.role == "counsellor":
         profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
         # Only show active/scheduled appointments on dashboard
@@ -640,22 +752,34 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
         all_tickets = db.query(models.Ticket).order_by(models.Ticket.timestamp.desc()).all()
         pending_counsellors = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.verification_status == "pending").all()
         
+        # Fetch all counsellor profiles with session counts
+        all_counsellors = db.query(models.CounsellorProfile).all()
+        for cp in all_counsellors:
+            try:
+                cp.session_count = db.query(models.Appointment).filter(
+                    models.Appointment.counsellor_id == cp.user_id,
+                    models.Appointment.status == "completed"
+                ).count()
+                cp.total_sessions = db.query(models.Appointment).filter(
+                    models.Appointment.counsellor_id == cp.user_id
+                ).count()
+            except Exception:
+                cp.session_count = 0
+                cp.total_sessions = 0
+        
         return templates.TemplateResponse("admin_dashboard.html", {
             "request": request, 
             "user": user, 
             "users": all_users,
             "feedbacks": all_feedback,
             "tickets": all_tickets,
-            "pending_counsellors": pending_counsellors
+            "pending_counsellors": pending_counsellors,
+            "all_counsellors": all_counsellors
         })
     except Exception as e:
         import traceback
         print(f"ADMIN DASHBOARD ERROR: {traceback.format_exc()}")
-        return templates.TemplateResponse("dashboard.html", {
-            "request": request,
-            "user": user,
-            "error": f"Internal Error: {str(e)}"
-        })
+        return RedirectResponse(url=f"/dashboard?error=Admin+Error:+{str(e)[:100]}", status_code=status.HTTP_302_FOUND)
 
 @app.post("/admin/users/{user_id}/delete")
 async def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
@@ -681,6 +805,20 @@ async def delete_user(user_id: int, request: Request, db: Session = Depends(get_
 
 
 # --- Counsellor Routes ---
+
+@app.post("/counsellor/accept-tnc")
+async def accept_tnc(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user or user.role != "counsellor":
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
+    if profile:
+        profile.tnc_accepted = True
+        profile.tnc_accepted_at = datetime.datetime.utcnow()
+        db.commit()
+    
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
 @app.post("/counsellor/update")
 async def counsellor_update(
@@ -823,13 +961,59 @@ async def verify_counsellor(
     
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
+@app.post("/admin/block-counsellor/{counsellor_id}")
+async def block_counsellor(
+    counsellor_id: int,
+    request: Request,
+    block_reason: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if not admin_email or current_user.email != admin_email:
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+    if profile:
+        profile.is_blocked = True
+        profile.block_reason = block_reason
+        profile.is_verified = False  # Remove from public listing
+        db.commit()
+    
+    return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
+
+@app.post("/admin/unblock-counsellor/{counsellor_id}")
+async def unblock_counsellor(
+    counsellor_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if not admin_email or current_user.email != admin_email:
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+    if profile:
+        profile.is_blocked = False
+        profile.block_reason = None
+        db.commit()
+    
+    return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
+
 @app.get("/counsellors", response_class=HTMLResponse)
 async def list_counsellors(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
         
-    counsellors = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.is_verified == True).all()
+    # Only show verified AND non-blocked counsellors to students
+    counsellors = db.query(models.CounsellorProfile).filter(
+        models.CounsellorProfile.is_verified == True,
+        models.CounsellorProfile.is_blocked == False
+    ).all()
     
     return templates.TemplateResponse("counsellors_list.html", {"request": request, "user": user, "counsellors": counsellors})
 
