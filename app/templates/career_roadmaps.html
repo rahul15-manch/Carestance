@@ -31,7 +31,11 @@
                     {{ path.career_title }}
                 </h2>
                 <p class="text-sm text-slate-500 mb-6 line-clamp-2">
+                    {% if path.path_data is mapping and 'steps' in path.path_data %}
+                    Custom roadmap with {{ path.path_data.steps|length }} key steps to professional success. {{ path.path_data.progress_percentage|default(0) }}% completed.
+                    {% else %}
                     Custom roadmap with {{ path.path_data|length }} key steps to professional success.
+                    {% endif %}
                 </p>
                 <div class="flex items-center gap-4">
                     <a href="/career/roadmap/{{ path.id }}" class="flex-1 py-3 bg-indigo-600 text-white text-center rounded-xl font-bold text-sm hover:bg-indigo-700 shadow-md shadow-indigo-100 transition">

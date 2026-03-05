@@ -2019,6 +2019,8 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     archetype = result.phase_2_category or "Explorer"
     personality = result.personality or "Ambivert"
     current_class = result.selected_class or "10th"
+    phase3_insight = result.phase3_analysis or ""
+    final_insight = result.final_analysis or ""
 
     prompt = f"""
     You are an expert Career Architect.
@@ -2028,19 +2030,50 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     - Archetype: {archetype}
     - Personality: {personality}
     - Goal Career: {path_req.career_title}
+    - Psychometric Analysis Bits: {phase3_insight[:300]}
+    - Recommendation Context: {final_insight[:300]}
 
     TASK:
-    Generate a highly realistic, step-by-step "Success Roadmap" from their current stage to a professional role in {path_req.career_title}.
-    Provide 5 specific steps.
-    Also, provide 3 critical reminders or milestones for their calendar.
+    Generate a highly realistic, comprehensive "Success Roadmap" from their current stage to a professional role in {path_req.career_title}.
+    Provide 6 detailed steps.
+    
+    For EACH step, include:
+    1. Action Name (Concise)
+    2. Description (2-3 sentences of strategic advice)
+    3. Skills to acquire (List 3 specific skills)
+    4. Recommended Courses/Learning (List 2 specific platforms or certifications)
+    5. Project Idea (1 practical project to build)
+    6. Timeline (Estimated duration or month/year)
+
+    Also provide:
+    - Internships: 2 specific types of internship roles or companies to target.
+    - Career Outlook:
+        - Entry-level vs Senior Salary estimates (Range in INR or USD based on location).
+        - Top 3 Companies known for hiring this role.
+        - Future Scope: A 2-sentence outlook on growth potential and industry shifts.
 
     OUTPUT FORMAT (VALID JSON ONLY):
     {{
       "career_title": "{path_req.career_title}",
       "path_steps": [
-        {{ "step": 1, "action": "Action Name", "description": "Detailed advice (2-3 sentences)" }},
+        {{ 
+          "step": 1, 
+          "action": "Action Name", 
+          "description": "Description...", 
+          "skills": ["Skill 1", "Skill 2", "Skill 3"],
+          "courses": ["Course 1", "Course 2"],
+          "project": "Project idea...",
+          "timeline": "e.g. 3-6 Months",
+          "completed": false
+        }},
         ...
       ],
+      "internships": ["Internship 1", "Internship 2"],
+      "career_outlook": {{
+        "salary_range": "e.g. ₹5L - ₹25L+",
+        "top_companies": ["Company 1", "Company 2", "Company 3"],
+        "future_scope": "Scope details..."
+      }},
       "reminders": [
         {{ "milestone": "Milestone Name", "reminder": "Specific alert/advice" }},
         ...
@@ -2057,8 +2090,28 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
             user_id=user.id,
             career_title=path_data.get("career_title", path_req.career_title),
             path_data=path_data.get("path_steps", []),
-            reminders=path_data.get("reminders", [])
+            reminders=path_data.get("reminders", []),
+            # We can store the extra info in the path_data or reminders, 
+            # but let's keep it clean by putting everything in one JSON if possible, 
+            # or use path_data for the core steps and add a new column if needed.
+            # Actually, I'll put the career_outlook and internships into the reminders or a new field if I update the model.
+            # Let's update the model to have a general 'meta_data' field or just expand path_data.
         )
+        # To avoid database schema migration immediately, I'll wrap everything into path_data
+        # and reminders.
+        
+        # Merge outlook into reminders as a special entry if needed, or just keep it in path_data.
+        # Let's put everything extra into a special 'extra_info' key in path_data or just use JSON column flexibility.
+        
+        full_path_data = {
+            "steps": path_data.get("path_steps", []),
+            "internships": path_data.get("internships", []),
+            "career_outlook": path_data.get("career_outlook", {}),
+            "reminders": path_data.get("reminders", [])
+        }
+        
+        new_path.path_data = full_path_data
+        
         db.add(new_path)
         db.commit()
         db.refresh(new_path)
@@ -2066,7 +2119,34 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
         return {"success": True, "path_id": new_path.id}
     except Exception as e:
         print(f"Career Path Generation Error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate career path")
+        raise HTTPException(status_code=500, detail=f"Failed to generate career path: {str(e)}")
+
+@app.post("/career/roadmap/{path_id}/step/{step_index}/toggle")
+async def toggle_step_completion(path_id: int, step_index: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+    
+    # Update path_data
+    data = path.path_data
+    if "steps" in data and 0 <= step_index < len(data["steps"]):
+        # Toggle completed state
+        is_completed = data["steps"][step_index].get("completed", False)
+        data["steps"][step_index]["completed"] = not is_completed
+        
+        # Update progress percentage (optional but good)
+        completed_count = sum(1 for s in data["steps"] if s.get("completed", False))
+        data["progress_percentage"] = int((completed_count / len(data["steps"])) * 100)
+    
+    # Re-assign to trigger SQLAlchemy JSON detection
+    path.path_data = dict(data)
+    db.commit()
+    
+    return {"success": True, "completed": data["steps"][step_index]["completed"], "progress": data.get("progress_percentage", 0)}
 
 @app.get("/career/roadmaps", response_class=HTMLResponse)
 async def view_roadmaps(request: Request, db: Session = Depends(get_db)):
