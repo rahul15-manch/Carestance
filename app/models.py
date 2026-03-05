@@ -158,3 +158,16 @@ User.student_appointments = relationship("Appointment", foreign_keys="Appointmen
 User.counsellor_appointments = relationship("Appointment", foreign_keys="Appointment.counsellor_id", back_populates="counsellor")
 User.college_recommendations = relationship("CollegeRecommendation", back_populates="user", order_by="CollegeRecommendation.created_at.desc()")
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(String)  # e.g. "fee_change", "blocked", etc.
+    message = Column(Text)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="notifications")
+
+User.notifications = relationship("Notification", back_populates="user", order_by="Notification.created_at.desc()")

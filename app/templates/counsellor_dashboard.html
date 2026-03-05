@@ -164,6 +164,46 @@
 </div>
 {% endif %}
 
+{% if notifications %}
+<!-- Notification Banners -->
+{% for notif in notifications %}
+<div
+    class="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-md shadow-amber-100/30 relative overflow-hidden">
+    <div class="absolute top-0 right-0 p-4 opacity-5">
+        <i class="fas fa-bell text-[60px] text-amber-600"></i>
+    </div>
+    <div class="flex items-start gap-4 relative z-10">
+        <div class="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+            {% if notif.type == 'fee_change' %}
+            <i class="fas fa-rupee-sign text-amber-600"></i>
+            {% else %}
+            <i class="fas fa-bell text-amber-600"></i>
+            {% endif %}
+        </div>
+        <div class="flex-1">
+            <h4 class="text-sm font-extrabold text-amber-900 mb-1">
+                {% if notif.type == 'fee_change' %}
+                💰 Session Fee Updated by Admin
+                {% else %}
+                📢 Notification
+                {% endif %}
+            </h4>
+            <p class="text-sm text-amber-800 leading-relaxed">{{ notif.message }}</p>
+            <p class="text-[10px] text-amber-500 mt-1 font-medium">
+                {{ notif.created_at.strftime('%b %d, %Y at %I:%M %p') if notif.created_at else '' }}
+            </p>
+        </div>
+        <form action="/notifications/{{ notif.id }}/dismiss" method="POST">
+            <button type="submit"
+                class="px-3 py-1.5 bg-white text-amber-700 border border-amber-200 text-[10px] font-bold rounded-lg hover:bg-amber-50 transition-colors uppercase tracking-wider flex items-center gap-1">
+                <i class="fas fa-check text-[8px]"></i> Dismiss
+            </button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
 <div class="bg-white/70 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-white/50">
     <div class="px-6 py-6 sm:px-8 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
         <div class="flex items-center gap-6">

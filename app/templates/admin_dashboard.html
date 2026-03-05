@@ -207,15 +207,40 @@
                                     </div>
                                 </td>
 
-                                <!-- Fee -->
+                                <!-- Fee (Editable) -->
                                 <td class="px-5 py-4 text-center">
-                                    {% if cp.fee > 0 %}
-                                    <span class="text-sm font-extrabold text-slate-800">₹{{ "%.0f"|format(cp.fee)
-                                        }}</span>
-                                    {% else %}
-                                    <span
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">FREE</span>
-                                    {% endif %}
+                                    <form action="/admin/update-counsellor-fee/{{ cp.user.id }}" method="POST"
+                                        class="flex items-center justify-center gap-1.5" x-data="{ editing: false }">
+                                        <div x-show="!editing" class="flex items-center gap-1.5 cursor-pointer"
+                                            @click="editing = true">
+                                            {% if cp.fee > 0 %}
+                                            <span class="text-sm font-extrabold text-slate-800">₹{{
+                                                "%.0f"|format(cp.fee) }}</span>
+                                            {% else %}
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">FREE</span>
+                                            {% endif %}
+                                            <button type="button"
+                                                class="text-slate-300 hover:text-indigo-500 transition-colors"
+                                                title="Edit Fee">
+                                                <i class="fas fa-pencil-alt text-[10px]"></i>
+                                            </button>
+                                        </div>
+                                        <div x-show="editing" style="display: none;" class="flex items-center gap-1">
+                                            <span class="text-xs font-bold text-slate-400">₹</span>
+                                            <input type="number" name="new_fee" value="{{ '%.0f'|format(cp.fee) }}"
+                                                step="1" min="0"
+                                                class="w-20 text-xs px-2 py-1.5 border border-indigo-200 rounded-lg bg-white text-slate-800 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                                            <button type="submit"
+                                                class="px-2 py-1.5 bg-indigo-600 text-white text-[10px] font-bold rounded-lg hover:bg-indigo-700 transition-colors">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" @click="editing = false"
+                                                class="px-2 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg hover:bg-slate-200 transition-colors">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </form>
                                 </td>
 
                                 <!-- Verification Status -->
