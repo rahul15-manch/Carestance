@@ -2026,27 +2026,37 @@ import httpx
 @app.get("/api/tts")
 async def generate_tts(text: str):
     """
-    Generates audio using Bark (via Hugging Face Inference API or local fallback).
+    Generates high-quality audio using stable models (MMS) or expressive models (Bark).
     """
-    # Use Bark via Hugging Face Inference API (Serverless)
-    # Model: suno/bark-small (faster) or suno/bark
     HF_TOKEN = os.getenv("HF_TOKEN")
-    API_URL = "https://api-inference.huggingface.co/models/suno/bark-small"
     
+    # Switch to facebook/mms-tts-eng for a MUCH more stable, professional, and clear voice.
+    # Bark (suno/bark) is artistic but often "cracky" or "glitchy" on the serverless API.
+    API_URL = "https://api-inference.huggingface.co/models/facebook/mms-tts-eng"
+    
+    # Optional: If you REALLY want Bark, we can add a prompt to it, 
+    # but MMS is recommended for clear educational/assessment questions.
+    # API_URL = "https://api-inference.huggingface.co/models/suno/bark-small"
+
     if not HF_TOKEN:
-        # Fallback if no token is provided: use a public one or demo mode
-        # For this task, I'll assume we want the structure ready.
         return {"error": "HF_TOKEN missing in .env", "fallback": True}
 
     headers = {"Authorization": f"Bearer {HF_TOKEN}"}
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(API_URL, headers=headers, json={"inputs": text}, timeout=30.0)
+            # For Bark, we'd want to prepend a voice preset like "[v2/en_speaker_6]"
+            # But for MMS, we just send the text.
+            payload = {"inputs": text}
+            
+            response = await client.post(API_URL, headers=headers, json=payload, timeout=30.0)
+            
             if response.status_code == 200:
-                # Return the audio as a stream or file
-                return Response(content=response.content, media_type="audio/mpeg")
+                return Response(content=response.content, media_type="audio/wav")
+            elif response.status_code == 503:
+                return {"error": "Model is currently loading on Hugging Face. Please try again in a few seconds.", "loading": True}
             else:
+                # If MMS fails, maybe try Bark small as a backup?
                 return {"error": f"HF API Error: {response.text}", "status": response.status_code}
         except Exception as e:
             return {"error": str(e)}
