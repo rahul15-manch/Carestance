@@ -150,6 +150,14 @@ def run_migrations():
                 migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN verification_status VARCHAR DEFAULT 'pending'")
             if 'fee_locked' not in cp_cols:
                 migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN fee_locked BOOLEAN DEFAULT FALSE")
+            if 'razorpay_account_id' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_account_id VARCHAR")
+            if 'onboarding_status' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN onboarding_status VARCHAR DEFAULT 'not_started'")
+            if 'razorpay_contact_id' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_contact_id VARCHAR")
+            if 'razorpay_fund_account_id' not in cp_cols:
+                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_fund_account_id VARCHAR")
         
         if migrations:
             with engine.connect() as conn:
@@ -169,6 +177,10 @@ def run_migrations():
 run_migrations()
 
 app = FastAPI(title="CareStance")
+
+# ─── Include Split Payments Router (Razorpay Route) ───────────────────────────
+from .routes.payments import router as payments_router
+app.include_router(payments_router)
 
 from fastapi.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -773,6 +785,44 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             except Exception:
                 cp.session_count = 0
                 cp.total_sessions = 0
+
+        # ─── Payment Split Analytics ──────────────────────────────────────
+        from sqlalchemy import func as sql_func
+        try:
+            all_payments = db.query(models.Payment).order_by(models.Payment.created_at.desc()).limit(20).all()
+            all_transfers = db.query(models.Transfer).all()
+
+            total_revenue = db.query(sql_func.sum(models.Payment.amount)).filter(
+                models.Payment.status == "captured"
+            ).scalar() or 0.0
+
+            total_counselor_payouts = db.query(sql_func.sum(models.Transfer.amount)).filter(
+                models.Transfer.status == "processed"
+            ).scalar() or 0.0
+
+            platform_commission = total_revenue - total_counselor_payouts
+
+            pending_transfers = db.query(models.Transfer).filter(
+                models.Transfer.status == "pending"
+            ).count()
+
+            failed_transfers = db.query(models.Transfer).filter(
+                models.Transfer.status == "failed"
+            ).count()
+
+            captured_payments_count = db.query(models.Payment).filter(
+                models.Payment.status == "captured"
+            ).count()
+        except Exception as pe:
+            print(f"Payment analytics error: {pe}")
+            all_payments = []
+            all_transfers = []
+            total_revenue = 0.0
+            total_counselor_payouts = 0.0
+            platform_commission = 0.0
+            pending_transfers = 0
+            failed_transfers = 0
+            captured_payments_count = 0
         
         return templates.TemplateResponse("admin_dashboard.html", {
             "request": request, 
@@ -781,7 +831,15 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "feedbacks": all_feedback,
             "tickets": all_tickets,
             "pending_counsellors": pending_counsellors,
-            "all_counsellors": all_counsellors
+            "all_counsellors": all_counsellors,
+            # Split payment data
+            "all_payments": all_payments,
+            "total_revenue": total_revenue,
+            "total_counselor_payouts": total_counselor_payouts,
+            "platform_commission": platform_commission,
+            "pending_transfers": pending_transfers,
+            "failed_transfers": failed_transfers,
+            "captured_payments_count": captured_payments_count,
         })
     except Exception as e:
         import traceback
@@ -1103,6 +1161,21 @@ async def create_razorpay_order(counsellor_id: int, request: Request, fee: float
     
     try:
         order = razorpay_client.order.create(data=data)
+
+        # ── Record Payment in DB for admin split tracking ──────────────────
+        try:
+            payment_record = models.Payment(
+                razorpay_order_id=order["id"],
+                amount=fee,
+                status="created"
+            )
+            db.add(payment_record)
+            db.commit()
+            db.refresh(payment_record)
+            print(f"DEBUG: Payment record created: order={order['id']}, amount=₹{fee}")
+        except Exception as pe:
+            print(f"DEBUG: Payment record creation skipped: {pe}")
+
         return order
     except Exception as e:
         print(f"Razorpay Error: {e}")
@@ -1351,6 +1424,52 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
     db.add(appointment)
     db.commit()
     db.refresh(appointment)
+
+    # ── Record Payment + Transfer for admin split tracking ─────────────────
+    try:
+        # Get the counsellor's fee for accurate split calculation
+        counsellor_profile = db.query(models.CounsellorProfile).filter(
+            models.CounsellorProfile.user_id == counsellor_id
+        ).first()
+        fee_amount = counsellor_profile.fee if counsellor_profile else 0.0
+
+        # Find or create the Payment record
+        payment_record = db.query(models.Payment).filter(
+            models.Payment.razorpay_order_id == razorpay_order_id
+        ).first()
+
+        if payment_record:
+            # Update existing record (created during order creation)
+            payment_record.razorpay_payment_id = razorpay_payment_id
+            payment_record.status = "captured"
+            payment_record.session_id = appointment.id
+        else:
+            # Create new record (fallback)
+            payment_record = models.Payment(
+                session_id=appointment.id,
+                razorpay_order_id=razorpay_order_id,
+                razorpay_payment_id=razorpay_payment_id,
+                amount=fee_amount,
+                status="captured"
+            )
+            db.add(payment_record)
+            db.commit()
+            db.refresh(payment_record)
+
+        # Create Transfer record (70/30 split)
+        counselor_share = round(fee_amount * 0.70, 2)
+        transfer_record = models.Transfer(
+            payment_id=payment_record.id,
+            counsellor_id=counsellor_id,
+            amount=counselor_share,
+            status="pending"  # Will become 'processed' when manually/auto transferred
+        )
+        db.add(transfer_record)
+        db.commit()
+
+        print(f"DEBUG: Split recorded — Total: ₹{fee_amount}, Counselor (70%): ₹{counselor_share}, Platform (30%): ₹{round(fee_amount - counselor_share, 2)}")
+    except Exception as pe:
+        print(f"DEBUG: Split record creation error: {pe}")
     
     # Send Emails
     student_email = user.email

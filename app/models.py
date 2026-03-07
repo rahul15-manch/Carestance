@@ -121,6 +121,14 @@ class CounsellorProfile(Base):
     block_reason = Column(String, nullable=True)
     fee_locked = Column(Boolean, default=False)  # True = only admin can change fee
 
+    # Razorpay Route – Linked Account for split payments
+    razorpay_account_id = Column(String, nullable=True)  # e.g. acc_XXXXXXXXXXXXX
+    onboarding_status = Column(String, default="not_started")  # not_started, pending, activated
+
+    # RazorpayX – Contact & Fund Account for UPI payouts
+    razorpay_contact_id = Column(String, nullable=True)      # cont_XXXXXXXXXXXXX
+    razorpay_fund_account_id = Column(String, nullable=True)  # fa_XXXXXXXXXXXXXXX
+
     user = relationship("User", back_populates="counsellor_profile")
 
 class Appointment(Base):
@@ -172,3 +180,42 @@ class Notification(Base):
     user = relationship("User", back_populates="notifications")
 
 User.notifications = relationship("Notification", back_populates="user", order_by="Notification.created_at.desc()")
+
+
+# ─── Payment & Transfer Models (Razorpay Split Payments) ───────────────────────
+
+class Payment(Base):
+    """Tracks every Razorpay payment for counseling sessions."""
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("appointments.id"), nullable=True)  # FK → Appointment
+    razorpay_order_id = Column(String, unique=True, index=True)
+    razorpay_payment_id = Column(String, nullable=True, unique=True, index=True)
+    amount = Column(Float)  # Total amount in INR
+    currency = Column(String, default="INR")
+    status = Column(String, default="created")  # created, captured, failed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    session = relationship("Appointment", backref="payment_record")
+    transfers = relationship("Transfer", back_populates="payment")
+
+
+class Transfer(Base):
+    """Tracks each split transfer to a counselor's linked account."""
+    __tablename__ = "transfers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payment_id = Column(Integer, ForeignKey("payments.id"))
+    counsellor_id = Column(Integer, ForeignKey("users.id"))
+    amount = Column(Float)  # Counselor's share in INR
+    razorpay_transfer_id = Column(String, nullable=True, unique=True)
+    status = Column(String, default="pending")  # pending, processed, failed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    payment = relationship("Payment", back_populates="transfers")
+    counsellor = relationship("User")
