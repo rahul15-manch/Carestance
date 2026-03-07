@@ -38,6 +38,61 @@
         {% set steps = path.path_data.steps if (path.path_data is mapping and 'steps' in path.path_data) else
         (path.path_data if path.path_data is iterable and path.path_data is not mapping else []) %}
 
+        <!-- Your Journey Progress Tracker -->
+        <div class="bg-white/70 backdrop-blur-xl rounded-[40px] p-8 md:p-10 shadow-2xl border border-white mb-12 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-8 opacity-5">
+                <i class="fas fa-route text-6xl"></i>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-10">Your Platform Journey</p>
+            
+            <div class="relative flex justify-between items-center max-w-4xl mx-auto">
+                <!-- Connecting Line -->
+                <div class="absolute top-6 left-0 w-full h-1 bg-slate-100 rounded-full"></div>
+                
+                {% set journey_score = 0 %}
+                {% if assessment and assessment.phase_2_category %}{% set journey_score = 25 %}{% endif %}
+                {% if assessment and assessment.phase3_analysis %}{% set journey_score = 50 %}{% endif %}
+                {% if path %}{% set journey_score = 75 %}{% endif %}
+                {% if appointments and appointments|length > 0 %}{% set journey_score = 100 %}{% endif %}
+
+                <div class="absolute top-6 left-0 h-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full transition-all duration-[2000ms] shadow-[0_0_10px_rgba(124,58,237,0.3)]" 
+                     style="width: {{ journey_score }}%"></div>
+
+                <!-- Milestone Points -->
+                <div class="relative z-10 flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg 
+                        {{ 'bg-violet-600 text-white shadow-violet-200' if journey_score >= 25 else 'bg-white border-4 border-slate-50 text-slate-200' }}">
+                        <i class="fas fa-check text-sm"></i>
+                    </div>
+                    <span class="text-[10px] font-black {{ 'text-violet-600' if journey_score >= 25 else 'text-slate-400' }} uppercase tracking-wider">Basics</span>
+                </div>
+
+                <div class="relative z-10 flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg 
+                        {{ 'bg-violet-600 text-white shadow-violet-200' if journey_score >= 50 else 'bg-white border-4 border-slate-50 text-slate-200' }}">
+                        <i class="fas fa-brain text-sm"></i>
+                    </div>
+                    <span class="text-[10px] font-black {{ 'text-violet-600' if journey_score >= 50 else 'text-slate-400' }} uppercase tracking-wider">Deep Dive</span>
+                </div>
+
+                <div class="relative z-10 flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg 
+                        {{ 'bg-violet-600 text-white shadow-violet-200' if journey_score >= 75 else 'bg-white border-4 border-slate-50 text-slate-200' }}">
+                        <i class="fas fa-bullseye text-sm"></i>
+                    </div>
+                    <span class="text-[10px] font-black {{ 'text-violet-600' if journey_score >= 75 else 'text-slate-400' }} uppercase tracking-wider">Final Plan</span>
+                </div>
+
+                <div class="relative z-10 flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg 
+                        {{ 'bg-emerald-500 text-white shadow-emerald-200' if journey_score >= 100 else 'bg-white border-4 border-slate-50 text-slate-200' }}">
+                        <i class="fas fa-user-graduate text-sm"></i>
+                    </div>
+                    <span class="text-[10px] font-black {{ 'text-emerald-600' if journey_score >= 100 else 'text-slate-400' }} uppercase tracking-wider">Counselling</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Dashboard-style Stats Bar -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div
@@ -331,6 +386,15 @@
 
 <script>
     async function toggleStepV2(pathId, stepIndex) {
+        const checkbox = event.target;
+        const isChecked = checkbox.checked;
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const glowLine = document.getElementById('glow-line');
+        
+        // Disable temporarily to prevent double-clicks
+        checkbox.disabled = true;
+
         try {
             const response = await fetch(`/career/roadmap/${pathId}/step/${stepIndex}/toggle`, {
                 method: 'POST',
@@ -341,17 +405,25 @@
             const result = await response.json();
 
             if (result.success) {
-                // Reload page to witness the magic/animations or update DOM
-                // For better UX, we'll update DOM but reload might be easier for complex state
-                // Let's do a smooth update
-                const container = document.getElementById(`step-container-${stepIndex}`);
-                const title = document.getElementById(`step-title-${stepIndex}`);
+                // Optimistic UI update: Update progress bars without full reload first
+                if (progressBar) progressBar.style.width = result.progress + '%';
+                if (glowLine) glowLine.style.height = result.progress + '%';
+                if (progressText) progressText.innerText = result.progress + '% Mastery';
 
-                // Just refresh for now to see the full UI transition (levels, glow line, etc)
-                window.location.reload();
+                // Minor delay for animations before syncing full state
+                setTimeout(() => {
+                    window.location.reload();
+                }, 400);
+            } else {
+                checkbox.checked = !isChecked; // Revert
+                alert('Session expired or update failed. Please refresh.');
             }
         } catch (err) {
             console.error('Failed to toggle step:', err);
+            checkbox.checked = !isChecked; // Revert
+            alert('Cloud sync failed. Check your internet connection.');
+        } finally {
+            checkbox.disabled = false;
         }
     }
 

@@ -2589,11 +2589,8 @@ async def toggle_step_completion(path_id: int, step_index: int, request: Request
     else:
         raise HTTPException(status_code=400, detail="Invalid step index")
     
-    # Re-assign to trigger SQLAlchemy JSON detection and commit
-    if isinstance(data, dict):
-        path.path_data = dict(data)
-    else:
-        path.path_data = list(steps)
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(path, "path_data")
         
     db.commit()
     db.refresh(path)
@@ -2623,7 +2620,16 @@ async def view_roadmap_detail(path_id: int, request: Request, db: Session = Depe
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
-    return templates.TemplateResponse("career_roadmap_v2.html", {"request": request, "user": user, "path": path})
+    assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    appointments = db.query(models.Appointment).filter(models.Appointment.student_id == user.id).all()
+        
+    return templates.TemplateResponse("career_roadmap_v2.html", {
+        "request": request, 
+        "user": user, 
+        "path": path,
+        "assessment": assessment,
+        "appointments": appointments
+    })
 
 
 # --- College Recommendation Routes ---
