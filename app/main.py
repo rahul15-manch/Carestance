@@ -95,6 +95,29 @@ async def generate_content_with_fallback(prompt):
     except Exception:
         return text
 
+async def check_content_moderation(text_content: str):
+    """
+    Checks if the given text contains abusive or inappropriate content using the AI model.
+    Returns: (is_flagged, reason)
+    """
+    moderation_prompt = f"""
+    Analyze the following text for abusive language, hate speech, harassment, or highly inappropriate content for a student career guidance platform.
+    Text: "{text_content}"
+    
+    Respond STRICTLY in JSON format:
+    {{
+      "is_flagged": boolean,
+      "reason": "string describing the violation or 'None'"
+    }}
+    """
+    try:
+        response_json_str = await generate_content_with_fallback(moderation_prompt)
+        data = json.loads(response_json_str)
+        return data.get("is_flagged", False), data.get("reason", "None")
+    except Exception as e:
+        print(f"Moderation Error: {e}")
+        return False, "None"
+
 from . import models
 from .database import SessionLocal, engine, get_db
 from data.questions_data import questions
@@ -130,6 +153,8 @@ def run_migrations():
             migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
         if user_cols and 'bio' not in user_cols:
             migrations.append("ALTER TABLE users ADD COLUMN bio TEXT")
+        if user_cols and 'is_suspended' not in user_cols:
+            migrations.append("ALTER TABLE users ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE")
         
         # CounsellorProfile table migrations
         cp_cols = get_columns('counsellor_profiles')
@@ -198,6 +223,45 @@ app.add_middleware(
     max_age=14 * 24 * 60 * 60,  # 14 days
 )
 
+@app.middleware("http")
+async def check_suspension(request: Request, call_next):
+    # Paths that suspended users can still access
+    exempt_paths = [
+        "/suspended", 
+        "/logout", 
+        "/static", 
+        "/login", 
+        "/signup", 
+        "/", 
+        "/auth/google", 
+        "/auth/callback",
+        "/favicon.ico",
+        "/ticket/submit"
+    ]
+    
+    path = request.url.path
+    # Check if the path is specifically exempt
+    is_exempt = any(path == p or path.startswith("/static/") or path.startswith("/auth/") for p in exempt_paths)
+    
+    if not is_exempt:
+        user_id = request.cookies.get("user_id")
+        if user_id:
+            db = SessionLocal()
+            try:
+                # Need to handle potential non-integer user_id from cookies
+                try:
+                    uid = int(user_id)
+                    user = db.query(models.User).filter(models.User.id == uid).first()
+                    if user and user.is_suspended:
+                        return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
+                except ValueError:
+                    pass
+            finally:
+                db.close()
+    
+    response = await call_next(request)
+    return response
+
 # Mount Static & Templates
 # Mount Static & Templates
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -220,6 +284,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     if not user_id:
         return None
     user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    if user and user.is_suspended:
+        # We can handle this by returning None or setting a flag on the user object
+        # For now, let's just return the user but we'll check is_suspended in routes
+        pass
     return user
 
 # Routes
@@ -417,6 +485,10 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
     response.set_cookie(key="user_id", value=str(user.id))
     return response
+
+@app.get("/suspended", response_class=HTMLResponse)
+async def suspended_page(request: Request):
+    return templates.TemplateResponse("suspended.html", {"request": request})
 
 @app.get("/select-role", response_class=HTMLResponse)
 async def select_role_page(request: Request, db: Session = Depends(get_db)):
@@ -833,6 +905,9 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             failed_transfers = 0
             captured_payments_count = 0
         
+        # Fetch Moderation Flags
+        moderation_flags = db.query(models.ModerationFlag).order_by(models.ModerationFlag.timestamp.desc()).all()
+
         return templates.TemplateResponse("admin_dashboard.html", {
             "request": request, 
             "user": user, 
@@ -849,6 +924,7 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "pending_transfers": pending_transfers,
             "failed_transfers": failed_transfers,
             "captured_payments_count": captured_payments_count,
+            "moderation_flags": moderation_flags
         })
     except Exception as e:
         import traceback
@@ -877,6 +953,44 @@ async def delete_user(user_id: int, request: Request, db: Session = Depends(get_
     
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
+@app.post("/admin/users/{user_id}/suspend")
+async def suspend_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.is_suspended = True
+        db.commit()
+    return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
+
+@app.post("/admin/users/{user_id}/unsuspend")
+async def unsuspend_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.is_suspended = False
+        db.commit()
+    return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
+
+@app.post("/admin/flags/{flag_id}/action")
+async def handle_flag(flag_id: int, request: Request, action: str = Form(...), db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    flag = db.query(models.ModerationFlag).filter(models.ModerationFlag.id == flag_id).first()
+    if flag:
+        if action == "dismiss":
+            flag.status = "dismissed"
+        elif action == "resolve":
+            flag.status = "action_taken"
+        db.commit()
+    return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
 # --- Counsellor Routes ---
 
@@ -2242,9 +2356,20 @@ async def chatbot_message(request: Request, chat_req: ChatRequest, db: Session =
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    if user.is_suspended:
+        return {"error": "Your account has been suspended for violating our content policies."}
 
     user_message = chat_req.message
     
+    # Content Moderation Check
+    is_flagged, reason = await check_content_moderation(user_message)
+    if is_flagged:
+        flag = models.ModerationFlag(user_id=user.id, content=user_message, chat_type="ai", status="pending_review")
+        db.add(flag)
+        db.commit()
+        return {"error": "Your message was flagged as inappropriate. Repeated violations will lead to account suspension."}
+
     # Save User Message
     user_msg_db = models.ChatMessage(user_id=user.id, sender="user", content=user_message)
     db.add(user_msg_db)
@@ -2421,6 +2546,9 @@ async def submit_ticket(
     db.add(new_ticket)
     db.commit()
     
+    if user.is_suspended:
+        return RedirectResponse(url="/suspended?ticket_submitted=true", status_code=status.HTTP_302_FOUND)
+        
     return RedirectResponse(url="/ticket", status_code=status.HTTP_302_FOUND)
 
 
@@ -2473,7 +2601,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     1. Action Name (Catchy & motivating)
     2. Description (Explain WHY this step matters for their specific profile - 3 sentences)
     3. Skills to acquire (3 specific skills relevant to {path_req.career_title})
-    4. Recommended Learning (2 specific, modern resources - e.g. Coursera, YouTube channels, Books)
+    4. Resources (MUST provide 2 specific, HIGHLY ACCURATE resources. EACH resource MUST be an object with a "name" and a functional "url". PRIORITIZE DIRECT LINKS to the **most viewed/popular** YouTube videos or verified courses (Coursera, Udemy, Official Docs). Use HIGHLY SPECIFIC search queries ONLY as a secondary fallback if a direct video link is absolutely unavailable for the specific topic. Plain text without URLs is FORBIDDEN.)
     5. Student Project (1 "cool" project name and brief description that a student would enjoy building)
     6. Timeline (Realistic estimate, e.g., "Months 1-3")
 
@@ -2493,7 +2621,10 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
           "action": "...", 
           "description": "...", 
           "skills": ["...", "...", "..."],
-          "courses": ["...", "..."],
+          "courses": [
+            {{ "name": "...", "url": "..." }},
+            {{ "name": "...", "url": "..." }}
+          ],
           "project": "...",
           "timeline": "...",
           "completed": false
@@ -2589,9 +2720,11 @@ async def toggle_step_completion(path_id: int, step_index: int, request: Request
     else:
         raise HTTPException(status_code=400, detail="Invalid step index")
     
+    path.path_data = data
     from sqlalchemy.orm.attributes import flag_modified
     flag_modified(path, "path_data")
-        
+    
+    db.add(path) # Ensure it's in the session correctly
     db.commit()
     db.refresh(path)
     
@@ -3116,6 +3249,9 @@ async def send_student_message(
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    if user.is_suspended:
+        return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
 
     # If JSON request (XHR)
     if request.headers.get("content-type") == "application/json":
@@ -3136,6 +3272,17 @@ async def send_student_message(
         raise HTTPException(status_code=403, detail="Not connected or unauthorized")
 
     receiver_id = conn.receiver_id if conn.requester_id == user.id else conn.requester_id
+
+    # Moderation Check
+    is_flagged, reason = await check_content_moderation(content)
+    if is_flagged:
+        flag = models.ModerationFlag(user_id=user.id, content=content, chat_type="p2p", status="pending_review")
+        db.add(flag)
+        db.commit()
+        # For P2P we return an error state
+        if request.headers.get("content-type") == "application/json":
+            return {"error": "Your message was flagged as inappropriate. Repeated violations will lead to account suspension."}
+        return RedirectResponse(url=f"/connection/{conn_id}/chat?error=flagged", status_code=status.HTTP_302_FOUND)
 
     new_msg = models.StudentMessage(
         sender_id=user.id,

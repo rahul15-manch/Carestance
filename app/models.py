@@ -13,6 +13,7 @@ class User(Base):
     profile_photo = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     role = Column(String, default="student")
+    is_suspended = Column(Boolean, default=False)
     
     assessment = relationship("AssessmentResult", back_populates="user", uselist=False)
 
@@ -196,6 +197,8 @@ class StudentMessage(Base):
     sender = relationship("User", foreign_keys=[sender_id], backref="sent_student_messages")
     receiver = relationship("User", foreign_keys=[receiver_id], backref="received_student_messages")
 
+User.notifications = relationship("Notification", back_populates="user", order_by="Notification.created_at.desc()")
+
 class Notification(Base):
     __tablename__ = "notifications"
 
@@ -208,7 +211,19 @@ class Notification(Base):
 
     user = relationship("User", back_populates="notifications")
 
-User.notifications = relationship("Notification", back_populates="user", order_by="Notification.created_at.desc()")
+class ModerationFlag(Base):
+    __tablename__ = "moderation_flags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    content = Column(Text)
+    chat_type = Column(String)  # "ai" or "p2p"
+    status = Column(String, default="pending_review")  # pending_review, dismissed, action_taken
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="moderation_flags")
+
+User.moderation_flags = relationship("ModerationFlag", back_populates="user", order_by="ModerationFlag.timestamp.desc()")
 
 
 # ─── Payment & Transfer Models (Razorpay Split Payments) ───────────────────────
