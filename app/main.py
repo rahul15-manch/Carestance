@@ -1280,6 +1280,46 @@ async def take_founding_badge(
     
     return RedirectResponse(url="/admin?message=Founding+badge+removed", status_code=status.HTTP_302_FOUND)
 
+@app.get("/admin/migrate-db")
+async def admin_migrate_db(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if not admin_email or current_user.email != admin_email:
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    from sqlalchemy import text
+    sql_commands = [
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS fee_locked BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS is_founding_counsellor BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS founding_badge_awarded_at TIMESTAMP;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS commission_free_until TIMESTAMP;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS razorpay_account_id VARCHAR;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS onboarding_status VARCHAR DEFAULT 'not_started';",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS razorpay_contact_id VARCHAR;",
+        "ALTER TABLE counsellor_profiles ADD COLUMN IF NOT EXISTS razorpay_fund_account_id VARCHAR;",
+        
+        "CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), type VARCHAR, message TEXT, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);",
+        "CREATE TABLE IF NOT EXISTS moderation_flags (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), content TEXT, chat_type VARCHAR, status VARCHAR DEFAULT 'pending_review', timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);",
+        "CREATE TABLE IF NOT EXISTS payments (id SERIAL PRIMARY KEY, session_id INTEGER REFERENCES appointments(id), razorpay_order_id VARCHAR UNIQUE, razorpay_payment_id VARCHAR UNIQUE, amount FLOAT, currency VARCHAR DEFAULT 'INR', status VARCHAR DEFAULT 'created', created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP WITH TIME ZONE);",
+        "CREATE TABLE IF NOT EXISTS transfers (id SERIAL PRIMARY KEY, payment_id INTEGER REFERENCES payments(id), counsellor_id INTEGER REFERENCES users(id), amount FLOAT, razorpay_transfer_id VARCHAR UNIQUE, status VARCHAR DEFAULT 'pending', created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP);"
+    ]
+    
+    results = []
+    for cmd in sql_commands:
+        try:
+            db.execute(text(cmd))
+            db.commit()
+            results.append(f"Success: {cmd[:50]}...")
+        except Exception as e:
+            db.rollback()
+            results.append(f"Error: {str(e)[:100]}")
+            
+    return {"status": "Migration complete", "details": results}
+
 @app.post("/admin/update-counsellor-fee/{counsellor_id}")
 async def admin_update_counsellor_fee(
     counsellor_id: int,
