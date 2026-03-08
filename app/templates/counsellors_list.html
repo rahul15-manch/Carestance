@@ -25,38 +25,56 @@
             <div
                 class="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-sm border border-slate-100 hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 group">
                 <div class="flex items-center gap-4 mb-6">
-                    <img src="{{ c.user.profile_photo if c.user.profile_photo else 'https://ui-avatars.com/api/?name=' + c.user.full_name }}" 
-                         class="h-16 w-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-md group-hover:scale-110 transition-transform duration-500" loading="lazy">
+                    <img src="{{ c.user.profile_photo if c.user.profile_photo else 'https://ui-avatars.com/api/?name=' + c.user.full_name }}"
+                        class="h-16 w-16 rounded-2xl object-cover border-2 border-indigo-50 shadow-md group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy">
                     <div>
                         <h4 class="text-xl font-extrabold text-slate-800 tracking-tight">{{ c.user.full_name }}</h4>
                         <div class="flex items-center gap-2 mt-1">
-                            <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md uppercase tracking-wide">Verified Expert</span>
-                            <span class="text-sm font-bold text-indigo-600">₹{{ c.fee }}<span class="text-xs text-slate-400 font-normal">/session</span></span>
+                            <span
+                                class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md uppercase tracking-wide">Verified
+                                Expert</span>
+                            {% if c.is_founding_counsellor %}
+                            <span
+                                class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md uppercase tracking-wide border border-amber-200">🏆
+                                Founding Coach</span>
+                            {% endif %}
+                            <span class="text-sm font-bold text-indigo-600">₹{{ c.fee }}<span
+                                    class="text-xs text-slate-400 font-normal">/session</span></span>
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-4 mb-8">
-                    <div class="flex items-start gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-indigo-50 transition-colors">
+                    <div
+                        class="flex items-start gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-indigo-50 transition-colors">
                         <i class="fas fa-briefcase text-indigo-400 mt-1"></i>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Knowledge & Exp.</p>
-                            <p class="text-sm text-slate-600 font-medium leading-relaxed italic">{{ c.experience if c.experience else 'Expert career guidance and roadmap strategy.' }}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Knowledge &
+                                Exp.</p>
+                            <p class="text-sm text-slate-600 font-medium leading-relaxed italic">{{ c.experience if
+                                c.experience else 'Expert career guidance and roadmap strategy.' }}</p>
                         </div>
                     </div>
 
-                    <div class="flex items-start gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-indigo-50 transition-colors">
+                    <div
+                        class="flex items-start gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-indigo-50 transition-colors">
                         <i class="fas fa-clock text-indigo-400 mt-1"></i>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Availability</p>
-                            <p class="text-sm text-slate-600 font-semibold leading-relaxed">{{ c.availability.get('text', 'Flexible Hours') if c.availability else 'Flexible Hours' }}</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Availability
+                            </p>
+                            <p class="text-sm text-slate-600 font-semibold leading-relaxed">{{
+                                c.availability.get('text', 'Flexible Hours') if c.availability else 'Flexible Hours' }}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 <div class="space-y-5">
                     <div class="relative">
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Schedule Your Session</label>
+                        <label
+                            class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Schedule
+                            Your Session</label>
                         <div class="relative">
                             <i class="fas fa-calendar-day absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                             <input type="datetime-local" id="time_{{ c.user_id }}"
@@ -64,15 +82,18 @@
                         </div>
                     </div>
 
-                    <button id="btn_{{ c.user_id }}" onclick="payNow('{{ c.user_id }}', '{{ c.fee }}', '{{ c.user.full_name }}')"
+                    <button id="btn_{{ c.user_id }}"
+                        onclick="payNow('{{ c.user_id }}', '{{ c.fee }}', '{{ c.user.full_name }}')"
                         class="w-full relative overflow-hidden group/btn flex justify-center items-center py-4 px-6 rounded-2xl bg-slate-900 hover:bg-indigo-600 text-white font-bold transition-all duration-300 shadow-xl shadow-slate-200 hover:shadow-indigo-200 active:scale-95">
                         <span class="relative z-10 flex items-center gap-2">
                             <i class="fas fa-bolt text-yellow-400 group-hover/btn:animate-pulse"></i>
                             Book Consultation
                         </span>
-                        <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+                        <div
+                            class="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300">
+                        </div>
                     </button>
-                    
+
                     <p class="text-[10px] text-center text-slate-400 font-medium">
                         <i class="fas fa-shield-alt mr-1"></i> Secure payment & instant meeting link
                     </p>
@@ -100,7 +121,7 @@
 
         const btn = document.getElementById(`btn_${counsellorId}`);
         const originalContent = btn.innerHTML;
-        
+
         btn.disabled = true;
         btn.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i> Processing...`;
 
@@ -194,10 +215,10 @@
             btn.disabled = false;
             btn.innerHTML = originalContent;
         });
-        
+
         // Handle closing the modal
         options.modal = {
-            ondismiss: function() {
+            ondismiss: function () {
                 btn.disabled = false;
                 btn.innerHTML = originalContent;
             }

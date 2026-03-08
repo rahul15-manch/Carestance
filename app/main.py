@@ -1217,6 +1217,69 @@ async def unblock_counsellor(
     
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
+@app.post("/admin/give-founding-badge/{counsellor_id}")
+async def give_founding_badge(
+    counsellor_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if not admin_email or current_user.email != admin_email:
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    # Check if limit of 100 is reached
+    founding_count = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.is_founding_counsellor == True).count()
+    if founding_count >= 100:
+        return RedirectResponse(url="/admin?error=Founding+counsellor+limit+reached", status_code=status.HTTP_302_FOUND)
+
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+    if profile:
+        profile.is_founding_counsellor = True
+        profile.founding_badge_awarded_at = datetime.datetime.now()
+        # 2 months free commission
+        profile.commission_free_until = datetime.datetime.now() + datetime.timedelta(days=60)
+        
+        # Add Notification for the counsellor
+        notification = models.Notification(
+            user_id=counsellor_id,
+            type="founding_badge_awarded",
+            message="Congratulations! You have been awarded the Founding Counsellor badge with 2 months of 0% commission! 🏆"
+        )
+        db.add(notification)
+        db.commit()
+    
+    return RedirectResponse(url="/admin?message=Founding+badge+awarded", status_code=status.HTTP_302_FOUND)
+
+@app.post("/admin/take-founding-badge/{counsellor_id}")
+async def take_founding_badge(
+    counsellor_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(request, db)
+    if not current_user or current_user.role != "admin":
+        admin_email = os.getenv("ADMIN_EMAIL")
+        if not admin_email or current_user.email != admin_email:
+            return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+    if profile:
+        profile.is_founding_counsellor = False
+        profile.commission_free_until = None
+
+        # Add Notification for the counsellor
+        notification = models.Notification(
+            user_id=counsellor_id,
+            type="founding_badge_removed",
+            message="Your Founding Counsellor badge has been removed by admin."
+        )
+        db.add(notification)
+        db.commit()
+    
+    return RedirectResponse(url="/admin?message=Founding+badge+removed", status_code=status.HTTP_302_FOUND)
+
 @app.post("/admin/update-counsellor-fee/{counsellor_id}")
 async def admin_update_counsellor_fee(
     counsellor_id: int,
@@ -1604,8 +1667,20 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
             db.commit()
             db.refresh(payment_record)
 
-        # Create Transfer record (70/30 split)
-        counselor_share = round(fee_amount * 0.70, 2)
+        # Check for Founding Counsellor (2 months no commission)
+        is_founding_free = False
+        if counsellor_profile and counsellor_profile.is_founding_counsellor:
+            if counsellor_profile.commission_free_until and counsellor_profile.commission_free_until > datetime.datetime.now():
+                is_founding_free = True
+
+        # Create Transfer record (70/30 split OR 100% if founding free)
+        if is_founding_free:
+            counselor_share = round(fee_amount, 2)
+            commission_note = "Founding Counsellor (0% platform fee)"
+        else:
+            counselor_share = round(fee_amount * 0.70, 2)
+            commission_note = "Standard (30% platform fee)"
+
         transfer_record = models.Transfer(
             payment_id=payment_record.id,
             counsellor_id=counsellor_id,
@@ -1615,7 +1690,7 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
         db.add(transfer_record)
         db.commit()
 
-        print(f"DEBUG: Split recorded — Total: ₹{fee_amount}, Counselor (70%): ₹{counselor_share}, Platform (30%): ₹{round(fee_amount - counselor_share, 2)}")
+        print(f"DEBUG: Split recorded ({commission_note}) — Total: ₹{fee_amount}, Counselor: ₹{counselor_share}, Platform: ₹{round(fee_amount - counselor_share, 2)}")
     except Exception as pe:
         print(f"DEBUG: Split record creation error: {pe}")
     

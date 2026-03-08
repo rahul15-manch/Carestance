@@ -131,6 +131,11 @@ class CounsellorProfile(Base):
     razorpay_contact_id = Column(String, nullable=True)      # cont_XXXXXXXXXXXXX
     razorpay_fund_account_id = Column(String, nullable=True)  # fa_XXXXXXXXXXXXXXX
 
+    # Founding Counsellor Badge & Commission Logic
+    is_founding_counsellor = Column(Boolean, default=False)
+    founding_badge_awarded_at = Column(DateTime, nullable=True)
+    commission_free_until = Column(DateTime, nullable=True)
+
     user = relationship("User", back_populates="counsellor_profile")
 
 class Appointment(Base):

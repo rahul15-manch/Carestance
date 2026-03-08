@@ -4,6 +4,48 @@
 
 {% block content %}
 
+{% for notif in notifications %}
+{% if notif.type == 'founding_badge_awarded' %}
+<!-- Founding Badge Celebration Popup -->
+<div x-data="{ open: true }" x-show="open"
+    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+    x-transition:enter-end="opacity-100 scale-100">
+    <div
+        class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden text-center border border-amber-100">
+        <!-- Confetti/Celebration BG -->
+        <div class="absolute inset-0 bg-gradient-to-b from-amber-50/50 to-white -z-10"></div>
+
+        <div
+            class="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-amber-200 transform rotate-12">
+            <i class="fas fa-trophy text-white text-3xl"></i>
+        </div>
+
+        <h3 class="text-2xl font-extrabold text-slate-900 mb-2">Founding Counsellor!</h3>
+        <p class="text-slate-600 font-medium mb-6">
+            You have been recognized as one of our first 100 experts! 🏆
+        </p>
+
+        <div class="bg-amber-50 rounded-2xl p-4 border border-amber-100 mb-8">
+            <p class="text-amber-800 text-sm font-bold">
+                Benefit Activated: <span class="text-lg">0%</span> Commission
+            </p>
+            <p class="text-amber-600 text-[11px] mt-1 font-medium">
+                Enjoy 100% payouts for the next 2 months.
+            </p>
+        </div>
+
+        <form action="/notifications/{{ notif.id }}/dismiss" method="POST">
+            <button type="submit" @click="open = false"
+                class="w-full py-4 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-2xl transition-all shadow-lg hover:shadow-indigo-200 hover:scale-[1.02] uppercase tracking-widest text-xs">
+                Claim My Benefit →
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
 {% if profile and profile.is_blocked %}
 <!-- Blocked Account Warning -->
 <div
@@ -231,6 +273,12 @@
                     class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                     <i class="fas fa-check-circle"></i> Verified Counsellor
                 </span>
+                {% if profile.is_founding_counsellor %}
+                <span
+                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
+                    <i class="fas fa-trophy text-[10px]"></i> Founding Coach
+                </span>
+                {% endif %}
                 {% elif profile.verification_status == 'pending' %}
                 <span
                     class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
@@ -393,62 +441,72 @@
                 <div
                     class="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:shadow-lg transition-all gap-4">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 text-xl shadow-inner">
+                        <div
+                            class="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 text-xl shadow-inner">
                             <i class="fas fa-user"></i>
                         </div>
                         <div>
                             <p class="font-bold text-slate-900 text-lg">{{ apt.student.full_name }}</p>
                             <p class="text-xs text-slate-500 font-medium">
-                                Status: 
+                                Status:
                                 {% if apt.status == 'requested' %}
-                                <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase transition-all animate-pulse">Pending Approval</span>
+                                <span
+                                    class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase transition-all animate-pulse">Pending
+                                    Approval</span>
                                 {% elif apt.status == 'scheduled' %}
-                                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase">Scheduled</span>
+                                <span
+                                    class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase">Scheduled</span>
                                 {% else %}
-                                <span class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full font-bold uppercase">{{ apt.status }}</span>
+                                <span
+                                    class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full font-bold uppercase">{{
+                                    apt.status }}</span>
                                 {% endif %}
-                                | Payment: <span class="text-indigo-600 font-bold uppercase">{{ apt.payment_status }}</span>
+                                | Payment: <span class="text-indigo-600 font-bold uppercase">{{ apt.payment_status
+                                    }}</span>
                             </p>
                             <p class="text-sm font-bold text-slate-700 mt-2 flex items-center gap-2">
                                 <i class="far fa-calendar-alt text-indigo-500"></i>
-                                {{ apt.appointment_time.strftime('%b %d, %Y') }} at {{ apt.appointment_time.strftime('%I:%M %p') }}
+                                {{ apt.appointment_time.strftime('%b %d, %Y') }} at {{
+                                apt.appointment_time.strftime('%I:%M %p') }}
                             </p>
                         </div>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
                         {% if apt.status == 'requested' %}
-                            <!-- Approval Actions -->
-                            <form action="/appointment/accept/{{ apt.id }}" method="POST">
-                                <button type="submit"
-                                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-[1.05] shadow-lg shadow-emerald-100 flex items-center gap-2">
-                                    <i class="fas fa-check"></i> Accept Request
-                                </button>
-                            </form>
-                            <form action="/appointment/reject/{{ apt.id }}" method="POST" onsubmit="return confirm('Reject this booking? Payment will be released.')">
-                                <button type="submit"
-                                    class="px-5 py-2.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 border border-red-100">
-                                    <i class="fas fa-times"></i> Reject
-                                </button>
-                            </form>
+                        <!-- Approval Actions -->
+                        <form action="/appointment/accept/{{ apt.id }}" method="POST">
+                            <button type="submit"
+                                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-[1.05] shadow-lg shadow-emerald-100 flex items-center gap-2">
+                                <i class="fas fa-check"></i> Accept Request
+                            </button>
+                        </form>
+                        <form action="/appointment/reject/{{ apt.id }}" method="POST"
+                            onsubmit="return confirm('Reject this booking? Payment will be released.')">
+                            <button type="submit"
+                                class="px-5 py-2.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 border border-red-100">
+                                <i class="fas fa-times"></i> Reject
+                            </button>
+                        </form>
                         {% elif apt.status == 'scheduled' %}
-                            <!-- Active Session Actions -->
-                            <form action="/appointment/complete/{{ apt.id }}" method="POST">
-                                <button type="submit"
-                                    class="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 font-bold rounded-xl transition-all flex items-center gap-2 border border-indigo-100">
-                                    <i class="fas fa-flag-checkered"></i> Mark Complete
-                                </button>
-                            </form>
-                            <a href="/join_meeting/{{ apt.id }}" target="_blank"
-                                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-100 flex items-center gap-2">
-                                <i class="fas fa-video"></i> Start Session
-                            </a>
+                        <!-- Active Session Actions -->
+                        <form action="/appointment/complete/{{ apt.id }}" method="POST">
+                            <button type="submit"
+                                class="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 font-bold rounded-xl transition-all flex items-center gap-2 border border-indigo-100">
+                                <i class="fas fa-flag-checkered"></i> Mark Complete
+                            </button>
+                        </form>
+                        <a href="/join_meeting/{{ apt.id }}" target="_blank"
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-100 flex items-center gap-2">
+                            <i class="fas fa-video"></i> Start Session
+                        </a>
                         {% endif %}
-                        
+
                         <form action="/appointment/delete/{{ apt.id }}" method="POST"
                             onsubmit="return confirm('Permanently remove this record?')">
                             <button type="submit"
-                                class="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Remove Record">
+                                class="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                title="Remove Record">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </form>
