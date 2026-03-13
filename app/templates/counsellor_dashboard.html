@@ -464,6 +464,23 @@
                                 | Payment: <span class="text-indigo-600 font-bold uppercase">{{ apt.payment_status
                                     }}</span>
                             </p>
+
+                            <!-- Student Archetype Badge -->
+                            {% if apt.student.assessment %}
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <span
+                                    class="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-violet-200">
+                                    Archetype: {{ apt.student.assessment.phase_2_category }}
+                                </span>
+                                {% if apt.student.assessment.recommended_stream %}
+                                <span
+                                    class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-indigo-200">
+                                    Goal: {{ apt.student.assessment.recommended_stream }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
                             <p class="text-sm font-bold text-slate-700 mt-2 flex items-center gap-2">
                                 <i class="far fa-calendar-alt text-indigo-500"></i>
                                 {{ apt.appointment_time.strftime('%b %d, %Y') }} at {{
@@ -473,6 +490,13 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        <!-- Recommendation Access -->
+                        {% if apt.student.assessment %}
+                        <a href="/share/report/{{ apt.student.assessment.id }}?mode=minimal" target="_blank"
+                            class="px-5 py-2.5 bg-white hover:bg-violet-50 text-violet-600 border border-violet-200 font-bold rounded-xl transition-all hover:scale-[1.05] shadow-sm flex items-center gap-2">
+                            <i class="fas fa-file-alt"></i> View Blueprint
+                        </a>
+                        {% endif %}
                         {% if apt.status == 'requested' %}
                         <!-- Approval Actions -->
                         <form action="/appointment/accept/{{ apt.id }}" method="POST">

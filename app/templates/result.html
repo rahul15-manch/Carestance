@@ -32,6 +32,7 @@
     <div class="max-w-5xl mx-auto space-y-8">
 
         <!-- 1. HERO SECTION: The Main Result -->
+        {% if mode != 'minimal' %}
         <div class="relative bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
             <!-- Decorative Background -->
             <div class="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-700">
@@ -82,8 +83,10 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- 2. ANALYSIS GRID -->
+        {% if mode != 'minimal' %}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <!-- Left: Why this fits (Phase 2) -->
@@ -144,8 +147,10 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
 
         <!-- 3. PROGRESS WORKFLOW (The "Next Steps") -->
+        {% if mode != 'minimal' %}
         <div class="bg-white rounded-3xl p-8 shadow-lg border border-slate-100">
             <h3 class="text-lg font-bold text-slate-900 mb-6">Assessment Roadmap</h3>
 
@@ -220,6 +225,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
 
         <!-- 4. FINAL RECOMMENDATION (Visible only when complete) -->
         {% if result.recommended_stream %}
@@ -474,6 +480,7 @@
             </script>
 
             <!-- Social Sharing & PDF Section -->
+            {% if mode != 'minimal' %}
             <div class="bg-slate-900 px-8 py-10 text-center relative overflow-hidden">
                 <div
                     class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-purple-500">
@@ -540,8 +547,10 @@
                 <p class="text-slate-500 text-xs mt-6">Share your result to inspire others and track your progress
                     together.</p>
             </div>
+            {% endif %}
 
             <!-- 5. SHAREABLE CARD (Optimized for Social Media) -->
+            {% if mode != 'minimal' %}
             <div id="share-card"
                 class="m-8 p-1 bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-600 rounded-[2rem] shadow-2xl relative overflow-hidden group">
                 <div class="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -708,15 +717,16 @@
                         <a href="/assessment"
                             class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold text-sm hover:bg-white hover:text-slate-900 transition">Retake
                             Test</a>
-                        <div
-                            class="px-5 py-2.5 rounded-xl bg-indigo-100 text-indigo-400 font-bold text-sm cursor-default flex items-center gap-2">
-                            <i class="fas fa-lock text-xs opacity-60"></i>
-                            Book Counsellor (Coming Soon)
-                        </div>
+                        <a href="/counsellors"
+                            class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center gap-2">
+                            <i class="fas fa-calendar-check text-xs"></i>
+                            Book Human Expert
+                        </a>
                     </div>
                 </div>
                 {% endif %}
             </div>
+            {% endif %}
         </div>
 
         <style>

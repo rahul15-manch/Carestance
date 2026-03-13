@@ -804,7 +804,7 @@ async def assessment_result(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("result.html", {"request": request, "user": user, "result": result})
 
 @app.get("/share/report/{result_id}", response_class=HTMLResponse)
-async def share_report(result_id: int, request: Request, db: Session = Depends(get_db)):
+async def share_report(result_id: int, request: Request, mode: str = "full", db: Session = Depends(get_db)):
     """Publicly shareable route for career reports."""
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.id == result_id).first()
     if not result:
@@ -818,7 +818,8 @@ async def share_report(result_id: int, request: Request, db: Session = Depends(g
         "user": current_user, 
         "owner": owner,
         "result": result,
-        "is_public_share": True 
+        "is_public_share": True,
+        "mode": mode
     })
 
 @app.get("/dashboard", response_class=HTMLResponse)
