@@ -13,4 +13,4 @@ authlib
 itsdangerous
 httpx
 mangum
-razorpay
+razorpayredis

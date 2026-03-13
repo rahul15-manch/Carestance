@@ -57,11 +57,20 @@ RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_your_key_id")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "your_key_secret")
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
+from .utils.redis_cache import ai_cache
+
 async def generate_content_with_fallback(prompt):
     """
     Attempts to generate content using Gemini (Async) with high-tier fallback to Groq.
-    Enhanced with robust regex for cleaner JSON extraction.
+    Uses Redis caching to avoid repetitive API calls.
     """
+    # Check Cache
+    cached_response = ai_cache.get(prompt)
+    if cached_response:
+        print("AI CACHE HIT")
+        return cached_response
+
+    print("AI CACHE MISS")
     try:
         # Using 2.0 Flash for better reasoning speed and instruction following
         model = genai.GenerativeModel("gemini-1.5-flash") # or gemini-2.0-flash if available
@@ -93,8 +102,14 @@ async def generate_content_with_fallback(prompt):
         
         # Clean trailing commas before closing braces/brackets
         text = re.sub(r",\s*([\]}])", r"\1", text)
+        
+        # Save to Cache
+        ai_cache.set(prompt, text)
+        
         return text
     except Exception:
+        # Still cache raw text if extraction fails partially
+        ai_cache.set(prompt, text)
         return text
 
 async def check_content_moderation(text_content: str):
