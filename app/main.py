@@ -23,8 +23,7 @@ from authlib.integrations.starlette_client import OAuth
 
 from groq import AsyncGroq
 import razorpay
-from . import models
-from .email_utils import send_email, get_booking_template, get_cancellation_template, get_reset_password_template
+from . import models, email_utils
 from itsdangerous import URLSafeTimedSerializer
 from .data.career_keywords import career_keywords
 from .utils.resource_aggregator import ResourceAggregator
@@ -3353,6 +3352,18 @@ async def send_connection_request(user_id: int, request: Request, db: Session = 
     new_conn = models.StudentConnection(requester_id=user.id, receiver_id=user_id, status="pending")
     db.add(new_conn)
     db.commit()
+
+    # Send Email Notification
+    try:
+        profile_link = f"{request.base_url}my-connections"
+        email_body = email_utils.get_connection_request_template(
+            receiver.name, 
+            user.name, 
+            profile_link
+        )
+        email_utils.send_email(receiver.email, f"New Connection Request from {user.name}", email_body)
+    except Exception as e:
+        print(f"FAILED TO SEND CONNECTION EMAIL: {e}")
 
     referer = request.headers.get("referer", "/community")
     return RedirectResponse(url=referer, status_code=status.HTTP_302_FOUND)

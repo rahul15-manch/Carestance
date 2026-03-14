@@ -139,3 +139,30 @@ def get_reset_password_template(user_name, reset_link):
     </div>
     """
     return html
+def get_connection_request_template(receiver_name, sender_name, profile_link):
+    """
+    Returns a professional HTML template for a connection request.
+    """
+    html = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #f0f9ff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #0ea5e9; margin-bottom: 8px;">New Connection Request! 👋</h1>
+            <p style="color: #64748b; font-size: 16px;">Hello {receiver_name}, someone wants to connect with you on NextStep.</p>
+        </div>
+        
+        <div style="background-color: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <p style="color: #1e293b; line-height: 1.6; text-align: center;">
+                <strong>{sender_name}</strong> sent you a connection request. Building a network of like-minded students can help you grow together!
+            </p>
+            
+            <div style="margin-top: 24px; text-align: center;">
+                <a href="{profile_link}" style="display: inline-block; padding: 12px 24px; background-color: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px;">View Request</a>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 24px;">
+            &copy; 2026 CareStance. Grow your network.
+        </p>
+    </div>
+    """
+    return html
