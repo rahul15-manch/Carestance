@@ -3,7 +3,6 @@
 # ✨CareStance✨
 
 <img src="https://github.com/Yuvneet22/NEXTSTEP/blob/main/app/static/images/image.png" width="200"/>
-
 </div>
 
 An AI-powered career assessment and guidance platform built with FastAPI. Designed for students (Class 10th, 12th, and Above) to discover their personality archetype, explore career streams, and get personalized guidance through a multi-phase assessment and an AI chatbot.
