@@ -360,13 +360,13 @@
                                                     <i class="fas fa-star text-yellow-400 animate-pulse"></i>
                                                     Masterpiece
                                                 </p>
-                                                <h5 class="text-base md:text-xl font-black mb-2">{{
-                                                    step.project.split(':')[0] if ':' in step.project else 'Key Project'
-                                                    }}</h5>
-                                                <p
-                                                    class="text-xs md:text-sm text-indigo-50 opacity-90 leading-relaxed font-medium bg-black/10 p-3 md:p-4 rounded-lg md:rounded-2xl backdrop-blur-sm border border-white/10">
-                                                    {{ step.project.split(':')[1] if ':' in step.project else
-                                                    step.project }}</p>
+                                                <div
+                                                    class="mt-4 p-4 md:p-6 bg-black/20 rounded-xl md:rounded-3xl border border-white/10 backdrop-blur-md">
+                                                    <p
+                                                        class="text-xs md:text-sm text-indigo-50 opacity-95 leading-relaxed font-medium whitespace-pre-line">
+                                                        {{ step.project }}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
