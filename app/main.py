@@ -2909,7 +2909,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     2. Description (Explain WHY this step matters for their specific profile - 3 sentences)
     3. Skills to acquire (3 specific skills relevant to {path_req.career_title})
     4. Resources (MUST provide 2 specific, HIGHLY ACCURATE resources. EACH resource MUST be an object with a "name" and a functional "url". PRIORITIZE DIRECT LINKS to the **most viewed/popular** YouTube videos or verified courses (Coursera, Udemy, Official Docs). Use HIGHLY SPECIFIC search queries ONLY as a secondary fallback if a direct video link is absolutely unavailable for the specific topic. Plain text without URLs is FORBIDDEN.)
-    5. Student Project (1 "cool" project name and brief description that a student would enjoy building)
+    5. Student Project (1 "Masterpiece" project. MUST include: A catchy Name, a precise Description, specific **Tools to use** (libraries/software), and key **Parameters/Challenges** to think about for a professional finish. Format it clearly.)
     6. Detailed Task (A precise, actionable, and detailed task for the student to complete for this specific step)
     7. Timeline (Realistic estimate, e.g., "Months 1-3")
 
