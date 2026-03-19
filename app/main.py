@@ -2918,6 +2918,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     - Career Outlook:
         - Salary Journey: Entry-level to Senior potential (in INR or USD as appropriate).
         - Top 3 Companies: Famous places that hire this role.
+        - Hiring Trends: A detailed paragraph on current hiring demand, specific roles being filled, and what recruiters look for in {path_req.career_title}.
         - Future Scope: Why this career is a "Safe Bet" or "High Growth" path for the next decade.
 
     OUTPUT FORMAT (VALID JSON ONLY):
@@ -2933,7 +2934,12 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
             {{ "name": "...", "url": "..." }},
             {{ "name": "...", "url": "..." }}
           ],
-          "project": "...",
+          "project": {{
+            "name": "Catchy Project Name",
+            "description": "Short, inspiring project description...",
+            "tools": ["Tool 1", "Tool 2"],
+            "parameters": ["Key Factor 1", "Key Factor 2"]
+          }},
           "detailed_task": "A precise, step-by-step action for this specific goal...",
           "timeline": "...",
           "completed": false
@@ -2944,6 +2950,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
       "career_outlook": {{
         "salary_range": "...",
         "top_companies": ["...", "...", "..."],
+        "hiring_trends": "Detailed hiring trends and recruiter expectations...",
         "future_scope": "..."
       }},
       "reminders": [

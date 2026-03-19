@@ -528,6 +528,17 @@
                                 {{ path.path_data.career_outlook.future_scope }}</p>
                         </div>
                         {% endif %}
+
+                        {% if path.path_data.career_outlook.hiring_trends %}
+                        <div class="transform group-hover:translate-x-1 transition-transform duration-300 delay-100">
+                            <p
+                                class="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Hiring Trends</p>
+                            <p
+                                class="text-xs md:text-sm text-indigo-200 leading-relaxed font-medium bg-indigo-900/40 p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-500/30 backdrop-blur-md">
+                                {{ path.path_data.career_outlook.hiring_trends }}</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
