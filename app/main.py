@@ -2910,7 +2910,8 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     3. Skills to acquire (3 specific skills relevant to {path_req.career_title})
     4. Resources (MUST provide 2 specific, HIGHLY ACCURATE resources. EACH resource MUST be an object with a "name" and a functional "url". PRIORITIZE DIRECT LINKS to the **most viewed/popular** YouTube videos or verified courses (Coursera, Udemy, Official Docs). Use HIGHLY SPECIFIC search queries ONLY as a secondary fallback if a direct video link is absolutely unavailable for the specific topic. Plain text without URLs is FORBIDDEN.)
     5. Student Project (1 "cool" project name and brief description that a student would enjoy building)
-    6. Timeline (Realistic estimate, e.g., "Months 1-3")
+    6. Detailed Task (A precise, actionable, and detailed task for the student to complete for this specific step)
+    7. Timeline (Realistic estimate, e.g., "Months 1-3")
 
     Additional Career Insights:
     - Internships: 2 specific "Dream Internships" or types of roles to hunt for.
@@ -2933,6 +2934,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
             {{ "name": "...", "url": "..." }}
           ],
           "project": "...",
+          "detailed_task": "A precise, step-by-step action for this specific goal...",
           "timeline": "...",
           "completed": false
         }},

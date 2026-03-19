@@ -258,10 +258,26 @@
                                             </p>
                                 </div>
 
-                                <p class="text-slate-600 leading-relaxed mb-5 md:mb-8 text-sm md:text-base">
-                                    {{ step.description }}
                                 </p>
-
+                                -
+                                + {% if step.detailed_task %}
+                                + <div
+                                    class="mb-5 md:mb-8 bg-indigo-50/50 p-4 md:p-6 rounded-xl md:rounded-3xl border border-indigo-100/50 relative overflow-hidden group/task">
+                                    + <div
+                                        class="absolute -right-2 -top-2 opacity-5 scale-150 rotate-12 group-hover/task:rotate-0 transition-transform duration-700">
+                                        + <i class="fas fa-clipboard-check text-4xl text-indigo-600"></i>
+                                        + </div>
+                                    + <p
+                                        class="text-[9px] md:text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        + <i class="fas fa-tasks"></i> Current Objective
+                                        + </p>
+                                    + <p
+                                        class="text-sm md:text-base text-slate-700 font-bold leading-relaxed relative z-10">
+                                        + {{ step.detailed_task }}
+                                        + </p>
+                                    + </div>
+                                + {% endif %}
+                                +
                                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
                                     <!-- Power-Ups (Skills) -->
                                     <div
