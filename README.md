@@ -24,7 +24,7 @@ An AI-powered career assessment and guidance platform built with FastAPI. Design
 - **Support Ticket System**: Direct communication channel for students to raise queries and receive admin responses
 - **AI Response Caching**: Integrated **Redis** caching for all LLM responses (Gemini/Groq) to provide instant load times and reduce API costs
 - **Admin Dashboard**: Enhanced dashboard for user management, feedback review, and ticket resolution (Reply/Close/Delete)
-- **User Authentication**: Secure signup/login with bcrypt hashing and mock Google Sign-In support
+- **User Authentication**: Secure signup/login with bcrypt hashing and  Google Sign-In support using GoogleOAuth
 
 ---
 
