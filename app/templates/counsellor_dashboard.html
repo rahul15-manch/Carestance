@@ -246,194 +246,223 @@
 {% endfor %}
 {% endif %}
 
-<div class="bg-white/70 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-white/50">
-    <div class="px-6 py-6 sm:px-8 bg-indigo-50/50 border-b border-indigo-100 flex justify-between items-center">
-        <div class="flex items-center gap-6">
-            <!-- Profile Image -->
-            <div class="relative group">
-                <img src="{{ user.profile_photo if user.profile_photo else 'https://ui-avatars.com/api/?name=' + user.full_name + '&background=random' }}"
-                    alt="Profile" class="w-20 h-20 rounded-2xl object-cover border-4 border-white/20 shadow-xl">
-                <button onclick="document.getElementById('photo-upload').click()"
-                    class="absolute -bottom-2 -right-2 bg-indigo-600 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                    <i class="fas fa-camera text-xs"></i>
-                </button>
-                <form id="photo-form" action="/profile/upload-photo" method="POST" enctype="multipart/form-data"
-                    class="hidden">
-                    <input type="file" id="photo-upload" name="file"
-                        onchange="document.getElementById('photo-form').submit()" accept="image/*">
-                </form>
+<div x-data="{ tab: 'overview' }"
+    class="bg-white/70 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-white/50">
+    <!-- Dashboard Header & Tabs -->
+    <div class="px-6 py-6 sm:px-8 bg-indigo-50/50 border-b border-indigo-100">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+            <div class="flex items-center gap-6">
+                <!-- Profile Image -->
+                <div class="relative group">
+                    <img src="{{ user.profile_photo if user.profile_photo else 'https://ui-avatars.com/api/?name=' + user.full_name + '&background=random' }}"
+                        alt="Profile" class="w-20 h-20 rounded-2xl object-cover border-4 border-white/20 shadow-xl">
+                    <button onclick="document.getElementById('photo-upload').click()"
+                        class="absolute -bottom-2 -right-2 bg-indigo-600 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-camera text-xs"></i>
+                    </button>
+                    <form id="photo-form" action="/profile/upload-photo" method="POST" enctype="multipart/form-data"
+                        class="hidden">
+                        <input type="file" id="photo-upload" name="file"
+                            onchange="document.getElementById('photo-form').submit()" accept="image/*">
+                    </form>
+                </div>
+                <div>
+                    <h3 class="text-xl leading-6 font-bold text-slate-900">{{ user.full_name }}</h3>
+                    <p class="mt-1 text-sm text-slate-500">Expert Guide & Life Coach</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        {% if profile.verification_status == 'approved' %}
+                        <span
+                            class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <i class="fas fa-check-circle"></i> Verified
+                        </span>
+                        {% if profile.is_founding_counsellor %}
+                        <span
+                            class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
+                            <i class="fas fa-trophy"></i> Founding Coach
+                        </span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            <div>
-                <h3 class="text-xl leading-6 font-bold text-slate-900">{{ user.full_name }}</h3>
-                <p class="mt-1 max-w-2xl text-sm text-slate-500">Manage your profile and student appointments.</p>
 
-                <!-- Verification Badge -->
-                {% if profile.verification_status == 'approved' %}
-                <span
-                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    <i class="fas fa-check-circle"></i> Verified Counsellor
-                </span>
-                {% if profile.is_founding_counsellor %}
-                <span
-                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
-                    <i class="fas fa-trophy text-[10px]"></i> Founding Coach
-                </span>
-                {% endif %}
-                {% elif profile.verification_status == 'pending' %}
-                <span
-                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    <i class="fas fa-clock"></i> Verification Pending
-                </span>
-                {% elif profile.verification_status == 'rejected' %}
-                <span
-                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
-                    <i class="fas fa-times-circle"></i> Verification Rejected
-                </span>
-                {% else %}
-                <span
-                    class="inline-flex items-center gap-1 mt-2 px-3 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                    <i class="fas fa-info-circle"></i> Not Verified
-                </span>
-                {% endif %}
+            <div class="flex items-center gap-4 bg-white/50 p-1.5 rounded-2xl border border-white/80 shadow-sm">
+                <button @click="tab = 'overview'"
+                    :class="tab === 'overview' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-white'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
+                    <i class="fas fa-th-large"></i> Home
+                </button>
+                <button @click="tab = 'appointments'"
+                    :class="tab === 'appointments' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-white'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
+                    <i class="fas fa-calendar-alt"></i> Sessions
+                </button>
+                <button @click="tab = 'settings'"
+                    :class="tab === 'settings' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-white'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
+                    <i class="fas fa-cog"></i> Profile
+                </button>
+                <button @click="tab = 'verification'"
+                    :class="tab === 'verification' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-600 hover:bg-white'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2">
+                    <i class="fas fa-user-check"></i> Verification
+                </button>
             </div>
         </div>
-        <span
-            class="inline-flex items-center px-4 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
-            Expert Guide
-        </span>
     </div>
 
-    <div class="px-6 py-6 sm:p-8 space-y-8">
+    <!-- Tab Content -->
+    <div class="p-6 sm:p-8">
 
-        <!-- Profile Settings -->
-        <div class="bg-white/80 rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h4 class="text-lg font-bold text-slate-900 mb-4">Profile Settings</h4>
-            <form action="/counsellor/update" method="POST" class="space-y-4 max-w-xl">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Your Fee per Session (in ₹)</label>
-                    {% if profile and profile.fee_locked %}
-                    <div class="mt-1 flex items-center gap-3">
-                        <div
-                            class="flex-1 px-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-bold cursor-not-allowed">
-                            ₹{{ "%.0f"|format(profile.fee) }}
-                        </div>
-                        <span
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-700 uppercase tracking-wider">
-                            <i class="fas fa-lock text-[9px]"></i> Set by Admin
-                        </span>
-                    </div>
-                    <p class="text-xs text-slate-400 mt-1">Your session fee has been set by admin and cannot be
-                        modified. Contact admin via a support ticket if needed.</p>
-                    <input type="hidden" name="fee" value="{{ profile.fee }}">
-                    {% else %}
-                    <input type="number" name="fee" value="{{ profile.fee if profile else 0 }}" required
-                        class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
-                    {% endif %}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Availability (Times in a Week)</label>
-                    <input type="text" name="availability_text" placeholder="e.g., Sat-Sun 10am-2pm" required
-                        value="{% if profile and profile.availability %}{{ profile.availability.get('text', '') }}{% endif %}"
-                        class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
-                    <p class="text-xs text-slate-500 mt-1">Specify your working days and hours so students know when to
-                        book you.</p>
-                </div>
-
-                <!-- Account / Bank Details -->
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <h5 class="text-md font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <i class="fas fa-university text-indigo-500"></i> Payout Account Details
-                    </h5>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase">Bank Name</label>
-                            <input type="text" name="bank_name" placeholder="e.g., HDFC Bank"
-                                value="{% if profile and profile.account_details %}{{ profile.account_details.get('bank_name', '') }}{% endif %}"
-                                class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase">Account Number</label>
-                            <input type="text" name="account_num" placeholder="XXXX XXXX XXXX"
-                                value="{% if profile and profile.account_details %}{{ profile.account_details.get('account_num', '') }}{% endif %}"
-                                class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase">IFSC Code</label>
-                            <input type="text" name="ifsc_code" placeholder="HDFC0001234"
-                                value="{% if profile and profile.account_details %}{{ profile.account_details.get('ifsc', '') }}{% endif %}"
-                                class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase">UPI ID</label>
-                            <input type="text" name="upi_id" placeholder="yourname@upi"
-                                value="{% if profile and profile.account_details %}{{ profile.account_details.get('upi', '') }}{% endif %}"
-                                class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500">
-                        </div>
+        <!-- Tab 1: Overview (Home) -->
+        <div x-show="tab === 'overview'" x-transition class="space-y-8">
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div
+                    class="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-3xl border border-indigo-100 shadow-sm">
+                    <p class="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-1">Total Clients</p>
+                    <h4 class="text-3xl font-black text-slate-900">{{ stats.total_clients }}</h4>
+                    <div class="flex items-center gap-1.5 mt-2 text-indigo-600">
+                        <i class="fas fa-users text-xs"></i>
+                        <span class="text-[10px] font-bold">Lifetime Scholars</span>
                     </div>
                 </div>
 
-                <button type="submit"
-                    class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-200 transition-all hover:scale-[1.02]">
-                    Update Profile & Account
-                </button>
-            </form>
-
-            <!-- Verification Upload -->
-            <div class="mt-10 pt-8 border-t border-slate-100">
-                <h4 class="text-lg font-bold text-slate-900 mb-4">Professional Verification</h4>
-                <p class="text-sm text-slate-500 mb-6">Upload your certificates and briefly describe your experience.
-                    Admins will review this to verify your profile.</p>
-
-                <form action="/counsellor/upload-certificates" method="POST" enctype="multipart/form-data"
-                    class="space-y-6 max-w-xl">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Years of Experience & Expertise</label>
-                        <textarea name="experience" rows="4" required
-                            placeholder="e.g., 5 years in Career Coaching, specialized in Engineering & Tech..."
-                            class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ profile.experience if profile.experience else '' }}</textarea>
+                <div
+                    class="bg-gradient-to-br from-emerald-50 to-white p-6 rounded-3xl border border-emerald-100 shadow-sm">
+                    <p class="text-[10px] font-black uppercase text-emerald-500 tracking-widest mb-1">Today's Sessions
+                    </p>
+                    <h4 class="text-3xl font-black text-slate-900">{{ stats.today_sessions }}</h4>
+                    <div class="flex items-center gap-1.5 mt-2 text-emerald-600">
+                        <i class="fas fa-calendar-check text-xs"></i>
+                        <span class="text-[10px] font-bold">Waiting for you</span>
                     </div>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Upload Certificates (PDF or
-                            Images)</label>
-                        <input type="file" name="files" multiple accept=".pdf,image/*"
-                            class="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                <div class="bg-gradient-to-br from-amber-50 to-white p-6 rounded-3xl border border-amber-100 shadow-sm">
+                    <p class="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-1">Daily Earnings</p>
+                    <h4 class="text-3xl font-black text-slate-900">₹{{ "%.0f"|format(stats.earnings_daily) }}</h4>
+                    <div class="flex items-center gap-1.5 mt-2 text-amber-600">
+                        <i class="fas fa-rupee-sign text-xs"></i>
+                        <span class="text-[10px] font-bold">Earned Today</span>
                     </div>
+                </div>
 
-                    {% if profile.certificates %}
-                    <div class="grid grid-cols-2 gap-2 mt-4">
-                        {% for cert in profile.certificates %}
-                        <div class="relative group">
-                            {% if cert.endswith('.pdf') %}
-                            <a href="{{ cert }}" target="_blank"
-                                class="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-100 text-red-700 text-xs font-bold overflow-hidden">
-                                <i class="fas fa-file-pdf text-xl"></i>
-                                <span class="truncate">Certificate {{ loop.index }}</span>
-                            </a>
-                            {% else %}
-                            <img src="{{ cert }}" class="w-full h-24 object-cover rounded-xl border border-slate-200">
-                            <a href="{{ cert }}" target="_blank"
-                                class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity rounded-xl">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            {% endif %}
-                        </div>
+                <div
+                    class="bg-gradient-to-br from-violet-50 to-white p-6 rounded-3xl border border-violet-100 shadow-sm">
+                    <p class="text-[10px] font-black uppercase text-violet-500 tracking-widest mb-1">Platform Rating</p>
+                    <h4 class="text-3xl font-black text-slate-900">{{ stats.avg_rating }}</h4>
+                    <div class="flex items-center gap-1 mt-2 text-violet-600">
+                        {% for i in range(5) %}
+                        <i
+                            class="fas fa-star text-[8px] {{ 'text-amber-400' if i < stats.avg_rating|int else 'text-slate-200' }}"></i>
                         {% endfor %}
                     </div>
-                    {% endif %}
+                </div>
+            </div>
 
-                    <button type="submit"
-                        class="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl shadow-md shadow-violet-200 transition-all hover:scale-[1.02]">
-                        Submit for Verification
-                    </button>
-                </form>
+            <!-- Business & Impact Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Earning Summary Card -->
+                <div class="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl">
+                    <div class="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
+                        <i class="fas fa-wallet text-[200px]"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <h5 class="text-indigo-300 font-bold uppercase tracking-widest text-xs mb-6">Business Dashboard
+                        </h5>
+                        <div class="space-y-6">
+                            <div>
+                                <p class="text-4xl font-black">₹{{ "{:,.0f}".format(stats.earnings_monthly) }}</p>
+                                <p class="text-slate-400 text-sm mt-1">Earnings this month</p>
+                            </div>
+                            <div class="flex gap-10">
+                                <div>
+                                    <p class="text-xl font-bold text-emerald-400">{{ stats.active_clients }}</p>
+                                    <p class="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Active
+                                        Clients</p>
+                                </div>
+                                <div>
+                                    <p class="text-xl font-bold text-slate-300">{{ stats.inactive_clients }}</p>
+                                    <p class="text-slate-400 text-[10px] uppercase font-bold tracking-tighter">Inactive
+                                        Clients</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notifications & Quick Actions -->
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+                    <h5 class="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <i class="fas fa-bell text-indigo-500"></i> Pending Tasks
+                    </h5>
+                    <div class="space-y-4">
+                        {% if notifications %}
+                        {% for notif in notifications %}
+                        <div class="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 italic">
+                            <div class="w-2 h-2 rounded-full bg-indigo-500 mt-1.5"></div>
+                            <p class="text-xs text-slate-600">{{ notif.message }}</p>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="text-center py-6">
+                            <i class="fas fa-check-circle text-3xl text-emerald-100 mb-3 block"></i>
+                            <p class="text-xs text-slate-400">All caught up! No pending notifications.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Reviews Section -->
+            <div class="mt-8">
+                <h4 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                    <i class="fas fa-star text-amber-400"></i> Recent Scholar Reviews
+                </h4>
+                {% if reviews %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for review in reviews %}
+                    <div
+                        class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-1 text-amber-400">
+                                {% for i in range(5) %}
+                                <i
+                                    class="fas fa-star text-[10px] {{ 'text-amber-400' if i < review.rating else 'text-slate-200' }}"></i>
+                                {% endfor %}
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase">{{
+                                review.timestamp.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 italic mb-4">"{{ review.review or 'No written review provided.'
+                            }}"</p>
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-[10px] font-black uppercase">
+                                {{ review.student.full_name[0] if (review.student and review.student.full_name) else 'A'
+                                }}
+                            </div>
+                            <span class="text-xs font-bold text-slate-900">{{ review.student.full_name if
+                                (review.student and review.student.full_name) else 'Anonymous Student' }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center">
+                    <i class="fas fa-comment-slash text-4xl text-slate-200 mb-4 block"></i>
+                    <p class="text-slate-500 font-medium">No reviews yet. Complete sessions to start receiving feedback!
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Active Appointments -->
-        <div class="bg-white/80 rounded-2xl p-6 shadow-sm border border-slate-200">
-            <h4 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <i class="fas fa-calendar-alt text-violet-500"></i> Appointments & Requests
+        <!-- Tab 2: Appointments -->
+        <div x-show="tab === 'appointments'" x-transition style="display: none;">
+            <h4 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-violet-500"></i> Scheduled Sessions
             </h4>
             {% if appointments %}
             <div class="space-y-4">
@@ -451,8 +480,7 @@
                                 Status:
                                 {% if apt.status == 'requested' %}
                                 <span
-                                    class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase transition-all animate-pulse">Pending
-                                    Approval</span>
+                                    class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold uppercase animate-pulse">Pending</span>
                                 {% elif apt.status == 'scheduled' %}
                                 <span
                                     class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold uppercase">Scheduled</span>
@@ -465,23 +493,15 @@
                                     }}</span>
                             </p>
 
-                            <!-- Student Archetype Badge -->
                             {% if apt.student.assessment %}
                             <div class="mt-2 flex flex-wrap gap-2">
                                 <span
                                     class="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-violet-200">
-                                    Archetype: {{ apt.student.assessment.phase_2_category }}
+                                    {{ apt.student.assessment.phase_2_category }}
                                 </span>
-                                {% if apt.student.assessment.recommended_stream %}
-                                <span
-                                    class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-indigo-200">
-                                    Goal: {{ apt.student.assessment.recommended_stream }}
-                                </span>
-                                {% endif %}
                             </div>
                             {% endif %}
-
-                            <p class="text-sm font-bold text-slate-700 mt-2 flex items-center gap-2">
+                            <p class="text-sm font-bold text-slate-700 mt-2">
                                 <i class="far fa-calendar-alt text-indigo-500"></i>
                                 {{ apt.appointment_time.strftime('%b %d, %Y') }} at {{
                                 apt.appointment_time.strftime('%I:%M %p') }}
@@ -490,50 +510,18 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                        <!-- Recommendation Access -->
                         {% if apt.student.assessment %}
                         <a href="/share/report/{{ apt.student.assessment.id }}?mode=minimal" target="_blank"
-                            class="px-5 py-2.5 bg-white hover:bg-violet-50 text-violet-600 border border-violet-200 font-bold rounded-xl transition-all hover:scale-[1.05] shadow-sm flex items-center gap-2">
-                            <i class="fas fa-file-alt"></i> View Blueprint
+                            class="px-5 py-2.5 bg-white hover:bg-violet-50 text-violet-600 border border-violet-200 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
+                            <i class="fas fa-file-alt"></i> View Report
                         </a>
                         {% endif %}
-                        {% if apt.status == 'requested' %}
-                        <!-- Approval Actions -->
-                        <form action="/appointment/accept/{{ apt.id }}" method="POST">
-                            <button type="submit"
-                                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-[1.05] shadow-lg shadow-emerald-100 flex items-center gap-2">
-                                <i class="fas fa-check"></i> Accept Request
-                            </button>
-                        </form>
-                        <form action="/appointment/reject/{{ apt.id }}" method="POST"
-                            onsubmit="return confirm('Reject this booking? Payment will be released.')">
-                            <button type="submit"
-                                class="px-5 py-2.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 border border-red-100">
-                                <i class="fas fa-times"></i> Reject
-                            </button>
-                        </form>
-                        {% elif apt.status == 'scheduled' %}
-                        <!-- Active Session Actions -->
-                        <form action="/appointment/complete/{{ apt.id }}" method="POST">
-                            <button type="submit"
-                                class="px-5 py-2.5 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-600 font-bold rounded-xl transition-all flex items-center gap-2 border border-indigo-100">
-                                <i class="fas fa-flag-checkered"></i> Mark Complete
-                            </button>
-                        </form>
+                        {% if apt.status == 'scheduled' %}
                         <a href="/join_meeting/{{ apt.id }}" target="_blank"
                             class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-100 flex items-center gap-2">
-                            <i class="fas fa-video"></i> Start Session
+                            <i class="fas fa-video"></i> Join Call
                         </a>
                         {% endif %}
-
-                        <form action="/appointment/delete/{{ apt.id }}" method="POST"
-                            onsubmit="return confirm('Permanently remove this record?')">
-                            <button type="submit"
-                                class="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                title="Remove Record">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </form>
                     </div>
                 </div>
                 {% endfor %}
@@ -541,11 +529,145 @@
             {% else %}
             <div class="py-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                 <i class="fas fa-calendar-day text-4xl text-slate-200 mb-4"></i>
-                <p class="text-slate-500 italic">No appointments or requests at the moment.</p>
+                <p class="text-slate-500 italic">No appointments scheduled today.</p>
             </div>
             {% endif %}
         </div>
 
+        <!-- Tab 3: Profile & Payout Settings -->
+        <div x-show="tab === 'settings'" x-transition style="display: none;">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Fee & Bio -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-2xl p-6 border border-slate-200">
+                        <h4 class="text-md font-bold text-slate-900 mb-4">Session & Fee</h4>
+                        <form action="/counsellor/update" method="POST" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">Your Fee per Session
+                                    (₹)</label>
+                                {% if profile.fee_locked %}
+                                <div
+                                    class="mt-1 flex items-center justify-between px-4 py-2 bg-slate-100 rounded-xl border border-slate-200">
+                                    <span class="text-lg font-black text-slate-400">₹{{ "%.0f"|format(profile.fee)
+                                        }}</span>
+                                    <span
+                                        class="text-[10px] font-bold text-amber-600 border border-amber-200 px-2 py-0.5 rounded-lg bg-amber-50">LOCKED</span>
+                                </div>
+                                <input type="hidden" name="fee" value="{{ profile.fee }}">
+                                <p class="text-[10px] text-slate-400 mt-2 italic">Fee is managed by Admin.</p>
+                                {% else %}
+                                <input type="number" name="fee" value="{{ profile.fee }}" required
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">Availability</label>
+                                <input type="text" name="availability_text" placeholder="e.g., Sat-Sun 10am-2pm"
+                                    required
+                                    value="{% if profile.availability %}{{ profile.availability.get('text', '') }}{% endif %}"
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            </div>
+                            <button type="submit"
+                                class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all">
+                                Save Profile Changes
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Bank Details -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200">
+                    <h4 class="text-md font-bold text-slate-900 mb-4">Payout Account</h4>
+                    <form action="/counsellor/update" method="POST" class="space-y-4">
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">Bank Name</label>
+                                <input type="text" name="bank_name"
+                                    value="{% if profile.account_details %}{{ profile.account_details.get('bank_name', '') }}{% endif %}"
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">Account Number</label>
+                                <input type="text" name="account_num"
+                                    value="{% if profile.account_details %}{{ profile.account_details.get('account_num', '') }}{% endif %}"
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">IFSC Code</label>
+                                <input type="text" name="ifsc_code"
+                                    value="{% if profile.account_details %}{{ profile.account_details.get('ifsc', '') }}{% endif %}"
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase">UPI ID</label>
+                                <input type="text" name="upi_id"
+                                    value="{% if profile.account_details %}{{ profile.account_details.get('upi', '') }}{% endif %}"
+                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            </div>
+                        </div>
+                        <button type="submit"
+                            class="w-full py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg hover:bg-violet-700 transition-all">
+                            Update Bank Info
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Verification -->
+        <div x-show="tab === 'verification'" x-transition style="display: none;">
+            <div class="max-w-2xl mx-auto bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+                <h4 class="text-xl font-bold text-slate-900 mb-2">Professional Verification</h4>
+                <p class="text-sm text-slate-500 mb-8">Admins use this information to verify your credentials as a
+                    professional coach.</p>
+
+                <form action="/counsellor/upload-certificates" method="POST" enctype="multipart/form-data"
+                    class="space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Years of Experience &
+                            Expertise</label>
+                        <textarea name="experience" rows="4" required
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all">{{ profile.experience or '' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Certificates
+                            (PDF/Images)</label>
+                        <input type="file" name="files" multiple accept=".pdf,image/*"
+                            class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700">
+                    </div>
+
+                    {% if profile.certificates %}
+                    <div class="grid grid-cols-3 gap-3">
+                        {% for cert in profile.certificates %}
+                        <div class="relative h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                            {% if cert.endswith('.pdf') %}
+                            <a href="{{ cert }}" target="_blank"
+                                class="w-full h-full flex flex-col items-center justify-center bg-red-50 text-red-600">
+                                <i class="fas fa-file-pdf"></i>
+                                <span class="text-[8px] font-bold">PDF</span>
+                            </a>
+                            {% else %}
+                            <img src="{{ cert }}" class="w-full h-full object-cover">
+                            <a href="{{ cert }}" target="_blank"
+                                class="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                <i class="fas fa-eye text-sm"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <button type="submit"
+                        class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 hover:scale-[1.02] transition-all uppercase tracking-widest text-xs">
+                        Submit Verification Documents
+                    </button>
+                </form>
+            </div>
+        </div>
+
     </div>
 </div>
+
 {% endblock %}

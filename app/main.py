@@ -24,6 +24,13 @@ from authlib.integrations.starlette_client import OAuth
 from groq import AsyncGroq
 import razorpay
 from . import models, email_utils
+from .email_utils import (
+    send_email, 
+    get_booking_template, 
+    get_cancellation_template, 
+    get_reset_password_template, 
+    get_connection_request_template
+)
 from itsdangerous import URLSafeTimedSerializer
 from .data.career_keywords import career_keywords
 from .utils.resource_aggregator import ResourceAggregator
@@ -365,22 +372,25 @@ async def signup(
     if user:
         return templates.TemplateResponse("signup.html", {"request": request, "error": "Email already exists"})
     
-    # Create User
-    hashed_pw = get_password_hash(password)
-    new_user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=contact_number, role=role)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    # Create Counsellor Profile
-    if role == "counsellor":
-        c_profile = models.CounsellorProfile(user_id=new_user.id)
-        db.add(c_profile)
+    try:
+        # Create User
+        hashed_pw = get_password_hash(password)
+        new_user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=contact_number, role=role)
+        db.add(new_user)
+        db.flush()
+        
+        # Create Counsellor Profile
+        if role == "counsellor":
+            c_profile = models.CounsellorProfile(user_id=new_user.id)
+            db.add(c_profile)
+        
         db.commit()
+    except Exception as e:
+        print(f"Signup error: {e}")
+        db.rollback()
+        return templates.TemplateResponse("signup.html", {"request": request, "error": "An error occurred during signup. Please try again."})
     
-    # Login & Redirect
-    # Redirect to Login (No auto-login)
-    return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/login?message=Account created! Please login.", status_code=status.HTTP_302_FOUND)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -483,8 +493,17 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    user.hashed_password = get_password_hash(password)
-    db.commit()
+    try:
+        user.hashed_password = get_password_hash(password)
+        db.commit()
+    except Exception as e:
+        print(f"Password reset error: {e}")
+        db.rollback()
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, 
+            "token": token, 
+            "error": "Failed to update password. Please try again."
+        })
     
     return RedirectResponse(url="/login?message=Password updated successfully", status_code=status.HTTP_302_FOUND)
 
@@ -536,8 +555,8 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         db.refresh(user)
         is_new_user = True
     
-    # New users must select their role first
-    redirect_url = "/select-role" if is_new_user else "/dashboard"
+    # Users without a role must select it first
+    redirect_url = "/select-role" if (is_new_user or not user.role) else "/dashboard"
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
     response.set_cookie(key="user_id", value=str(user.id))
     return response
@@ -566,29 +585,29 @@ async def select_role(
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    # Validate role
-    if role not in ("student", "counsellor"):
-        return RedirectResponse(url="/select-role", status_code=status.HTTP_302_FOUND)
-    
-    user.role = role
-    db.commit()
-    user_cache.invalidate_user(user.id)
-    
-    # Create counsellor profile if needed
-    if role == "counsellor":
-        existing_profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
-        if not existing_profile:
-            c_profile = models.CounsellorProfile(
-                user_id=user.id,
-                tnc_accepted=True,
-                tnc_accepted_at=datetime.datetime.utcnow()
-            )
-            db.add(c_profile)
-            db.commit()
-        else:
-            existing_profile.tnc_accepted = True
-            existing_profile.tnc_accepted_at = datetime.datetime.utcnow()
-            db.commit()
+    try:
+        if role not in ("student", "counsellor"):
+            return RedirectResponse(url="/select-role", status_code=status.HTTP_302_FOUND)
+            
+        user.role = role
+        db.add(user)
+        
+        # Create counsellor profile if needed
+        if role == "counsellor":
+            existing_profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
+            if not existing_profile:
+                profile = models.CounsellorProfile(user_id=user.id)
+                db.add(profile)
+        
+        db.commit()
+        user_cache.invalidate_user(user.id)
+    except Exception as e:
+        print(f"Role selection error: {e}")
+        db.rollback()
+        return templates.TemplateResponse("select_role.html", {
+            "request": request, 
+            "error": "An error occurred while saving your role. Please try again."
+        })
     
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
@@ -687,15 +706,21 @@ async def assessment_start(request: Request, class_level: str, db: Session = Dep
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    # Check/Create Result
-    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result:
-        result = models.AssessmentResult(user_id=user.id)
-        db.add(result)
-    
-    # Save Phase 1 Selection
-    result.selected_class = class_level
-    db.commit()
+    try:
+        # Check/Create Result
+        result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+        if not result:
+            result = models.AssessmentResult(user_id=user.id)
+            db.add(result)
+        
+        # Save Phase 1 Selection
+        result.selected_class = class_level
+        db.commit()
+    except Exception as e:
+        print(f"Assessment start error: {e}")
+        db.rollback()
+        # Fallback to landing or dashboard
+        return RedirectResponse(url="/dashboard?error=Assessment+failed+to+start", status_code=status.HTTP_302_FOUND)
     
     # Proceed to Phase 2 (Archetype)
     return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
@@ -797,37 +822,42 @@ async def assessment_submit(
                 "phase_2_category": "Focused Specialist",
                 "personality": "Ambivert",
                 "goal_status": "Exploring",
-                "confidence": 0.5,
+            "confidence": 0.5,
                 "reasoning": "AI Analysis unavailable. Default profile assigned based on answers."
             }
 
     # 4. Save to DB
-    existing_result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    
-    if existing_result:
-        # Update existing
-        existing_result.phase_2_category = result_data.get("phase_2_category")
-        existing_result.personality = result_data.get("personality")
-        existing_result.goal_status = result_data.get("goal_status")
-        existing_result.confidence = result_data.get("confidence")
-        existing_result.reasoning = result_data.get("reasoning")
-        existing_result.raw_answers = user_answers_data # This overwrites phase 1 raw answers if any, but selected_class is separate column
-    else:
-        # Create new
-        new_result = models.AssessmentResult(
-            user_id=user.id,
-            phase_2_category=result_data.get("phase_2_category"),
-            personality=result_data.get("personality"),
-            goal_status=result_data.get("goal_status"),
-            confidence=result_data.get("confidence"),
-            reasoning=result_data.get("reasoning"),
-            raw_answers=user_answers_data
-        )
-        db.add(new_result)
-    
-    db.commit()
+    try:
+        existing_result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+        
+        if existing_result:
+            # Update existing
+            existing_result.phase_2_category = result_data.get("phase_2_category")
+            existing_result.personality = result_data.get("personality")
+            existing_result.goal_status = result_data.get("goal_status")
+            existing_result.confidence = result_data.get("confidence")
+            existing_result.reasoning = result_data.get("reasoning")
+            existing_result.raw_answers = user_answers_data # This overwrites phase 1 raw answers if any, but selected_class is separate column
+        else:
+            # Create new
+            new_result = models.AssessmentResult(
+                user_id=user.id,
+                phase_2_category=result_data.get("phase_2_category"),
+                personality=result_data.get("personality"),
+                goal_status=result_data.get("goal_status"),
+                confidence=result_data.get("confidence"),
+                reasoning=result_data.get("reasoning"),
+                raw_answers=user_answers_data
+            )
+            db.add(new_result)
+        
+        db.commit()
+    except Exception as e:
+        print(f"Assessment save error: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to save assessment results. Please try again.")
 
-    return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
 @app.get("/assessment/result", response_class=HTMLResponse)
 async def assessment_result(request: Request, db: Session = Depends(get_db)):
@@ -882,16 +912,85 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             models.Notification.user_id == user.id,
             models.Notification.is_read == False
         ).order_by(models.Notification.created_at.desc()).all()
-        return templates.TemplateResponse("counsellor_dashboard.html", {"request": request, "user": user, "profile": profile, "appointments": appointments, "notifications": notifications})
+
+        # --- Overview Panel Metrics ---
+        from sqlalchemy import func
+        from datetime import date, timedelta
+        
+        today = date.today()
+        month_start = today.replace(day=1)
+
+        # 👥 Total Clients (Unique students who have booked at least one session)
+        total_clients = db.query(models.Appointment.student_id).filter(
+            models.Appointment.counsellor_id == user.id
+        ).distinct().count()
+
+        # 📅 Today’s Sessions
+        today_sessions = db.query(models.Appointment).filter(
+            models.Appointment.counsellor_id == user.id,
+            func.date(models.Appointment.appointment_time) == today,
+            models.Appointment.status == "scheduled"
+        ).count()
+
+        # 💰 Earnings
+        # Daily Earnings (Transfers processed today)
+        earnings_daily = db.query(func.sum(models.Transfer.amount)).filter(
+            models.Transfer.counsellor_id == user.id,
+            func.date(models.Transfer.created_at) == today,
+            models.Transfer.status == "processed"
+        ).scalar() or 0.0
+
+        # Monthly Earnings (Transfers processed this month)
+        earnings_monthly = db.query(func.sum(models.Transfer.amount)).filter(
+            models.Transfer.counsellor_id == user.id,
+            models.Transfer.created_at >= month_start,
+            models.Transfer.status == "processed"
+        ).scalar() or 0.0
+
+        # 📈 Active vs Inactive Clients (Active = had a session in the last 30 days)
+        last_30_days = today - timedelta(days=30)
+        active_clients = db.query(models.Appointment.student_id).filter(
+            models.Appointment.counsellor_id == user.id,
+            models.Appointment.appointment_time >= last_30_days
+        ).distinct().count()
+        inactive_clients = total_clients - active_clients
+
+        # ⭐ Rating
+        avg_rating = profile.average_rating if (profile and profile.average_rating is not None) else 5.0
+
+        # Fetch recent reviews
+        recent_reviews = db.query(models.CounselorRating).filter(
+            models.CounselorRating.counsellor_id == user.id
+        ).order_by(models.CounselorRating.timestamp.desc()).limit(5).all()
+
+        dashboard_stats = {
+            "total_clients": total_clients,
+            "today_sessions": today_sessions,
+            "earnings_daily": earnings_daily,
+            "earnings_monthly": earnings_monthly,
+            "active_clients": active_clients,
+            "inactive_clients": max(0, inactive_clients),
+            "avg_rating": avg_rating
+        }
+
+        return templates.TemplateResponse("counsellor_dashboard.html", {
+            "request": request, 
+            "user": user, 
+            "profile": profile, 
+            "appointments": appointments, 
+            "notifications": notifications,
+            "stats": dashboard_stats,
+            "reviews": recent_reviews
+        })
     
     # Fetch assessment result to show on dashboard
     assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     
-    # Fetch student appointments (active only)
+    # Fetch student appointments (scheduled & completed for rating)
     appointments = db.query(models.Appointment).filter(
         models.Appointment.student_id == user.id,
-        models.Appointment.status == "scheduled"
-    ).all()
+        models.Appointment.status.in_(["scheduled", "completed"])
+    ).order_by(models.Appointment.appointment_time.desc()).all()
     
     # Fetch student tickets
     tickets = db.query(models.Ticket).filter(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()).all()
@@ -1101,42 +1200,53 @@ async def accept_tnc(request: Request, db: Session = Depends(get_db)):
 @app.post("/counsellor/update")
 async def counsellor_update(
     request: Request,
-    fee: float = Form(0.0),
-    availability_text: str = Form(""),
-    bank_name: str = Form(""),
-    account_num: str = Form(""),
-    ifsc_code: str = Form(""),
-    upi_id: str = Form(""),
+    fee: str = Form(None),
+    availability_text: str = Form(None),
+    bank_name: str = Form(None),
+    account_num: str = Form(None),
+    ifsc_code: str = Form(None),
+    upi_id: str = Form(None),
     db: Session = Depends(get_db)
 ):
     user = get_current_user(request, db)
     if not user or user.role != "counsellor":
-         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
-    account_data = {
-        "bank_name": bank_name,
-        "account_num": account_num,
-        "ifsc": ifsc_code,
-        "upi": upi_id
-    }
+    try:
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
+        if not profile:
+            profile = models.CounsellorProfile(user_id=user.id)
+            db.add(profile)
+            db.flush()
+        
+        # Update Basic Info (only if provided and not empty)
+        if fee is not None and fee.strip() != "" and not profile.fee_locked:
+            try:
+                profile.fee = float(fee)
+            except ValueError:
+                pass # Ignore invalid fee format
+        
+        if availability_text is not None:
+            profile.availability = {"text": availability_text}
+        
+        # Update Account Details (merge with existing)
+        # Check if any account-related fields were sent in the form
+        if any(x is not None for x in [bank_name, account_num, ifsc_code, upi_id]):
+            account_data = profile.account_details or {}
+            # We treat empty string as clearing the value or just setting it to empty
+            if bank_name is not None: account_data["bank_name"] = bank_name
+            if account_num is not None: account_data["account_num"] = account_num
+            if ifsc_code is not None: account_data["ifsc"] = ifsc_code
+            if upi_id is not None: account_data["upi"] = upi_id
+            profile.account_details = account_data
+        
+        db.commit()
+    except Exception as e:
+        print(f"Error updating counsellor profile: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error updating profile. Please ensure all data is correct.")
     
-    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
-    if profile:
-        if not profile.fee_locked:
-            profile.fee = fee
-        profile.availability = {"text": availability_text}
-        profile.account_details = account_data
-    else:
-        profile = models.CounsellorProfile(
-            user_id=user.id, 
-            fee=fee, 
-            availability={"text": availability_text},
-            account_details=account_data
-        )
-        db.add(profile)
-    
-    db.commit()
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/dashboard?msg=Profile updated successfully", status_code=status.HTTP_302_FOUND)
 
 @app.post("/profile/upload-photo")
 async def upload_profile_photo(
@@ -1175,48 +1285,52 @@ async def upload_profile_photo(
 @app.post("/counsellor/upload-certificates")
 async def upload_certificates(
     request: Request,
-    experience: str = Form(...),
-    files: List[UploadFile] = File(...),
+    experience: str = Form(None),
+    files: List[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     user = get_current_user(request, db)
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
-    if not profile:
-        profile = models.CounsellorProfile(user_id=user.id)
-        db.add(profile)
-    
-    cert_paths = profile.certificates if profile.certificates else []
-    
-    # Ensure directory exists
-    upload_dir = os.path.join(BASE_DIR, "static", "uploads", "certificates")
     try:
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
+        if not profile:
+            profile = models.CounsellorProfile(user_id=user.id)
+            db.add(profile)
+            db.flush()
+        
+        existing_certs = profile.certificates if profile.certificates else []
+        new_certs = list(existing_certs)
+        
+        # Ensure directory exists
+        upload_dir = os.path.join(BASE_DIR, "static", "uploads", "certificates")
         os.makedirs(upload_dir, exist_ok=True)
 
-        for file in files:
-            if file.filename:
-                file_extension = os.path.splitext(file.filename)[1]
-                filename = f"cert_{user.id}_{uuid.uuid4().hex}{file_extension}"
-                file_path = os.path.join(upload_dir, filename)
-                
-                contents = await file.read()
-                with open(file_path, "wb") as buffer:
-                    buffer.write(contents)
-                
-                cert_paths.append(f"/static/uploads/certificates/{filename}")
+        if files:
+            for file in files:
+                if file.filename and file.filename.strip() != "":
+                    file_extension = os.path.splitext(file.filename)[1]
+                    filename = f"cert_{user.id}_{uuid.uuid4().hex}{file_extension}"
+                    file_path = os.path.join(upload_dir, filename)
+                    
+                    contents = await file.read()
+                    with open(file_path, "wb") as buffer:
+                        buffer.write(contents)
+                    
+                    new_certs.append(f"/static/uploads/certificates/{filename}")
         
-        # Ensure SQLAlchemy detects the list change
-        profile.certificates = list(cert_paths)
-        profile.experience = experience
+        profile.certificates = new_certs
+        if experience:
+            profile.experience = experience
         profile.verification_status = "pending"
         db.commit()
     except Exception as e:
         print(f"CERTIFICATE UPLOAD ERROR: {e}")
-        return RedirectResponse(url="/dashboard?error=Certificate upload failed", status_code=status.HTTP_302_FOUND)
+        db.rollback()
+        return RedirectResponse(url="/dashboard?error=Upload failed. Please try again.", status_code=status.HTTP_302_FOUND)
     
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(url="/dashboard?msg=Certificates uploaded successfully", status_code=status.HTTP_302_FOUND)
 
 @app.post("/admin/verify-counsellor/{counsellor_id}")
 async def verify_counsellor(
@@ -1232,11 +1346,25 @@ async def verify_counsellor(
         if not admin_email or current_user.email != admin_email:
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
             
-    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
-    if profile:
-        profile.verification_status = verification_status
-        profile.is_verified = (verification_status == "approved")
-        db.commit()
+    try:
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+        if profile:
+            profile.verification_status = verification_status
+            profile.is_verified = (verification_status == "approved")
+            
+            # Send Notification to Counsellor
+            msg = "Congratulations! Your profile has been verified successfully. You can now start accepting booking requests." if verification_status == "approved" else "Your profile verification was not approved. Please ensure all your documents are correct and try again."
+            
+            notif = models.Notification(
+                user_id=counsellor_id,
+                type="system",
+                message=msg
+            )
+            db.add(notif)
+            db.commit()
+    except Exception as e:
+        print(f"Admin Verification Error: {e}")
+        db.rollback()
     
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
@@ -1521,18 +1649,76 @@ async def join_meeting(appointment_id: int, request: Request, db: Session = Depe
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # If the current user is the counsellor, mark as joined
+    return RedirectResponse(url=f"/meeting/{appointment_id}")
+
+@app.get("/meeting/{appointment_id}", response_class=HTMLResponse)
+async def meeting_page(appointment_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    other_user_id = appointment.student_id if user.id == appointment.counsellor_id else appointment.counsellor_id
+    other_user = db.query(models.User).filter(models.User.id == other_user_id).first()
+    
+    return templates.TemplateResponse("meeting.html", {
+        "request": request, 
+        "user": user, 
+        "appointment": appointment,
+        "other_user": other_user
+    })
+
+@app.post("/appointment/track-join/{appointment_id}")
+async def track_join(appointment_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+    
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404)
+    
+    now = datetime.datetime.now()
     if user.id == appointment.counsellor_id:
         appointment.counsellor_joined = True
-        appointment.joined_at = datetime.datetime.now()
-        db.commit()
+        appointment.joined_at = now
+    elif user.id == appointment.student_id:
+        appointment.student_joined = True
+        appointment.student_joined_at = now
     
-    return RedirectResponse(url=appointment.meeting_link)
+    db.commit()
+    return {"status": "ok"}
+
+@app.post("/appointment/heartbeat/{appointment_id}")
+async def appointment_heartbeat(appointment_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+    
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404)
+    
+    if appointment.status == "scheduled":
+        # Increment overlap counter (called every minute by frontend if both present)
+        appointment.actual_overlap_minutes += 1
+        
+        # Mark as completed if overlap >= 5 minutes
+        if appointment.actual_overlap_minutes >= 5:
+            appointment.status = "completed"
+            
+        db.commit()
+        
+    return {"status": appointment.status, "overlap_mins": appointment.actual_overlap_minutes}
 
 @app.get("/appointment_status/{appointment_id}")
 async def appointment_status(appointment_id: int, db: Session = Depends(get_db)):
@@ -1603,6 +1789,59 @@ async def complete_appointment(appointment_id: int, request: Request, db: Sessio
     db.commit()
     
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+@app.post("/appointment/rate/{appointment_id}")
+async def rate_appointment(appointment_id: int, request: Request, rating: int = Form(...), review: str = Form(None), db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    # Verify appointment student
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == appointment_id, 
+        models.Appointment.student_id == user.id
+    ).first()
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found or not yours")
+    
+    if appointment.status != "completed":
+        raise HTTPException(status_code=400, detail="Only completed appointments can be rated")
+    
+    # Check for existing rating
+    existing = db.query(models.CounselorRating).filter(models.CounselorRating.appointment_id == appointment_id).first()
+    if existing:
+        return RedirectResponse(url="/dashboard?error=Session already rated", status_code=status.HTTP_302_FOUND)
+    
+    try:
+        # Create rating record
+        new_rating = models.CounselorRating(
+            appointment_id=appointment_id,
+            counsellor_id=appointment.counsellor_id,
+            student_id=user.id,
+            rating=rating,
+            review=review
+        )
+        db.add(new_rating)
+        
+        # Update Counselor profile stats
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == appointment.counsellor_id).first()
+        if profile:
+            # Handle potential None values safely
+            avg = profile.average_rating if profile.average_rating is not None else 5.0
+            count = profile.rating_count if profile.rating_count is not None else 0
+            
+            old_total = avg * count
+            profile.rating_count = count + 1
+            profile.average_rating = (old_total + rating) / profile.rating_count
+        
+        db.commit()
+    except Exception as e:
+        print(f"Rating error: {e}")
+        db.rollback()
+        return RedirectResponse(url="/dashboard?error=Failed to submit rating. Please try again.", status_code=status.HTTP_302_FOUND)
+        
+    return RedirectResponse(url="/dashboard?msg=Thank you for your feedback!", status_code=status.HTTP_302_FOUND)
 
 @app.post("/admin/tickets/{ticket_id}/reply")
 async def reply_ticket(ticket_id: int, request: Request, reply_content: str = Form(None), db: Session = Depends(get_db)):
@@ -1687,40 +1926,37 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
     else:
         appt_time = datetime.datetime.now() + datetime.timedelta(days=1)
         
-    appointment = models.Appointment(
-        student_id=user.id,
-        counsellor_id=counsellor_id,
-        appointment_time=appt_time,
-        status="requested", # Default to requested
-        payment_status="authorized", # Funds are authorized but not captured
-        meeting_link=meeting_link,
-        razorpay_order_id=razorpay_order_id,
-        razorpay_payment_id=razorpay_payment_id
-    )
-    db.add(appointment)
-    db.commit()
-    db.refresh(appointment)
-
-    # ── Record Payment + Transfer for admin split tracking ─────────────────
+    # ── Record Payment + Transfer and Appointment in one transaction ─────────
     try:
-        # Get the counsellor's fee for accurate split calculation
+        # 1. Create Appointment
+        appointment = models.Appointment(
+            student_id=user.id,
+            counsellor_id=counsellor_id,
+            appointment_time=appt_time,
+            status="requested", 
+            payment_status="authorized", 
+            meeting_link=meeting_link,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id
+        )
+        db.add(appointment)
+        db.flush() # Get appointment.id
+
+        # 2. Update/Create Payment record
         counsellor_profile = db.query(models.CounsellorProfile).filter(
             models.CounsellorProfile.user_id == counsellor_id
         ).first()
         fee_amount = counsellor_profile.fee if counsellor_profile else 0.0
 
-        # Find or create the Payment record
         payment_record = db.query(models.Payment).filter(
             models.Payment.razorpay_order_id == razorpay_order_id
         ).first()
 
         if payment_record:
-            # Update existing record (created during order creation)
             payment_record.razorpay_payment_id = razorpay_payment_id
             payment_record.status = "captured"
             payment_record.session_id = appointment.id
         else:
-            # Create new record (fallback)
             payment_record = models.Payment(
                 session_id=appointment.id,
                 razorpay_order_id=razorpay_order_id,
@@ -1729,46 +1965,42 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
                 status="captured"
             )
             db.add(payment_record)
-            db.commit()
-            db.refresh(payment_record)
+        
+        db.flush() # Get payment_record.id
 
-        # Check for Founding Counsellor (2 months no commission)
+        # 3. Create Transfer record (Commission logic)
         is_founding_free = False
         if counsellor_profile and counsellor_profile.is_founding_counsellor:
             if counsellor_profile.commission_free_until and counsellor_profile.commission_free_until > datetime.datetime.now():
                 is_founding_free = True
 
-        # Create Transfer record (70/30 split OR 100% if founding free)
         if is_founding_free:
             counselor_share = round(fee_amount, 2)
-            commission_note = "Founding Counsellor (0% platform fee)"
         else:
             counselor_share = round(fee_amount * 0.70, 2)
-            commission_note = "Standard (30% platform fee)"
 
         transfer_record = models.Transfer(
             payment_id=payment_record.id,
             counsellor_id=counsellor_id,
             amount=counselor_share,
-            status="pending"  # Will become 'processed' when manually/auto transferred
+            status="pending"
         )
         db.add(transfer_record)
-        db.commit()
 
-        print(f"DEBUG: Split recorded ({commission_note}) — Total: ₹{fee_amount}, Counselor: ₹{counselor_share}, Platform: ₹{round(fee_amount - counselor_share, 2)}")
-    except Exception as pe:
-        print(f"DEBUG: Split record creation error: {pe}")
-    
-    # Send Notification to Counsellor
-    counsellor_user = db.query(models.User).filter(models.User.id == counsellor_id).first()
-    if counsellor_user:
+        # 4. Create Notification
         notif = models.Notification(
             user_id=counsellor_id,
             type="booking_request",
             message=f"New booking request from {user.full_name} for {appt_time.strftime('%b %d, %I:%M %p')}."
         )
         db.add(notif)
+
+        # 5. Final Commit
         db.commit()
+    except Exception as e:
+        print(f"Payment verification DB error: {e}")
+        db.rollback()
+        return RedirectResponse(url="/counsellors?error=Database error during payment processing", status_code=status.HTTP_302_FOUND)
 
     return templates.TemplateResponse("appointment_success.html", {"request": request, "user": user, "appointment": appointment, "is_request": True})
 

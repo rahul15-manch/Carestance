@@ -12,10 +12,12 @@ class User(Base):
     contact_number = Column(String)
     profile_photo = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
-    role = Column(String, default="student", index=True)
+    role = Column(String, nullable=True, index=True)
     is_suspended = Column(Boolean, default=False)
     
     assessment = relationship("AssessmentResult", back_populates="user", uselist=False)
+    given_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.student_id]", back_populates="student")
+    received_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.counsellor_id]", back_populates="counsellor")
 
 class AssessmentResult(Base):
     __tablename__ = "assessment_results"
@@ -115,6 +117,11 @@ class CounsellorProfile(Base):
     account_details = Column(JSON, nullable=True) # e.g. {"bank_name": "...", "account_num": "...", "ifsc": "...", "upi": "..."}
     certificates = Column(JSON, nullable=True) # List of file paths
     experience = Column(Text, nullable=True)
+    
+    # Rating Statistics
+    average_rating = Column(Float, default=5.0)
+    rating_count = Column(Integer, default=0)
+
     is_verified = Column(Boolean, default=False)
     verification_status = Column(String, default="pending", index=True) # pending, approved, rejected
     tnc_accepted = Column(Boolean, default=False)
@@ -154,9 +161,13 @@ class Appointment(Base):
     # Join tracking
     counsellor_joined = Column(Boolean, default=False)
     joined_at = Column(DateTime, nullable=True)
+    student_joined = Column(Boolean, default=False)
+    student_joined_at = Column(DateTime, nullable=True)
+    actual_overlap_minutes = Column(Integer, default=0)
 
     student = relationship("User", foreign_keys=[student_id], back_populates="student_appointments")
     counsellor = relationship("User", foreign_keys=[counsellor_id], back_populates="counsellor_appointments")
+    rating_record = relationship("CounselorRating", back_populates="appointment", uselist=False)
 
 class CollegeRecommendation(Base):
     __tablename__ = "college_recommendations"
@@ -270,3 +281,18 @@ class Transfer(Base):
     # Relationships
     payment = relationship("Payment", back_populates="transfers")
     counsellor = relationship("User")
+
+class CounselorRating(Base):
+    __tablename__ = "counsellor_ratings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), unique=True, index=True)
+    counsellor_id = Column(Integer, ForeignKey("users.id"), index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), index=True)
+    rating = Column(Integer, nullable=False) # 1-5
+    review = Column(Text, nullable=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+
+    student = relationship("User", foreign_keys=[student_id], back_populates="given_ratings")
+    counsellor = relationship("User", foreign_keys=[counsellor_id], back_populates="received_ratings")
+    appointment = relationship("Appointment", back_populates="rating_record")
