@@ -173,122 +173,74 @@ def run_migrations():
         
         migrations = []
         
-        # Users table migrations
-        user_cols = get_columns('users')
-        if user_cols:
-            if 'profile_photo' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
-            if 'bio' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN bio TEXT")
-            if 'is_suspended' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE")
-            if 'contact_number' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN contact_number VARCHAR")
-            if 'full_name' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
-            if 'role' not in user_cols:
-                migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
+        # 1. Users table
+        u_cols = get_columns('users')
+        if u_cols:
+            if 'profile_photo' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
+            if 'bio' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN bio TEXT")
+            if 'is_suspended' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE")
+            if 'contact_number' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN contact_number VARCHAR")
+            if 'full_name' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
+            if 'role' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
 
-        # CounsellorProfile table migrations
+        # 2. Counsellor Profiles
         cp_cols = get_columns('counsellor_profiles')
         if cp_cols:
-            if 'tnc_accepted' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN tnc_accepted BOOLEAN DEFAULT FALSE")
-            if 'tnc_accepted_at' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN tnc_accepted_at TIMESTAMP")
-            if 'is_blocked' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN is_blocked BOOLEAN DEFAULT FALSE")
-            if 'block_reason' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN block_reason VARCHAR")
-            if 'certificates' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN certificates TEXT")
-            if 'experience' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN experience TEXT")
-            if 'is_verified' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN is_verified BOOLEAN DEFAULT FALSE")
-            if 'verification_status' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN verification_status VARCHAR DEFAULT 'pending'")
-            if 'fee_locked' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN fee_locked BOOLEAN DEFAULT FALSE")
-            if 'razorpay_account_id' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_account_id VARCHAR")
-            if 'onboarding_status' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN onboarding_status VARCHAR DEFAULT 'not_started'")
-            if 'razorpay_contact_id' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_contact_id VARCHAR")
-            if 'razorpay_fund_account_id' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN razorpay_fund_account_id VARCHAR")
-            if 'average_rating' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN average_rating FLOAT DEFAULT 5.0")
-            if 'rating_count' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN rating_count INTEGER DEFAULT 0")
-            if 'is_founding_counsellor' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN is_founding_counsellor BOOLEAN DEFAULT FALSE")
-            if 'founding_badge_awarded_at' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN founding_badge_awarded_at TIMESTAMP")
-            if 'commission_free_until' not in cp_cols:
-                migrations.append("ALTER TABLE counsellor_profiles ADD COLUMN commission_free_until TIMESTAMP")
-        
-        # Appointments table migrations
-        appt_cols = get_columns('appointments')
-        if appt_cols:
-            if 'counsellor_joined' not in appt_cols:
-                migrations.append("ALTER TABLE appointments ADD COLUMN counsellor_joined BOOLEAN DEFAULT FALSE")
-            if 'joined_at' not in appt_cols:
-                migrations.append("ALTER TABLE appointments ADD COLUMN joined_at TIMESTAMP")
-            if 'student_joined' not in appt_cols:
-                migrations.append("ALTER TABLE appointments ADD COLUMN student_joined BOOLEAN DEFAULT FALSE")
-            if 'student_joined_at' not in appt_cols:
-                migrations.append("ALTER TABLE appointments ADD COLUMN student_joined_at TIMESTAMP")
-            if 'actual_overlap_minutes' not in appt_cols:
-                migrations.append("ALTER TABLE appointments ADD COLUMN actual_overlap_minutes INTEGER DEFAULT 0")
+            checklist = [
+                ('tnc_accepted', "BOOLEAN DEFAULT FALSE"), ('tnc_accepted_at', "TIMESTAMP"),
+                ('is_blocked', "BOOLEAN DEFAULT FALSE"), ('block_reason', "VARCHAR"),
+                ('certificates', "TEXT"), ('experience', "TEXT"),
+                ('is_verified', "BOOLEAN DEFAULT FALSE"), ('verification_status', "VARCHAR DEFAULT 'pending'"),
+                ('fee_locked', "BOOLEAN DEFAULT FALSE"), ('razorpay_account_id', "VARCHAR"),
+                ('onboarding_status', "VARCHAR DEFAULT 'not_started'"), ('razorpay_contact_id', "VARCHAR"),
+                ('razorpay_fund_account_id', "VARCHAR"), ('average_rating', "FLOAT DEFAULT 5.0"),
+                ('rating_count', "INTEGER DEFAULT 0"), ('is_founding_counsellor', "BOOLEAN DEFAULT FALSE"),
+                ('founding_badge_awarded_at', "TIMESTAMP"), ('commission_free_until', "TIMESTAMP")
+            ]
+            for col, ty in checklist:
+                if col not in cp_cols: migrations.append(f"ALTER TABLE counsellor_profiles ADD COLUMN {col} {ty}")
 
-        # StudentMessages table migrations
+        # 3. Appointments
+        ap_cols = get_columns('appointments')
+        if ap_cols:
+            for col, ty in [('counsellor_joined', 'BOOLEAN DEFAULT FALSE'), ('joined_at', 'TIMESTAMP'), 
+                           ('student_joined', 'BOOLEAN DEFAULT FALSE'), ('student_joined_at', 'TIMESTAMP'),
+                           ('actual_overlap_minutes', 'INTEGER DEFAULT 0')]:
+                if col not in ap_cols: migrations.append(f"ALTER TABLE appointments ADD COLUMN {col} {ty}")
+
+        # 4. Student Messages
         sm_cols = get_columns('student_messages')
         if sm_cols:
-            if 'attachment_path' not in sm_cols:
-                migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_path VARCHAR")
-            if 'attachment_type' not in sm_cols:
-                migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_type VARCHAR")
+            if 'attachment_path' not in sm_cols: migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_path VARCHAR")
+            if 'attachment_type' not in sm_cols: migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_type VARCHAR")
 
-        # AssessmentResult table migrations
+        # 5. Assessment Results
         ar_cols = get_columns('assessment_results')
         if ar_cols:
-            if 'selected_class' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN selected_class VARCHAR")
-            if 'phase3_result' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_result VARCHAR")
-            if 'phase3_answers' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_answers JSON")
-            if 'phase3_analysis' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_analysis TEXT")
-            if 'final_answers' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN final_answers JSON")
-            if 'stream_scores' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_scores JSON")
-            if 'recommended_stream' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN recommended_stream VARCHAR")
-            if 'final_analysis' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN final_analysis TEXT")
-            if 'stream_pros' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_pros JSON")
-            if 'stream_cons' not in ar_cols:
-                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_cons JSON")
+            for col, ty in [('selected_class', 'VARCHAR'), ('phase3_result', 'VARCHAR'), 
+                           ('phase3_answers', 'JSON'), ('phase3_analysis', 'TEXT'),
+                           ('final_answers', 'JSON'), ('stream_scores', 'JSON'),
+                           ('recommended_stream', 'VARCHAR'), ('final_analysis', 'TEXT'),
+                           ('stream_pros', 'JSON'), ('stream_cons', 'JSON')]:
+                if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
 
         if migrations:
+            print(f"DEBUG: Found {len(migrations)} pending migrations.", flush=True)
             with engine.connect() as conn:
                 for sql in migrations:
                     try:
                         conn.execute(text(sql))
-                        print(f"Migration OK: {sql}")
+                        print(f"DATABASE MIGRATION SUCCESS: {sql}", flush=True)
                     except Exception as me:
-                        print(f"Migration skip: {me}")
+                        print(f"DATABASE MIGRATION SKIP/ERROR: {sql} -> {me}", flush=True)
                 conn.commit()
-            print(f"Ran {len(migrations)} migrations successfully")
+            print(f"DATABASE: Finished running {len(migrations)} migration queries.", flush=True)
         else:
-            print("No migrations needed")
+            print("DATABASE: No new migrations detected.", flush=True)
     except Exception as e:
-        print(f"Migration check error: {e}")
+        print(f"DATABASE FATAL ERROR during migration check: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 run_migrations()
 
@@ -297,6 +249,17 @@ app = FastAPI(title="CareStance")
 # ─── Include Split Payments Router (Razorpay Route) ───────────────────────────
 from .routes.payments import router as payments_router
 app.include_router(payments_router)
+
+# Global Exception Handler for better debugging
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    print(f"GLOBAL ERROR: {exc}", flush=True)
+    traceback.print_exc()
+    return HTMLResponse(
+        content=f"<html><body><h1>Internal Server Error</h1><p>{exc}</p><pre>{traceback.format_exc()}</pre></body></html>",
+        status_code=500
+    )
 
 from fastapi.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -4094,3 +4057,13 @@ async def privacy_page(request: Request, db: Session = Depends(get_db)):
 async def terms_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     return templates.TemplateResponse("terms.html", {"request": request, "user": user})
+
+@app.get("/debug/migrate")
+async def debug_migrate(request: Request, db: Session = Depends(get_db)):
+    """Manually trigger migrations and return status."""
+    try:
+        run_migrations()
+        return {"status": "success", "message": "Migrations triggered. Check console/logs for details."}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
