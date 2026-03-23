@@ -41,12 +41,34 @@ class UserCache:
         except Exception as e:
             print(f"REDIS USER SET ERROR: {e}")
 
+    def get_user(self, user_id: int) -> dict:
+        """Retrieves full user data (dict) from cache."""
+        if not self.is_available:
+            return None
+        try:
+            data = self.client.get(f"user_data:{user_id}")
+            return json.loads(data) if data else None
+        except Exception:
+            return None
+
+    def set_user(self, user_id: int, user_data: dict, ttl: int = 3600):
+        """Caches full user data (dict)."""
+        if not self.is_available:
+            return
+        # Remove potentially huge or sensitive relations if any
+        user_data.pop("_sa_instance_state", None)
+        try:
+            self.client.setex(f"user_data:{user_id}", ttl, json.dumps(user_data))
+        except Exception:
+            pass
+
     def invalidate_user(self, user_id: int):
         """Removes user from cache."""
         if not self.is_available:
             return
         try:
             self.client.delete(f"user_status:{user_id}")
+            self.client.delete(f"user_data:{user_id}")
         except Exception as e:
             print(f"REDIS USER DELETE ERROR: {e}")
 

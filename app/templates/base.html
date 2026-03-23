@@ -3,11 +3,16 @@
 
 <head>
     <meta charset="UTF-8">
-    {% block adsense %}{% endblock %}
+    {% block adsense %}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6546135271987768"
+        crossorigin="anonymous"></script>
+    {% endblock %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CareStance - {% block title %}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <script src="/static/css/tailwind.cdn.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -372,8 +377,12 @@
     </main>
 
     <footer class="bg-white/50 backdrop-blur-sm border-t border-violet-100 mt-auto">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-slate-500 font-medium text-sm">&copy; 2026 CareStance. All rights reserved.</p>
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-slate-500 font-medium text-sm">&copy; 2026 CareStance. All rights reserved.</p>
+            <div class="flex gap-6 text-sm font-semibold text-slate-400">
+                <a href="/privacy" class="hover:text-violet-600 transition">Privacy Policy</a>
+                <a href="/terms" class="hover:text-violet-600 transition">Terms of Service</a>
+            </div>
         </div>
     </footer>
 

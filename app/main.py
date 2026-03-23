@@ -1,3 +1,5 @@
+import warnings
+from types import SimpleNamespace
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Form, Response, BackgroundTasks, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional
@@ -173,13 +175,20 @@ def run_migrations():
         
         # Users table migrations
         user_cols = get_columns('users')
-        if user_cols and 'profile_photo' not in user_cols:
-            migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
-        if user_cols and 'bio' not in user_cols:
-            migrations.append("ALTER TABLE users ADD COLUMN bio TEXT")
-        if user_cols and 'is_suspended' not in user_cols:
-            migrations.append("ALTER TABLE users ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE")
-        
+        if user_cols:
+            if 'profile_photo' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN profile_photo VARCHAR")
+            if 'bio' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN bio TEXT")
+            if 'is_suspended' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE")
+            if 'contact_number' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN contact_number VARCHAR")
+            if 'full_name' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
+            if 'role' not in user_cols:
+                migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
+
         # CounsellorProfile table migrations
         cp_cols = get_columns('counsellor_profiles')
         if cp_cols:
@@ -241,7 +250,31 @@ def run_migrations():
                 migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_path VARCHAR")
             if 'attachment_type' not in sm_cols:
                 migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_type VARCHAR")
-        
+
+        # AssessmentResult table migrations
+        ar_cols = get_columns('assessment_results')
+        if ar_cols:
+            if 'selected_class' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN selected_class VARCHAR")
+            if 'phase3_result' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_result VARCHAR")
+            if 'phase3_answers' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_answers JSON")
+            if 'phase3_analysis' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN phase3_analysis TEXT")
+            if 'final_answers' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN final_answers JSON")
+            if 'stream_scores' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_scores JSON")
+            if 'recommended_stream' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN recommended_stream VARCHAR")
+            if 'final_analysis' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN final_analysis TEXT")
+            if 'stream_pros' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_pros JSON")
+            if 'stream_cons' not in ar_cols:
+                migrations.append("ALTER TABLE assessment_results ADD COLUMN stream_cons JSON")
+
         if migrations:
             with engine.connect() as conn:
                 for sql in migrations:
@@ -304,24 +337,31 @@ async def check_suspension(request: Request, call_next):
         if user_id:
             try:
                 uid = int(user_id)
-                # 1. Check Cache First
+                # 1. Check Full Cache first (contains suspension status)
+                data = user_cache.get_user(uid)
+                if data:
+                    if data.get("is_suspended"):
+                        return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
+                    request.state.user = SimpleNamespace(**data)
+                    return await call_next(request)
+
+                # 2. Check Lightweight Cache status
                 cached_status = user_cache.get_user_status(uid)
                 if cached_status:
                     if cached_status.get("is_suspended"):
                         return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
                     return await call_next(request)
 
-                # 2. Cache Miss: Check DB
+                # 3. Cache Miss: Hit DB (last resort)
                 db = SessionLocal()
                 try:
                     user = db.query(models.User).filter(models.User.id == uid).first()
                     if user:
-                        # Cache the status
-                        user_cache.set_user_status(uid, {
-                            "is_suspended": user.is_suspended,
-                            "role": user.role,
-                            "full_name": user.full_name
-                        })
+                        user_dict = {
+                            "id": user.id, "email": user.email, "full_name": user.full_name,
+                            "role": user.role, "is_suspended": user.is_suspended
+                        }
+                        user_cache.set_user(uid, user_dict)
                         if user.is_suspended:
                             return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
                 finally:
@@ -329,6 +369,13 @@ async def check_suspension(request: Request, call_next):
             except ValueError:
                 pass
     
+    # 4. Global Static File Caching (Latency Optimization)
+    if path.startswith("/static/"):
+        response = await call_next(request)
+        # 1-week cache for static assets
+        response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+        return response
+
     response = await call_next(request)
     return response
 
@@ -350,15 +397,43 @@ def get_password_hash(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
+    # 1. Check request state (if middleware already fetched it)
+    if hasattr(request.state, "user"):
+        return request.state.user
+
     user_id = request.cookies.get("user_id")
     if not user_id:
         return None
     
-    uid = int(user_id)
-    # We could theoretically cache the whole user object, but SQLAlchemy objects are tied to sessions.
-    # For now, we hit the DB for the full object, but the middleware already protected the route.
-    user = db.query(models.User).filter(models.User.id == uid).first()
-    return user
+    try:
+        uid = int(user_id)
+        # 2. Check Redis Cache
+        data = user_cache.get_user(uid)
+        if data:
+            # Reconstruct dummy object that behaves like User model
+            # Note: Relationships like user.assessment won't work from cache
+            user = SimpleNamespace(**data)
+            request.state.user = user
+            return user
+            
+        # 3. Cache Miss: Hit Database
+        user = db.query(models.User).filter(models.User.id == uid).first()
+        if user:
+            # Cache for future use (exclude binary or huge fields)
+            user_dict = {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "contact_number": user.contact_number,
+                "is_suspended": user.is_suspended,
+                "profile_photo": user.profile_photo
+            }
+            user_cache.set_user(uid, user_dict)
+            request.state.user = user
+        return user
+    except (ValueError, TypeError):
+        return None
 
 # Routes
 
@@ -4009,3 +4084,13 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
 
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    return templates.TemplateResponse("privacy.html", {"request": request, "user": user})
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    return templates.TemplateResponse("terms.html", {"request": request, "user": user})
