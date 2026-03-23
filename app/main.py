@@ -315,6 +315,8 @@ async def check_suspension(request: Request, call_next):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+# Disable cache to bypass "unhashable type: 'dict'" errors in some server environments
+templates.env.cache = None
 # Removed env.globals assignment that caused unhashable type: 'dict' errors
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto"]) # Removed
 
