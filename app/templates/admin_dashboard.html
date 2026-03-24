@@ -635,10 +635,21 @@
         </div>
 
         <div class="flex flex-col">
+            <!-- Search Bar -->
+            <div class="mb-4 flex items-center gap-3">
+                <div class="relative flex-1 max-w-md">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="userSearchInput" placeholder="Search by name, email, class, or phase..."
+                        class="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm font-medium text-slate-700 shadow-sm"
+                        oninput="filterUserTable()">
+                </div>
+                <span id="userSearchCount"
+                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap"></span>
+            </div>
             <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
                 <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
                     <div class="shadow-xl overflow-hidden border-b border-slate-200 sm:rounded-2xl">
-                        <table class="min-w-full divide-y divide-slate-200">
+                        <table id="userDetailsTable" class="min-w-full divide-y divide-slate-200">
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th scope="col"
@@ -1109,4 +1120,32 @@
     </div>
 </div>
 </div>
+
+<script>
+    function filterUserTable() {
+        const query = document.getElementById('userSearchInput').value.toLowerCase().trim();
+        const table = document.getElementById('userDetailsTable');
+        const tbody = table.querySelector('tbody');
+        const rows = tbody.querySelectorAll('tr');
+        let visibleCount = 0;
+        const totalCount = rows.length;
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (!query || text.includes(query)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const countEl = document.getElementById('userSearchCount');
+        if (query) {
+            countEl.textContent = visibleCount + ' of ' + totalCount + ' users matched';
+        } else {
+            countEl.textContent = '';
+        }
+    }
+</script>
 {% endblock %}
