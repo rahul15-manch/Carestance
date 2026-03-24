@@ -456,8 +456,7 @@ async def forgot_password(
         )
     
     # Always show success message for security (don't reveal if email exists)
-    return templates.TemplateResponse("forgot_password.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="forgot_password.html", context={
         "message": "If an account exists with that email, a reset link has been sent."
     })
 
@@ -467,8 +466,7 @@ async def reset_password_page(request: Request, token: str):
         # Token valid for 1 hour (3600 seconds)
         email = serializer.loads(token, salt="password-reset-salt", max_age=3600)
     except Exception:
-        return templates.TemplateResponse("forgot_password.html", {
-            "request": request,
+        return templates.TemplateResponse(request=request, name="forgot_password.html", context={
             "error": "The reset link is invalid or has expired."
         })
     return templates.TemplateResponse(request=request, name="reset_password.html", context={"token": token})
@@ -484,14 +482,12 @@ async def reset_password(
     try:
         email = serializer.loads(token, salt="password-reset-salt", max_age=3600)
     except Exception:
-         return templates.TemplateResponse("forgot_password.html", {
-            "request": request,
+         return templates.TemplateResponse(request=request, name="forgot_password.html", context={
             "error": "The reset link is invalid or has expired."
         })
     
     if password != confirm_password:
-        return templates.TemplateResponse("reset_password.html", {
-            "request": request, 
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={
             "token": token, 
             "error": "Passwords do not match"
         })
@@ -506,8 +502,7 @@ async def reset_password(
     except Exception as e:
         print(f"Password reset error: {e}")
         db.rollback()
-        return templates.TemplateResponse("reset_password.html", {
-            "request": request, 
+        return templates.TemplateResponse(request=request, name="reset_password.html", context={
             "token": token, 
             "error": "Failed to update password. Please try again."
         })
@@ -611,8 +606,7 @@ async def select_role(
     except Exception as e:
         print(f"Role selection error: {e}")
         db.rollback()
-        return templates.TemplateResponse("select_role.html", {
-            "request": request, 
+        return templates.TemplateResponse(request=request, name="select_role.html", context={
             "error": "An error occurred while saving your role. Please try again."
         })
     
@@ -979,8 +973,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "avg_rating": avg_rating
         }
 
-        return templates.TemplateResponse("counsellor_dashboard.html", {
-            "request": request, 
+        return templates.TemplateResponse(request=request, name="counsellor_dashboard.html", context={
             "user": user, 
             "profile": profile, 
             "appointments": appointments, 
@@ -1007,8 +1000,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         models.StudentConnection.status == "pending"
     ).count()
     
-    return templates.TemplateResponse("dashboard.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "user": user, 
         "assessment": assessment,
         "appointments": appointments,
@@ -1095,8 +1087,7 @@ async def admin_dashboard(
         # Fetch Moderation Flags (Limited for performance)
         moderation_flags = db.query(models.ModerationFlag).order_by(models.ModerationFlag.timestamp.desc()).limit(50).all()
 
-        return templates.TemplateResponse("admin_dashboard.html", {
-            "request": request, 
+        return templates.TemplateResponse(request=request, name="admin_dashboard.html", context={
             "user": current_user, 
             "users": all_users,
             "total_users": total_users,
@@ -1648,7 +1639,7 @@ async def book_free_counsellor(counsellor_id: int, request: Request, background_
 
     print(f"DEBUG: Free Appointment created successfully for student {user.id} and counsellor {counsellor_id}")
     
-    return templates.TemplateResponse("appointment_success.html", {"request": request, "user": user, "appointment": appointment})
+    return templates.TemplateResponse(request=request, name="appointment_success.html", context={"user": user, "appointment": appointment})
 
 @app.get("/join_meeting/{appointment_id}")
 async def join_meeting(appointment_id: int, request: Request, db: Session = Depends(get_db)):
@@ -1676,8 +1667,7 @@ async def meeting_page(appointment_id: int, request: Request, db: Session = Depe
     other_user_id = appointment.student_id if user.id == appointment.counsellor_id else appointment.counsellor_id
     other_user = db.query(models.User).filter(models.User.id == other_user_id).first()
     
-    return templates.TemplateResponse("meeting.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="meeting.html", context={
         "user": user, 
         "appointment": appointment,
         "other_user": other_user
@@ -2140,7 +2130,7 @@ async def delete_roadmap(path_id: int, request: Request, db: Session = Depends(g
 
     print(f"DEBUG: Appointment created successfully for student {user.id} and counsellor {counsellor_id}")
     
-    return templates.TemplateResponse("appointment_success.html", {"request": request, "user": user, "appointment": appointment})
+    return templates.TemplateResponse(request=request, name="appointment_success.html", context={"user": user, "appointment": appointment})
 
 # --- Phase 3 Routes ---
 
@@ -2167,8 +2157,7 @@ async def assessment_phase3(request: Request, db: Session = Depends(get_db)):
         # Be safe and redirect w/ maybe a flash message (not impl yet)
         return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
     
-    return templates.TemplateResponse("assessment_phase3.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="assessment_phase3.html", context={
         "user": user, 
         "scenarios": scenarios,
         "category_name": category
@@ -3310,8 +3299,7 @@ async def view_roadmap_detail(path_id: int, request: Request, db: Session = Depe
     assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     appointments = db.query(models.Appointment).filter(models.Appointment.student_id == user.id).all()
         
-    return templates.TemplateResponse("career_roadmap_v2.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="career_roadmap_v2.html", context={
         "user": user, 
         "path": path,
         "assessment": assessment,
@@ -3343,8 +3331,7 @@ async def view_roadmap_resources(path_id: int, request: Request, db: Session = D
     # NEW: Fetch AI recommendations
     ai_recommendations = await ResourceAggregator.get_ai_recommendations(career_title, generate_content_with_fallback)
     
-    return templates.TemplateResponse("resources_dashboard.html", {
-        "request": request, 
+    return templates.TemplateResponse(request=request, name="resources_dashboard.html", context={
         "user": user, 
         "path": path,
         "resources": resources,
@@ -3527,8 +3514,7 @@ async def community_page(request: Request, db: Session = Depends(get_db)):
         models.StudentConnection.status == "pending"
     ).count()
 
-    return templates.TemplateResponse("community.html", {
-        "request": request,
+    return templates.TemplateResponse(request=request, name="community.html", context={
         "user": user,
         "my_archetype": my_archetype,
         "similar_students": similar_students,
@@ -3585,8 +3571,7 @@ async def student_profile(user_id: int, request: Request, db: Session = Depends(
 
     is_own_profile = (user.id == user_id)
 
-    return templates.TemplateResponse("student_profile.html", {
-        "request": request,
+    return templates.TemplateResponse(request=request, name="student_profile.html", context={
         "user": user,
         "student": student,
         "assessment": assessment,
@@ -3809,8 +3794,7 @@ async def my_connections_page(request: Request, db: Session = Depends(get_db)):
                 "conn_id": conn.id
             })
 
-    return templates.TemplateResponse("my_connections.html", {
-        "request": request,
+    return templates.TemplateResponse(request=request, name="my_connections.html", context={
         "user": user,
         "connected_users": connected_users,
         "pending_requests": pending_requests,
@@ -3852,8 +3836,7 @@ async def student_chat_page(conn_id: int, request: Request, db: Session = Depend
     ).update({models.StudentMessage.is_read: True})
     db.commit()
 
-    return templates.TemplateResponse("student_chat.html", {
-        "request": request,
+    return templates.TemplateResponse(request=request, name="student_chat.html", context={
         "user": user,
         "other_user": other_user,
         "messages": messages,
