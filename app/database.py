@@ -26,10 +26,17 @@ engine_args = {
 }
 
 if not SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    engine_args["pool_size"] = 20
-    engine_args["max_overflow"] = 40
+    # On Vercel (serverless), it's best to use very small pools or disable client-side pooling
+    if os.getenv("VERCEL"):
+        engine_args["pool_size"] = 2
+        engine_args["max_overflow"] = 0
+    else:
+        engine_args["pool_size"] = 20
+        engine_args["max_overflow"] = 40
+        
     engine_args["pool_timeout"] = 30
     engine_args["pool_recycle"] = 1800
+    engine_args["pool_pre_ping"] = True
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
