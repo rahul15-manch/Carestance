@@ -15,4 +15,6 @@ httpx
 mangum
 razorpay
 redis
+gunicorn
+uvicorn[standard]
 
