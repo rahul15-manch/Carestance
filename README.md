@@ -103,46 +103,180 @@ graph TD
 ## Project Structure
 
 ```
-CARESTANCE/
-├── app/                          # Main application package
+CareStance
+├── Dockerfile
+├── README.md
+├── __pycache__
+│   ├── database.cpython-313.pyc
+│   ├── main.cpython-313.pyc
+│   ├── models.cpython-313.pyc
+│   ├── questions_data.cpython-313.pyc
+│   ├── questions_final.cpython-313.pyc
+│   └── questions_phase3.cpython-313.pyc
+├── ads.txt
+├── api
+│   └── index.py
+├── app
 │   ├── __init__.py
-│   ├── main.py                   # FastAPI app & all routes
-│   ├── models.py                 # SQLAlchemy database models
-│   ├── database.py               # DB engine & session
-│   ├── static/                   # Static files (images, CSS, JS)
-│   │   └── images/
-│   │       └── assessment/       # Assessment option images (q1_a.png, etc.)
-│   └── templates/                # Jinja2 HTML templates
-│       ├── base.html
-│       ├── login.html
-│       ├── signup.html
-│       ├── dashboard.html        # Student dashboard (Live Status)
-│       ├── admin_dashboard.html  # Admin Panel (Ticket Management)
-│       ├── counsellor_dashboard.html # Counsellor schedule management
-│       ├── counsellors_list.html  # Booking interface
-│       ├── ticket.html           # Support query submission
-│       ├── feedback.html         # User feedback collection
-│       └── ...                   # Assessment & Auth templates
-├── data/                         # Question data modules
+│   ├── __pycache__
+│   │   ├── __init__.cpython-313.pyc
+│   │   ├── database.cpython-313.pyc
+│   │   ├── email_utils.cpython-313.pyc
+│   │   ├── main.cpython-313.pyc
+│   │   └── models.cpython-313.pyc
+│   ├── data
+│   │   ├── __pycache__
+│   │   └── career_keywords.py
+│   ├── database.py
+│   ├── email_utils.py
+│   ├── main.py
+│   ├── models.py
+│   ├── routes
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   └── payments.py
+│   ├── services
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   └── razorpay_service.py
+│   ├── static
+│   │   ├── css
+│   │   ├── images
+│   │   └── uploads
+│   ├── templates
+│   │   ├── admin_dashboard.html
+│   │   ├── appointment_success.html
+│   │   ├── assessment.html
+│   │   ├── assessment_final.html
+│   │   ├── assessment_phase3.html
+│   │   ├── base.html
+│   │   ├── career_roadmap_detail.html
+│   │   ├── career_roadmap_v2.html
+│   │   ├── career_roadmaps.html
+│   │   ├── chatbot.html
+│   │   ├── college_detail.html
+│   │   ├── college_recommendations.html
+│   │   ├── community.html
+│   │   ├── counsellor_dashboard.html
+│   │   ├── counsellors_list.html
+│   │   ├── dashboard.html
+│   │   ├── feedback.html
+│   │   ├── forgot_password.html
+│   │   ├── landing.html
+│   │   ├── login.html
+│   │   ├── meeting.html
+│   │   ├── my_connections.html
+│   │   ├── privacy.html
+│   │   ├── reset_password.html
+│   │   ├── resources_dashboard.html
+│   │   ├── result.html
+│   │   ├── select_role.html
+│   │   ├── signup.html
+│   │   ├── student_chat.html
+│   │   ├── student_profile.html
+│   │   ├── suspended.html
+│   │   ├── terms.html
+│   │   └── ticket.html
+│   └── utils
+│       ├── __pycache__
+│       ├── cache_utils.py
+│       ├── redis_cache.py
+│       └── resource_aggregator.py
+├── apply_indexes.py
+├── carestance.db
+├── check_db.py
+├── data
 │   ├── __init__.py
-│   ├── questions_data.py         # Phase 2 archetype questions
-│   ├── questions_phase3.py       # Phase 3 scenario map (by archetype)
-│   ├── questions_final.py        # Phase 4 questions (Class 10: 4 sections)
-│   ├── questions_12th.py         # Phase 4 questions for Class 12th
-│   └── questions_above_12th.py   # Phase 4 questions for Above 12th
-├── scripts/                      # Utility & Migration scripts
-│   ├── list_users.py             # List all registered users
-│   ├── manage_test_data.py       # Seed/clean test data
-│   ├── migrate_db_v2.py          # DB schema migration v2
-│   ├── migrate_db_v5.py          # DB schema migration v5
-│   ├── rename_images.py          # Rename assessment images
-│   └── verify_classification.py  # Verify AI category classification
-├── learnloop.db                  # SQLite database
-├── requirements.txt              # Python dependencies
-└── run.py                        # Application entry point
-```
+│   ├── __pycache__
+│   │   ├── __init__.cpython-313.pyc
+│   │   ├── questions_12th.cpython-313.pyc
+│   │   ├── questions_above_12th.cpython-313.pyc
+│   │   ├── questions_data.cpython-313.pyc
+│   │   ├── questions_final.cpython-313.pyc
+│   │   └── questions_phase3.cpython-313.pyc
+│   ├── questions_12th.py
+│   ├── questions_above_12th.py
+│   ├── questions_data.py
+│   ├── questions_final.py
+│   └── questions_phase3.py
+├── db_schema.txt
+├── docker-compose.yml
+├── fix_db.py
+├── learnloop.db
+├── migrate_payments.py
+├── nextstep_no_bg.png
+├── nginx.conf
+├── package-lock.json
+├── package.json
+├── promote_admin.py
+├── requirements.txt
+├── run.py
+├── scripts
+│   ├── check_schema.py
+│   ├── init_postgres.py
+│   ├── init_supabase.py
+│   ├── list_users.py
+│   ├── make_admin.py
+│   ├── manage_test_data.py
+│   ├── migrate_data.py
+│   ├── migrate_db_v2.py
+│   ├── migrate_db_v5.py
+│   ├── migrate_db_v6.py
+│   ├── migrate_db_v7.py
+│   ├── rename_images.py
+│   ├── simplify_data.py
+│   ├── test_aggregator.py
+│   ├── verify_classification.py
+│   └── verify_feedback.py
+├── server.log
+├── update_db.py
+├── update_db_v2.py
+├── venv
+│   ├── bin
+│   │   ├── Activate.ps1
+│   │   ├── activate
+│   │   ├── activate.csh
+│   │   ├── activate.fish
+│   │   ├── distro
+│   │   ├── dotenv
+│   │   ├── f2py
+│   │   ├── fastapi
+│   │   ├── gtts-cli
+│   │   ├── httpx
+│   │   ├── jsonschema
+│   │   ├── normalizer
+│   │   ├── numpy-config
+│   │   ├── pip
+│   │   ├── pip3
+│   │   ├── pip3.13
+│   │   ├── pyrsa-decrypt
+│   │   ├── pyrsa-encrypt
+│   │   ├── pyrsa-keygen
+│   │   ├── pyrsa-priv2pub
+│   │   ├── pyrsa-sign
+│   │   ├── pyrsa-verify
+│   │   ├── python -> python3.13
+│   │   ├── python3 -> python3.13
+│   │   ├── python3.13 -> /opt/homebrew/opt/python@3.13/bin/python3.13
+│   │   ├── sprc
+│   │   ├── streamlit
+│   │   ├── streamlit.cmd
+│   │   ├── tqdm
+│   │   └── uvicorn
+│   ├── etc
+│   │   └── jupyter
+│   ├── include
+│   │   └── python3.13
+│   ├── lib
+│   │   └── python3.13
+│   ├── pyvenv.cfg
+│   └── share
+│       └── jupyter
+└── vercel.json
 
+31 directories, 139 files
 ---
+```
 
 ## Installation
 
