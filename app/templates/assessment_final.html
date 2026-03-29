@@ -306,12 +306,28 @@
 
     function moveToNextStep() {
         const currentStepEl = steps[currentStep];
+
+        // 1. Validate Textarea (for open-ended or scenarios without options)
         const textarea = currentStepEl.querySelector('textarea');
         if (textarea && !textarea.value.trim()) {
-            textarea.classList.add('border-red-500');
-            setTimeout(() => textarea.classList.remove('border-red-500'), 500);
+            textarea.classList.add('ring-2', 'ring-red-500', 'border-red-500', 'animate-pulse');
+            setTimeout(() => textarea.classList.remove('ring-2', 'ring-red-500', 'border-red-500', 'animate-pulse'), 1000);
             return;
         }
+
+        // 2. Validate Radio Buttons (for MCQs)
+        const radios = currentStepEl.querySelectorAll('input[type="radio"]');
+        if (radios.length > 0) {
+            const checked = currentStepEl.querySelector('input[type="radio"]:checked');
+            if (!checked) {
+                // Highlight options if nothing is selected
+                const container = currentStepEl.querySelector('.space-y-3') || currentStepEl;
+                container.classList.add('animate-pulse');
+                setTimeout(() => container.classList.remove('animate-pulse'), 1000);
+                return;
+            }
+        }
+
         showStep(currentStep + 1);
     }
 
