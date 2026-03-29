@@ -192,9 +192,12 @@
                         <div class="pt-6 flex justify-between items-center">
                             <button type="button" onclick="prevStep()"
                                 class="px-6 py-3 text-slate-500 font-bold hover:text-slate-800 transition-colors rounded-xl hover:bg-slate-100">Previous</button>
+
+                            {% if not q.options %}
                             <button type="button" onclick="moveToNextStep()"
                                 class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-violet-700 transition-all shadow-lg shadow-indigo-200/50 transform hover:scale-105">Next
                                 Question</button>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
