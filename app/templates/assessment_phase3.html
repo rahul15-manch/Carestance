@@ -172,7 +172,6 @@ function showStep(index) {
     steps[index].classList.remove('hidden');
     stepCounter.innerText = index + 1;
     progressBar.style.width = ((index / totalSteps) * 100) + '%';
-    setTimeout(() => speakCurrentScenario(), 600);
 }
 
 function handleSelection() {
