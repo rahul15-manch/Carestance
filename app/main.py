@@ -182,6 +182,7 @@ def run_migrations():
             if 'contact_number' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN contact_number VARCHAR")
             if 'full_name' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
             if 'role' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
+            if 'onboarded' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN onboarded BOOLEAN DEFAULT FALSE")
 
         # 2. Counsellor Profiles
         cp_cols = get_columns('counsellor_profiles')
@@ -359,6 +360,19 @@ async def home(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         import traceback
         return HTMLResponse(content=f"Template Error: {e}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
+
+@app.get("/founders", response_class=HTMLResponse)
+async def founders_page(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    return templates.TemplateResponse(request=request, name="founders.html", context={"user": user})
+
+@app.post("/complete-onboarding")
+async def complete_onboarding(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if user:
+        user.onboarded = True
+        db.commit()
+    return {"status": "success"}
 
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
