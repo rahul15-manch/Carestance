@@ -166,3 +166,41 @@ def get_connection_request_template(receiver_name, sender_name, profile_link):
     </div>
     """
     return html
+
+def get_profile_completion_template(user_name):
+    """
+    Returns a professional HTML template for profile completion reminder.
+    """
+    html = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #f8fafc;">
+        <div style="background-color: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">Dear {user_name or 'Sir/Madam'},</p>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">We hope you are doing well.</p>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">To help us provide you with the most accurate and personalized recommendations, we kindly request you to complete your profile.</p>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">Please ensure that you fill in all the required details, including your personal information, qualifications, experience, and areas of interest. A complete profile enables us to better understand your needs and connect you with the most relevant opportunities and recommendations.</p>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">Kindly log in to your account and update your profile at your earliest convenience.</p>
+            
+            <div style="text-align: center; margin-bottom: 24px;">
+                <a href="https://carestance.app/login" style="display: inline-block; padding: 12px 32px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">Login to Your Account</a>
+            </div>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">If you need any assistance while completing your profile, feel free to reach out to us.</p>
+            
+            <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin-top: 24px;">We look forward to supporting you on your journey.</p>
+            
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f1f5f9;">
+                <p style="color: #1e293b; font-size: 16px; font-weight: 600; margin-bottom: 4px;">Best regards,</p>
+                <p style="color: #4f46e5; font-size: 18px; font-weight: 800; margin-top: 0;">Team CareStance</p>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 24px;">
+            &copy; 2026 CareStance. Empowering your career choices.
+        </p>
+    </div>
+    """
+    return html

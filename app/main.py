@@ -13,19 +13,17 @@ import re
 import json
 import uuid
 import datetime
-import shutil
-
+import asyncio
 import os
-import json
+import shutil
+from . import email_utils
 import google.generativeai as genai
-from groq import Groq
+from groq import Groq, AsyncGroq
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
-
-from groq import AsyncGroq
 import razorpay
-from . import models, email_utils
+from . import models
 from .email_utils import (
     send_email, 
     get_booking_template, 
@@ -1161,6 +1159,57 @@ async def admin_dashboard(
         import traceback
         print(f"ADMIN DASHBOARD ERROR: {traceback.format_exc()}")
         return RedirectResponse(url=f"/dashboard?error=Admin+Error:+{str(e)[:100]}", status_code=status.HTTP_302_FOUND)
+
+@app.post("/admin/send-completion-reminders")
+async def send_completion_reminders(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    admin_email = os.getenv("ADMIN_EMAIL")
+    if current_user.role != "admin" and (not admin_email or current_user.email != admin_email):
+        return RedirectResponse(url="/dashboard?error=Admin access denied", status_code=status.HTTP_302_FOUND)
+
+    # Fetch all users and filter in Python to handle NULL roles correctly
+    all_users = db.query(models.User).all()
+    count = 0
+    
+    for u in all_users:
+        # Skip admins
+        if u.role == "admin" or u.email == admin_email:
+            continue
+            
+        is_incomplete = False
+        
+        # 1. No role selected
+        if not u.role:
+            is_incomplete = True
+            
+        # 2. Student with missing assessment phases
+        elif u.role == "student":
+            assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == u.id).first()
+            if not assessment or not assessment.final_answers:
+                is_incomplete = True
+                
+        # 3. Counsellor with missing profile details
+        elif u.role == "counsellor":
+            prof = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == u.id).first()
+            # Check for missing experience, availability, or certificates
+            if not prof or not prof.experience or not prof.availability or not prof.certificates:
+                is_incomplete = True
+
+        if is_incomplete:
+            # Send Email
+            subject = "Complete Your Profile | CareStance"
+            html = email_utils.get_profile_completion_template(u.full_name)
+            
+            success = email_utils.send_email(u.email, subject, html)
+            if success:
+                count += 1
+                # Small delay to avoid hitting rate limits
+                await asyncio.sleep(0.1)
+
+    return RedirectResponse(url=f"/admin?msg=Reminders sent to {count} users with incomplete profiles", status_code=status.HTTP_302_FOUND)
 
 @app.post("/admin/users/{user_id}/delete")
 async def delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):

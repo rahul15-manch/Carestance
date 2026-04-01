@@ -7,10 +7,20 @@
     <div class="px-4 py-6 sm:px-0">
         <div class="flex items-center justify-between mb-8">
             <h1 class="text-3xl font-extrabold text-slate-800">Admin Dashboard</h1>
-            <span
-                class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-800">
-                Authorized Access
-            </span>
+            <div class="flex items-center gap-4">
+                <form action="/admin/send-completion-reminders" method="POST"
+                    onsubmit="return confirm('Send profile completion reminders to all students with incomplete profiles? This may take a moment.');">
+                    <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-100 transition-all">
+                        <i class="fas fa-envelope-open-text mr-2"></i>
+                        Send Completion Reminders
+                    </button>
+                </form>
+                <span
+                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-800">
+                    Authorized Access
+                </span>
+            </div>
         </div>
 
         {% if pending_counsellors %}
