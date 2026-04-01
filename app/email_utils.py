@@ -185,7 +185,7 @@ def get_profile_completion_template(user_name):
             <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">Kindly log in to your account and update your profile at your earliest convenience.</p>
             
             <div style="text-align: center; margin-bottom: 24px;">
-                <a href="https://carestance.app/login" style="display: inline-block; padding: 12px 32px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">Login to Your Account</a>
+                <a href="https://www.carestance.in/login" style="display: inline-block; padding: 12px 32px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">Login to Your Account</a>
             </div>
             
             <p style="color: #1e293b; font-size: 16px; line-height: 1.6;">If you need any assistance while completing your profile, feel free to reach out to us.</p>
