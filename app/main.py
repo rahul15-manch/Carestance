@@ -299,8 +299,17 @@ async def check_suspension(request: Request, call_next):
         if user_id:
             try:
                 uid = int(user_id)
-                # Quick cache-only check for suspension
+                # Quick check for suspension
                 cached_status = user_cache.get_user_status(uid)
+                if cached_status is None:
+                    # Hit DB if cache is missing (e.g. first request or after invalidation)
+                    from .database import SessionLocal
+                    with SessionLocal() as db_session:
+                        user = db_session.query(models.User).filter(models.User.id == uid).first()
+                        if user:
+                            cached_status = {"is_suspended": user.is_suspended}
+                            user_cache.set_user_status(uid, cached_status)
+                
                 if cached_status and cached_status.get("is_suspended"):
                     return RedirectResponse(url="/suspended", status_code=status.HTTP_302_FOUND)
             except Exception: pass
@@ -471,6 +480,9 @@ async def login(
     if not user or not verify_password(password, user.hashed_password):
          return templates.TemplateResponse(request=request, name="login.html", context={"error": "Invalid credentials"})
     
+    # Pre-populate suspension cache
+    user_cache.set_user_status(user.id, {"is_suspended": user.is_suspended})
+    
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     # 30 day persistent session
     response.set_cookie(
@@ -613,6 +625,9 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
         is_new_user = True
+    
+    # Pre-populate suspension cache
+    user_cache.set_user_status(user.id, {"is_suspended": user.is_suspended})
     
     # Users without a role must select it first
     redirect_url = "/select-role" if (is_new_user or not user.role) else "/dashboard"
