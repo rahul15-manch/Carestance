@@ -1,149 +1,135 @@
-academic_assessment_questions = [
+career_orientation_questions = [
     {
-        "id": "AE1_Math_Logic",
-        "question": "A shopkeeper offers a 'Buy 2 Get 1 Free' deal, while another offers a flat 33% discount. Which approach would you use to determine the better deal?",
+        "id": "CO1_ProblemSolving",
+        "question": "If you had free time this weekend, which activity would feel most natural and fun to you?",
         "options": [
-            {"value": "a", "text": "Set up an algebraic equation to compare the effective price per unit.", "stream": "PCM"},
-            {"value": "b", "text": "Analyze the profit margin and consumer psychology behind the offers.", "stream": "COMM"},
-            {"value": "c", "text": "Estimate the value based on immediate need and practical utility.", "stream": "VOC"},
-            {"value": "d", "text": "Consider the ethical implications of 'lure' pricing on low-income families.", "stream": "ARTS"}
-        ],
-        "correct_value": "a", # Math logic focus
-        "mapped_streams": ["PCM", "COMM"]
-    },
-    {
-        "id": "AE2_Physics_Applied",
-        "question": "If you are asked to explain why a heavy truck takes longer to stop than a small car moving at the same speed, which concept feels most intuitive to you?",
-        "options": [
-            {"value": "a", "text": "Calculating Momentum and Kinetic Energy using mathematical formulas.", "stream": "PCM"},
-            {"value": "b", "text": "Understanding the biological reaction time of the driver.", "stream": "PCB"},
-            {"value": "c", "text": "The practical mechanical wear and tear on the braking system.", "stream": "VOC"},
-            {"value": "d", "text": "The urban planning regulations and safety laws regarding heavy vehicles.", "stream": "ARTS"}
+            {"value": "a", "text": "Fixing or improving a computer game’s settings while listening to lo-fi beats.", "stream": "PCM"},
+            {"value": "b", "text": "Thinking about why certain battles in history were won or lost during a long walk.", "stream": "ARTS"},
+            {"value": "c", "text": "Planning a small science experiment while watering your plants.", "stream": "PCB"},
+            {"value": "d", "text": "Making up a short story while watching people at a café or food court.", "stream": "ARTS"}
         ],
         "correct_value": "a",
-        "mapped_streams": ["PCM"]
+        "mapped_streams": ["PCM", "ARTS", "PCB"]
     },
     {
-        "id": "AE3_Biology_Systems",
-        "question": "When studying the human heart, which aspect of the lesson captures your interest the most?",
+        "id": "CO2_LearningMotivation",
+        "question": "What makes you want to learn something new, even if it’s not for a grade?",
         "options": [
-            {"value": "a", "text": "The complex biochemical exchange of oxygen and the anatomy of valves.", "stream": "PCB"},
-            {"value": "b", "text": "The heart as a mechanical pump that follows fluid dynamics and pressure laws.", "stream": "PCM"},
-            {"value": "c", "text": "The public health statistics and economic cost of heart disease in society.", "stream": "COMM"},
-            {"value": "d", "text": "The symbolic representation of the heart in literature and cultural history.", "stream": "ARTS"}
+            {"value": "a", "text": "Messing around with a coding project just to see if you can make it run faster.", "stream": "PCM"},
+            {"value": "b", "text": "Reading about different religions or philosophies to understand how people think.", "stream": "ARTS"},
+            {"value": "c", "text": "Mixing safe household chemicals to see what happens (with proper safety).", "stream": "PCB"},
+            {"value": "d", "text": "Practicing guitar or piano until you can play a hard part perfectly.", "stream": "VOC"}
         ],
         "correct_value": "a",
-        "mapped_streams": ["PCB"]
+        "mapped_streams": ["PCM", "PCB", "ARTS", "VOC"]
     },
     {
-        "id": "AE4_Chemistry_Matter",
-        "question": "While observing a chemical reaction that changes color, what is your first academic thought?",
+        "id": "CO3_CollaborativePreferences",
+        "question": "How do you like to work with others on a school or personal project?",
         "options": [
-            {"value": "a", "text": "What is the balanced molecular equation and the electron shift?", "stream": "PCM"},
-            {"value": "b", "text": "How can this reaction be used to test for toxins in a biological sample?", "stream": "PCB"},
-            {"value": "c", "text": "How can this chemical be mass-produced and marketed cost-effectively?", "stream": "COMM"},
-            {"value": "d", "text": "What are the safety protocols and hands-on steps to perform this safely?", "stream": "VOC"}
+            {"value": "a", "text": "Designing the main plan for an app or website and letting others write the code.", "stream": "PCM"},
+            {"value": "b", "text": "Leading a book club or debate about a movie or news topic.", "stream": "ARTS"},
+            {"value": "c", "text": "Organizing a group to count birds, track weather, or test water quality.", "stream": "PCB"},
+            {"value": "d", "text": "Getting friends together to paint a mural or set up a school art show.", "stream": "VOC"}
         ],
         "correct_value": "a",
-        "mapped_streams": ["PCM", "PCB"]
+        "mapped_streams": ["PCM", "ARTS", "PCB", "VOC"]
     },
     {
-        "id": "AE5_Social_Economics",
-        "question": "If you were reading about the Industrial Revolution, which topic would you choose for a 500-word essay?",
+        "id": "CO4_TimeInvestment",
+        "question": "When you really get into something, how do you usually spend your time?",
         "options": [
-            {"value": "a", "text": "The evolution of the steam engine and mechanical thermodynamics.", "stream": "PCM"},
-            {"value": "b", "text": "The shift from barter systems to global trade and capital markets.", "stream": "COMM"},
-            {"value": "c", "text": "The impact of urbanization on labor rights and social class structures.", "stream": "ARTS"},
-            {"value": "d", "text": "The transition from handmade crafts to machine-operated assembly lines.", "stream": "VOC"}
-        ],
-        "correct_value": "b",
-        "mapped_streams": ["COMM", "ARTS"]
-    },
-    {
-        "id": "AE6_Data_Interpretation",
-        "question": "You are given a graph showing a country's population growth vs. food production. What is your primary takeaway?",
-        "options": [
-            {"value": "a", "text": "The geometric vs. arithmetic progression of the data points.", "stream": "PCM"},
-            {"value": "b", "text": "The ecological impact and the sustainability of the food chain.", "stream": "PCB"},
-            {"value": "c", "text": "The future demand-supply gap and its effect on inflation.", "stream": "COMM"},
-            {"value": "d", "text": "The government policies needed to prevent a humanitarian crisis.", "stream": "ARTS"}
-        ],
-        "correct_value": "c",
-        "mapped_streams": ["COMM", "PCM"]
-    },
-    {
-        "id": "AE7_Language_Analysis",
-        "question": "When analyzing a famous speech, what do you focus on most?",
-        "options": [
-            {"value": "a", "text": "The logical consistency and factual accuracy of the arguments.", "stream": "PCM"},
-            {"value": "b", "text": "The use of metaphors, tone, and emotional appeal to influence the audience.", "stream": "ARTS"},
-            {"value": "c", "text": "The persuasive techniques used to pitch an idea or 'sell' a vision.", "stream": "COMM"},
-            {"value": "d", "text": "The clarity of instructions and how to present the information effectively.", "stream": "VOC"}
-        ],
-        "correct_value": "b",
-        "mapped_streams": ["ARTS"]
-    },
-    {
-        "id": "AE8_Environmental_Science",
-        "question": "To solve the problem of water scarcity in a village, which 'academic' route would you prefer taking?",
-        "options": [
-            {"value": "a", "text": "Designing a desalination plant using chemical engineering and physics.", "stream": "PCM"},
-            {"value": "b", "text": "Studying local plant life and groundwater ecosystems to restore balance.", "stream": "PCB"},
-            {"value": "c", "text": "Creating a community-funded cooperative to manage water taxes and distribution.", "stream": "COMM"},
-            {"value": "d", "text": "Implementing rainwater harvesting systems using basic plumbing and construction.", "stream": "VOC"}
-        ],
-        "correct_value": "b",
-        "mapped_streams": ["PCB", "PCM", "VOC"]
-    },
-    {
-        "id": "AE9_Logical_Structures",
-        "question": "Which of these school subjects feels the most 'effortless' for you to study for 2 hours straight?",
-        "options": [
-            {"value": "a", "text": "Mathematics or Physics (Solving problems/Derivations).", "stream": "PCM"},
-            {"value": "b", "text": "Biology or Chemistry (Understanding life/Matter).", "stream": "PCB"},
-            {"value": "c", "text": "Economics, Accounts, or Business Studies.", "stream": "COMM"},
-            {"value": "d", "text": "History, Geography, or Literature.", "stream": "ARTS"}
-        ],
-        "correct_value": "n/a", # Interest based academic preference
-        "mapped_streams": ["PCM", "PCB", "COMM", "ARTS"]
-    },
-    {
-        "id": "AE10_Technical_Aptitude",
-        "question": "In a computer science class, which part of the 'academic' process do you enjoy most?",
-        "options": [
-            {"value": "a", "text": "Writing the logic/algorithms and solving complex coding puzzles.", "stream": "PCM"},
-            {"value": "b", "text": "Using software to design graphics, edit videos, or create art.", "stream": "ARTS"},
-            {"value": "c", "text": "Learning how to assemble hardware, troubleshoot networks, or fix gadgets.", "stream": "VOC"},
-            {"value": "d", "text": "Analyzing how data and apps can be used to run a digital business.", "stream": "COMM"}
+            {"value": "a", "text": "Building your own keyboard, a small robot, or modding a controller.", "stream": "PCM"},
+            {"value": "b", "text": "Digging into your family tree online or at the library.", "stream": "ARTS"},
+            {"value": "c", "text": "Growing a weird plant and taking pictures of its progress every day.", "stream": "PCB"},
+            {"value": "d", "text": "Drawing, animating, or making digital art for hours.", "stream": "VOC"}
         ],
         "correct_value": "a",
-        "mapped_streams": ["PCM", "VOC"]
+        "mapped_streams": ["PCM", "PCB", "VOC"]
     },
     {
-        "id": "PI1_Hobbies",
-        "question": "What hobbies or activities do you enjoy the most in your free time?",
-        "type": "open",
-        "placeholder": "e.g. Photography, playing guitar, coding, gardening..."
+        "id": "CO5_InfoConsumption",
+        "question": "What kind of stuff do you read or watch online just for fun?",
+        "options": [
+            {"value": "a", "text": "Articles about new tech, AI, or how things are engineered.", "stream": "PCM"},
+            {"value": "b", "text": "Long posts or videos about political issues or social problems.", "stream": "ARTS"},
+            {"value": "c", "text": "Nature documentaries or science pages about animals, space, or climate.", "stream": "PCB"},
+            {"value": "d", "text": "Art tutorials, design breakdowns, or animation behind-the-scenes.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "PCB", "ARTS", "VOC"]
     },
     {
-        "id": "PI2_Extracurricular",
-        "question": "Have you participated in any extracurricular activities (sports, arts, clubs, competitions, etc.)?",
-        "type": "open",
-        "placeholder": "e.g. School football team, state-level painting competition, debate club..."
+        "id": "CO6_CreativeExpression",
+        "question": "Which feels most like 'your kind' of creating something from scratch?",
+        "options": [
+            {"value": "a", "text": "Writing a small script or tool to solve an annoying problem (like renaming 100 files).", "stream": "PCM"},
+            {"value": "b", "text": "Posting your opinion on social issues in a blog or video essay.", "stream": "ARTS"},
+            {"value": "c", "text": "Making a hypothesis and testing it with a home experiment.", "stream": "PCB"},
+            {"value": "d", "text": "Drawing, dancing, acting, or making music to express how you feel.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "ARTS", "PCB", "VOC"]
+    },
+    {
+        "id": "CO7_ChallengePreferences",
+        "question": "What kind of challenge excites you the most?",
+        "options": [
+            {"value": "a", "text": "Making a game or app run as smoothly and fast as possible.", "stream": "PCM"},
+            {"value": "b", "text": "Arguing about tricky moral questions (like 'Is it ever okay to lie?').", "stream": "ARTS"},
+            {"value": "c", "text": "Figuring out a puzzle about nature, like why a certain animal behaves a certain way.", "stream": "PCB"},
+            {"value": "d", "text": "Learning a really hard skateboard trick, art technique, or song on an instrument.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "ARTS", "PCB", "VOC"]
+    },
+    {
+        "id": "CO8_ResourceAllocation",
+        "question": "If you got ₹500 or $10 to spend on yourself, what would you most likely buy?",
+        "options": [
+            {"value": "a", "text": "A better keyboard, a Raspberry Pi, or a game development asset.", "stream": "PCM"},
+            {"value": "b", "text": "A stack of books or a subscription to a news or history site.", "stream": "ARTS"},
+            {"value": "c", "text": "A microscope, field guide, or a plant grow light.", "stream": "PCB"},
+            {"value": "d", "text": "Sketchbooks, digital brushes, or cheap instruments from a thrift store.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "PCB", "ARTS", "VOC"]
+    },
+    {
+        "id": "CO9_SocialInteraction",
+        "question": "Which group activity sounds the most fun to you?",
+        "options": [
+            {"value": "a", "text": "A hackathon or gaming LAN party with a building challenge.", "stream": "PCM"},
+            {"value": "b", "text": "A philosophy or politics club where people debate hot topics.", "stream": "ARTS"},
+            {"value": "c", "text": "A nature cleanup, bioblitz, or astronomy night with a telescope.", "stream": "PCB"},
+            {"value": "d", "text": "An art jam, open mic night, or zine-making workshop.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "ARTS", "PCB", "VOC"]
+    },
+    {
+        "id": "CO10_FutureAspirations",
+        "question": "What do you hope to be known for someday?",
+        "options": [
+            {"value": "a", "text": "Building something really smart with computers or robots.", "stream": "PCM"},
+            {"value": "b", "text": "Changing how people think about an important issue.", "stream": "ARTS"},
+            {"value": "c", "text": "Discovering something new about nature or how the world works.", "stream": "PCB"},
+            {"value": "d", "text": "Making art, music, or stories that people connect with deeply.", "stream": "VOC"}
+        ],
+        "correct_value": "a",
+        "mapped_streams": ["PCM", "ARTS", "PCB", "VOC"]
     }
 ]
 
-# Split for different assessment sections
-section_a_questions = academic_assessment_questions[:4] # Core logic/science
-section_b_questions = academic_assessment_questions[4:7] # Application/Data
-section_c_questions = academic_assessment_questions[7:9] # Environment/Preference
-section_d_questions = academic_assessment_questions[9:10] # Hands-on/Technical
-section_e_questions = academic_assessment_questions[10:12] # Personal Interests
+# Split into sections (optional, based on your grouping style)
+section1_questions = career_orientation_questions[:3]   # Problem solving, motivation, collaboration
+section2_questions = career_orientation_questions[3:6]  # Time, info, creativity
+section3_questions = career_orientation_questions[6:8]  # Challenges, resources
+section4_questions = career_orientation_questions[8:10] # Social, future
 
 all_questions = {
-    "Section A": {"title": "Section A: Logic & Foundational Science", "questions": section_a_questions},
-    "Section B": {"title": "Section B: Applied Concepts & Analysis", "questions": section_b_questions},
-    "Section C": {"title": "Section C: Interdisciplinary Interests", "questions": section_c_questions},
-    "Section D": {"title": "Section D: Technical Skills & Vocational Path", "questions": section_d_questions},
-    "Section E": {"title": "Section E: Personal Interests & Hobbies", "questions": section_e_questions}
+    "Section A": {"title": "Section A: How You Think & Work with Others", "questions": section1_questions},
+    "Section B": {"title": "Section B: What You Do in Your Free Time", "questions": section2_questions},
+    "Section C": {"title": "Section C: Challenges & Choices", "questions": section3_questions},
+    "Section D": {"title": "Section D: Your Goals & Social Style", "questions": section4_questions}
 }
