@@ -4061,12 +4061,19 @@ async def student_chat_page(conn_id: int, request: Request, db: Session = Depend
     ).update({models.StudentMessage.is_read: True})
     db.commit()
 
-    return templates.TemplateResponse(request=request, name="student_chat.html", context={
-        "user": user,
-        "other_user": other_user,
-        "messages": messages,
-        "conn_id": conn_id
-    })
+    try:
+        template = templates.get_template("student_chat.html")
+        content = template.render({
+            "request": request, 
+            "user": user, 
+            "other_user": other_user,
+            "messages": messages,
+            "conn_id": conn_id
+        })
+        return HTMLResponse(content=content)
+    except Exception as e:
+        import traceback
+        return HTMLResponse(content=f"Template Error: {e}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
 
 
 @app.post("/connection/{conn_id}/chat/send")
