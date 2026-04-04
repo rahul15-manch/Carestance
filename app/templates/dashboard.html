@@ -1,18 +1,42 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | CareStance{% endblock %}
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Dashboard page padding & container */
+    main > * { padding: 1.5rem; }
+    @media(min-width: 768px) { main > * { padding: 2rem; } }
+
+    .db-page { max-width: 1280px; margin: 0 auto; }
+
+    /* Override card glass for cream background */
+    .db-card {
+        background: white;
+        border: 1px solid var(--border-light);
+        border-radius: 1.5rem;
+        box-shadow: var(--shadow-sm);
+    }
+    .db-card-muted {
+        background: var(--bg-soft);
+        border: 1px solid var(--border-light);
+        border-radius: 1.5rem;
+    }
+    .db-progress-active { background: var(--gradient-primary) !important; }
+    .db-progress-dot-active { background-color: var(--primary) !important; color: white; }
+    .db-progress-dot-pulse { border-color: var(--primary) !important; color: var(--primary) !important; }
+    .db-next-cta { background: var(--gradient-primary) !important; }
+</style>
+{% endblock %}
 
 {% block content %}
 <!-- Main Container -->
-<div class="space-y-8 animate-fade-in-up">
+<div class="db-page space-y-8">
 
     <!-- Welcome Header -->
-    <div class="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-2xl">
-        <!-- Abstract Background Decoration -->
-        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-indigo-500 blur-3xl opacity-20">
-        </div>
-        <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-violet-500 blur-3xl opacity-20">
-        </div>
+    <div class="relative overflow-hidden rounded-3xl text-white shadow-2xl" style="background: var(--gradient-primary);">
+        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full opacity-10" style="background: rgba(255,255,255,0.2);"></div>
+        <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full opacity-10" style="background: rgba(217,119,6,0.4);"></div>
 
         <div
             class="relative z-10 px-8 py-10 sm:px-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -40,7 +64,7 @@
                     <img src="{{ user.profile_photo if user.profile_photo else 'https://ui-avatars.com/api/?name=' + user.full_name + '&background=random' }}"
                         alt="Profile" class="w-20 h-20 rounded-2xl object-cover border-4 border-white/20 shadow-xl">
                     <button onclick="document.getElementById('photo-upload').click()"
-                        class="absolute -bottom-2 -right-2 bg-indigo-600 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        class="absolute -bottom-2 -right-2 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" style="background:var(--secondary);">
                         <i class="fas fa-camera text-xs"></i>
                     </button>
                     <form id="photo-form" action="/profile/upload-photo" method="POST" enctype="multipart/form-data"
@@ -67,7 +91,7 @@
                 <img src="{{ user.profile_photo if user.profile_photo else 'https://ui-avatars.com/api/?name=' + user.full_name + '&background=random' }}"
                     alt="Profile" class="w-20 h-20 rounded-2xl object-cover border-4 border-white/20 shadow-xl">
                 <button onclick="document.getElementById('photo-upload-basic').click()"
-                    class="absolute -bottom-2 -right-2 bg-indigo-600 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                    class="absolute -bottom-2 -right-2 text-white p-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" style="background:var(--secondary);">
                     <i class="fas fa-camera text-xs"></i>
                 </button>
                 <form id="photo-form-basic" action="/profile/upload-photo" method="POST" enctype="multipart/form-data"
@@ -81,13 +105,13 @@
     </div>
 
     <!-- Progress Stepper (Visual Timeline) -->
-    <div class="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/50">
-        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Your Journey</h3>
+    <div class="db-card p-8">
+        <h3 class="text-sm font-bold uppercase tracking-widest mb-6" style="color:var(--text-light);">Your Journey</h3>
 
         <div class="relative">
             <!-- Connecting Line -->
             <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -translate-y-1/2 rounded-full -z-10"></div>
-            <div class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-violet-600 to-indigo-600 -translate-y-1/2 rounded-full -z-10 transition-all duration-1000"
+            <div class="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full -z-10 transition-all duration-1000 db-progress-active"
                 style="width: {% if assessment.final_answers %}100%{% elif assessment.phase3_answers %}75%{% elif assessment %}50%{% else %}10%{% endif %}">
             </div>
 
@@ -96,10 +120,10 @@
                 <div class="flex flex-col items-center gap-3 group cursor-default">
                     <div
                         class="w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-all duration-300
-                        {% if assessment %}bg-violet-600 text-white scale-110{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
+                        {% if assessment %}db-progress-dot-active scale-110{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
                         <i class="fas fa-check"></i>
                     </div>
-                    <p class="text-xs font-bold {% if assessment %}text-violet-700{% else %}text-slate-400{% endif %}">
+                    <p class="text-xs font-bold {% if assessment %}" style="color:var(--primary);">{% else %}text-slate-400">{% endif %}
                         Basics</p>
                 </div>
 
@@ -145,8 +169,7 @@
     <!-- MAIN CONTENT AREA -->
     {% if not assessment or not assessment.phase_2_category %}
     <!-- STATE 1: NEW USER / START ASSESSMENT -->
-    <div
-        class="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-3xl p-8 sm:p-12 text-center">
+    <div class="db-card-muted border rounded-3xl p-8 sm:p-12 text-center" style="background: linear-gradient(135deg, var(--primary-soft) 0%, #fef3c7 100%); border-color: var(--border-light);">
         <div class="max-w-3xl mx-auto mb-12">
             <h2 class="text-3xl font-extrabold text-slate-900 mb-4">Let's Find Your Superpower</h2>
             <p class="text-lg text-slate-600">Select your current academic stage to launch a personalized assessment
@@ -225,10 +248,10 @@
 
             <!-- Result Summary Card -->
             <div
-                class="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/50 flex flex-col md:flex-row gap-8 items-center">
+                class="db-card p-8 flex flex-col md:flex-row gap-8 items-center">
                 <div class="flex-shrink-0 relative">
                     <!-- Circular Progress/Score Placeholder -->
-                    <div class="w-32 h-32 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 p-1">
+                    <div class="w-32 h-32 rounded-full p-1" style="background: var(--gradient-primary);">
                         <div class="w-full h-full bg-white rounded-full flex flex-col items-center justify-center">
                             <span class="text-3xl font-extrabold text-slate-900">92%</span>
                             <span class="text-xs text-slate-500 font-medium">Match</span>
@@ -236,13 +259,13 @@
                     </div>
                 </div>
                 <div class="flex-1 text-center md:text-left">
-                    <h2 class="text-2xl font-bold text-slate-900 mb-2">Top Recommendation: <span
-                            class="text-violet-600">{{ assessment.phase_2_category }}</span></h2>
+                    <h2 class="text-2xl font-bold mb-2" style="color: var(--text-main);">Top Recommendation: <span
+                            style="color: var(--primary);">{{ assessment.phase_2_category }}</span></h2>
                     <p class="text-slate-500 mb-6">Based on your personality type ({{ assessment.personality }}) and
                         goal status.</p>
                     <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full justify-center md:justify-start">
                         <a href="/assessment/result"
-                            class="w-full sm:w-auto text-center px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition shadow-lg shadow-slate-900/20">
+                            class="w-full sm:w-auto text-center px-6 py-3 text-white rounded-xl font-semibold transition shadow-lg" style="background: var(--gradient-primary);">
                             View Full Report
                         </a>
                         <a href="/chatbot"
@@ -256,9 +279,9 @@
             <!-- Scheduled & Completed Sessions Card -->
             {% if appointments %}
             <div x-data="{ ratingModal: false, selectedAppt: null }"
-                class="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-xl border border-white/50">
-                <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <i class="fas fa-calendar-alt text-indigo-500"></i> Your Sessions
+                class="db-card p-8">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2" style="color:var(--text-main);">
+                    <i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Your Sessions
                 </h3>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -470,7 +493,7 @@
 
             <!-- Next Action Card -->
             <div
-                class="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                class="rounded-3xl p-8 text-white shadow-xl relative overflow-hidden db-next-cta">
                 <div class="absolute right-0 top-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
                     <i class="fas fa-rocket text-9xl"></i>
                 </div>
@@ -503,9 +526,9 @@
         <div class="space-y-6">
 
             <!-- Quick Stats -->
-            <div class="bg-white/70 backdrop-blur-xl rounded-3xl p-6 shadow-lg border border-white/50">
-                <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <i class="fas fa-chart-pie text-violet-500"></i> Insights
+            <div class="db-card p-6">
+                <h4 class="font-bold mb-4 flex items-center gap-2" style="color:var(--text-main);">
+                    <i class="fas fa-chart-pie" style="color:var(--primary);"></i> Insights
                 </h4>
                 <div class="space-y-4">
                     <div>
@@ -566,9 +589,9 @@
             </div>
 
             <!-- Bio Section -->
-            <div class="bg-white/70 backdrop-blur-xl rounded-2xl p-5 shadow-lg border border-white/50">
-                <h4 class="font-bold text-slate-800 mb-3 flex items-center gap-2 text-sm">
-                    <i class="fas fa-user-circle text-violet-500"></i> Your Bio
+            <div class="db-card p-5">
+                <h4 class="font-bold mb-3 flex items-center gap-2 text-sm" style="color:var(--text-main);">
+                    <i class="fas fa-user-circle" style="color:var(--primary);"></i> Your Bio
                 </h4>
                 <div x-data="{ editing: false }">
                     <div x-show="!editing">
