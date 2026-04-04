@@ -1,83 +1,82 @@
-
 questions = [
     {
         "id": "Q1_SocialBattery",
-        "title": "Social Battery",
+        "title": "What gives you energy?",
         "options": [
-            {"value": "A", "text": "A quiet morning with a book/coffee.", "image": "/static/images/assessment/q1_a.png"},
-            {"value": "B", "text": "A high-energy concert with a crowd.", "image": "/static/images/assessment/q1_b.png"}
+            {"value": "A", "text": "Spending time alone (like watching, reading, chilling).", "image": "/static/images/assessment/q1_a.png"},
+            {"value": "B", "text": "Hanging out with people, friends, or crowds.", "image": "/static/images/assessment/q1_b.png"}
         ]
     },
     {
         "id": "Q2_Communication",
-        "title": "Communication",
+        "title": "How do you like to communicate?",
         "options": [
-            {"value": "A", "text": "Sending a carefully crafted email.", "image": "/static/images/assessment/q2_a.png"},
-            {"value": "B", "text": "Hopping on a quick, \"face-to-face\" video call.", "image": "/static/images/assessment/q2_b.png"}
+            {"value": "A", "text": "I like to think first, then reply (text/email).", "image": "/static/images/assessment/q2_a.png"},
+            {"value": "B", "text": "I prefer talking directly (calls or face-to-face).", "image": "/static/images/assessment/q2_b.png"}
         ]
     },
     {
         "id": "Q3_Workspace",
-        "title": "Workspace",
+        "title": "Where do you work best?",
         "options": [
-            {"value": "A", "text": "A private pod with noise-canceling headphones.", "image": "/static/images/assessment/q3_a.png"},
-            {"value": "B", "text": "A bustling co-working space with open desks.", "image": "/static/images/assessment/q3_b.png"}
+            {"value": "A", "text": "In a quiet place with no disturbance.", "image": "/static/images/assessment/q3_a.png"},
+            {"value": "B", "text": "In a lively place with people around.", "image": "/static/images/assessment/q3_b.png"}
         ]
     },
     {
         "id": "Q4_ProblemSolving",
-        "title": "Problem Solving",
+        "title": "When you're stuck on something:",
         "options": [
-            {"value": "A", "text": "Digging through Google/Manuals solo.", "image": "/static/images/assessment/q4_a.png"},
-            {"value": "B", "text": "Bouncing ideas off a group on a whiteboard.", "image": "/static/images/assessment/q4_b.png"}
+            {"value": "A", "text": "I try to figure it out on my own first.", "image": "/static/images/assessment/q4_a.png"},
+            {"value": "B", "text": "I ask others or discuss it with someone.", "image": "/static/images/assessment/q4_b.png"}
         ]
     },
     {
         "id": "Q5_MeetingRole",
-        "title": "Meeting Role",
+        "title": "In a group discussion:",
         "options": [
-            {"value": "A", "text": "The person taking detailed, silent notes.", "image": "/static/images/assessment/q5_a.png"},
-            {"value": "B", "text": "The person leading the brainstorm out loud.", "image": "/static/images/assessment/q5_b.png"}
+            {"value": "A", "text": "I mostly listen and speak when needed.", "image": "/static/images/assessment/q5_a.png"},
+            {"value": "B", "text": "I actively speak and share ideas.", "image": "/static/images/assessment/q5_b.png"}
         ]
     },
     {
         "id": "Q6_LearningStyle",
-        "title": "Learning Style",
+        "title": "How do you like to learn?",
         "options": [
-            {"value": "A", "text": "Watching a deep-dive documentary alone.", "image": "/static/images/assessment/q6_a.png"},
-            {"value": "B", "text": "Attending a live, interactive workshop.", "image": "/static/images/assessment/q6_b.png"}
+            {"value": "A", "text": "By myself at my own pace (videos, notes).", "image": "/static/images/assessment/q6_a.png"},
+            {"value": "B", "text": "With others (classes, workshops, discussions).", "image": "/static/images/assessment/q6_b.png"}
         ]
     },
     {
         "id": "Q7_GoalPath",
-        "title": "Goal: Path",
+        "title": "Which feels more like you?",
         "options": [
-            {"value": "A", "text": "A straight highway with a clear destination.", "image": "/static/images/assessment/q7_a.png"},
-            {"value": "B", "text": "A winding trail through a beautiful forest.", "image": "/static/images/assessment/q7_b.png"}
+            {"value": "A", "text": "I like clear plans and step-by-step paths.", "image": "/static/images/assessment/q7_a.png"},
+            {"value": "B", "text": "I like exploring and figuring things out on the way.", "image": "/static/images/assessment/q7_b.png"}
         ]
     },
     {
         "id": "Q8_GoalVision",
-        "title": "Goal: Vision",
+        "title": "When you think about your future:",
         "options": [
-            {"value": "A", "text": "I have a \"Dream Job\" title in my head.", "image": "/static/images/assessment/q8_a.png"},
-            {"value": "B", "text": "I have a \"Lifestyle\" I want, but the job is tbd.", "image": "/static/images/assessment/q8_b.png"}
+            {"value": "A", "text": "I have a specific job or role in mind.", "image": "/static/images/assessment/q8_a.png"},
+            {"value": "B", "text": "I just know the kind of life I want.", "image": "/static/images/assessment/q8_b.png"}
         ]
     },
     {
         "id": "Q9_GoalSpeed",
-        "title": "Goal: Speed",
+        "title": "How do you want to grow?",
         "options": [
-            {"value": "A", "text": "I want to specialize and be the best at one thing.", "image": "/static/images/assessment/q9_a.png"},
-            {"value": "B", "text": "I want to be a \"Jack of all trades\" and know a bit of everything.", "image": "/static/images/assessment/q9_b.png"}
+            {"value": "A", "text": "Become really good at one thing.", "image": "/static/images/assessment/q9_a.png"},
+            {"value": "B", "text": "Learn many different things.", "image": "/static/images/assessment/q9_b.png"}
         ]
     },
     {
         "id": "Q10_GoalChoice",
-        "title": "Goal: Choice",
+        "title": "If you had to choose:",
         "options": [
-            {"value": "A", "text": "I’d pick the \"Safe & Known\" successful path.", "image": "/static/images/assessment/q10_a.png"},
-            {"value": "B", "text": "I’d pick the \"Wildcard\" path with high potential.", "image": "/static/images/assessment/q10_b.png"}
+            {"value": "A", "text": "A safe and stable career.", "image": "/static/images/assessment/q10_a.png"},
+            {"value": "B", "text": "A risky path with big rewards.", "image": "/static/images/assessment/q10_b.png"}
         ]
     }
 ]
