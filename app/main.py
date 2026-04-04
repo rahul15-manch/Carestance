@@ -158,12 +158,6 @@ from data.questions_data import questions
 from data.questions_12th import questions_12th
 from data.questions_above_12th import questions_above_12th
 
-# Create Tables
-try:
-    models.Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Database initialization error: {e}")
-
 # Auto-migrate: add missing columns to existing tables
 def run_migrations():
     """Add new columns to existing tables if they don't exist."""
@@ -265,7 +259,11 @@ app = FastAPI(title="CareStance")
 @app.on_event("startup")
 async def startup_event():
     """Run migrations on startup asynchronously to not block the main process."""
-    run_migrations()
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        run_migrations()
+    except Exception as e:
+        print(f"Startup database error: {e}")
 
 # ─── Include Split Payments Router (Razorpay Route) ───────────────────────────
 from .routes.payments import router as payments_router
