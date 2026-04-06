@@ -12,13 +12,30 @@
     <title>CareStance — {% block title %}{% endblock %}</title>
     <link rel="icon" type="image/png" href="/static/images/image.png">
 
-    <!-- Fonts -->
+    <!-- DNS Prefetch for third-party resources -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//unpkg.com">
+
+    <!-- Fonts: preconnect then load with display=swap to avoid FOIT -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+
+    <!-- Font Awesome: non-blocking load -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- AOS animation CSS: non-blocking -->
+    <link rel="preload" href="https://unpkg.com/aos@2.3.1/dist/aos.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"></noscript>
+
+    <!-- Main site CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Alpine.js: deferred, non-blocking -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <style>
@@ -396,7 +413,10 @@
     <nav id="base-nav">
         <div class="nav-inner">
             <a href="/" class="nav-logo">
-                <img src="/static/images/image.png" alt="CareStance Logo">
+                <picture>
+                    <source srcset="/static/images/image.webp" type="image/webp">
+                    <img src="/static/images/image.png" alt="CareStance Logo" width="38" height="38">
+                </picture>
                 <span class="nav-logo-text">CareStance</span>
             </a>
 
@@ -456,7 +476,10 @@
             <div class="footer-grid">
                 <div>
                     <div class="footer-logo">
-                        <img src="/static/images/image.png" alt="CareStance Logo">
+                        <picture>
+                            <source srcset="/static/images/image.webp" type="image/webp">
+                            <img src="/static/images/image.png" alt="CareStance Logo" loading="lazy" width="36" height="36">
+                        </picture>
                         <span class="footer-logo-text">CareStance</span>
                     </div>
                     <p style="font-size:0.9rem;margin-bottom:1.25rem;">Bridging talent and opportunity through AI and human connection.</p>
@@ -499,9 +522,17 @@
         </div>
     </footer>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- AOS JS: loaded after page content for faster first paint -->
     <script>
-        AOS.init({ duration: 700, once: true, offset: 60 });
+        // Load AOS after page has rendered
+        window.addEventListener('load', function() {
+            var script = document.createElement('script');
+            script.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
+            script.onload = function() {
+                AOS.init({ duration: 700, once: true, offset: 60 });
+            };
+            document.head.appendChild(script);
+        });
 
         // Mobile nav
         const baseToggle = document.getElementById('base-menu-toggle');

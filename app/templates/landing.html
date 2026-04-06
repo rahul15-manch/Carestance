@@ -12,13 +12,27 @@
     <meta name="description"
         content="AI-powered career clarity for students and a management platform for top counsellors.">
 
+    <!-- DNS Prefetch for third-party resources -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//unpkg.com">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+        rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+
+    <!-- Font Awesome: non-blocking -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- AOS CSS: non-blocking -->
+    <link rel="preload" href="https://unpkg.com/aos@2.3.1/dist/aos.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"></noscript>
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
@@ -812,7 +826,10 @@
     <nav id="main-nav" class="glass-strong">
         <div class="nav-inner">
             <a href="#" class="nav-logo">
-                <img src="/static/images/image.png" alt="CareStance Logo">
+                <picture>
+                    <source srcset="/static/images/image.webp" type="image/webp">
+                    <img src="/static/images/image.png" alt="CareStance Logo" width="38" height="38">
+                </picture>
                 <span class="nav-logo-text">CareStance</span>
             </a>
             <div class="nav-links">
@@ -864,7 +881,7 @@
                 </div>
                 <div class="hero-visual" data-aos="fade-left">
                     <div class="hero-card">
-                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800" alt="Career Clarity">
+                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800" alt="Career Clarity" loading="lazy" width="800" height="600">
                     </div>
                     <div class="float-chip float-chip-1 glass"><i class="fa-regular fa-lightbulb" style="color: #d97706;"></i><span><strong>Match score 96%</strong><br>UX Designer</span></div>
                     <div class="float-chip float-chip-2 glass"><i class="fa-regular fa-calendar"></i><span><strong>Session today</strong><br>with Priya Sharma</span></div>
@@ -905,7 +922,7 @@
                     <h3>Psychometric AI Engine</h3>
                     <p>Deep analysis across 50+ cognitive and emotional dimensions — reveals your natural strengths.</p>
                     <div class="free-badge">✨ Free assessment included</div></div>
-                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400" style="border-radius: 1rem; margin-top: 1.5rem; width: 100%; height: auto; max-height: 140px; object-fit: cover;" alt="Psychometric Analysis">
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400" style="border-radius: 1rem; margin-top: 1.5rem; width: 100%; height: auto; max-height: 140px; object-fit: cover;" alt="Psychometric Analysis" loading="lazy" width="400" height="140">
 </div>
                 <div class="bento-card bento-2" data-aos="fade-up" data-aos-delay="50">
                     <div><h3>🎥 Video Counselling</h3><p>Book 1-on-1 with top experts, HD sessions, instant booking.</p></div>
@@ -997,7 +1014,7 @@
     <footer>
         <div class="container">
             <div class="footer-grid">
-                <div><div class="footer-logo"><img src="/static/images/image.png" height="32" alt="CareStance Logo"><span class="footer-logo-text">CareStance</span></div><p style="margin: 1rem 0;">AI + human career clarity platform.</p>
+                <div><div class="footer-logo"><picture><source srcset="/static/images/image.webp" type="image/webp"><img src="/static/images/image.png" height="32" alt="CareStance Logo" loading="lazy"></picture><span class="footer-logo-text">CareStance</span></div><p style="margin: 1rem 0;">AI + human career clarity platform.</p>
                     <div class="social-links">
                         <a href="https://www.instagram.com/carestance.in/" target="_blank" rel="noopener" class="social-btn" title="Follow us on Instagram"><i class="fa-brands fa-instagram"></i></a>
                         <a href="https://www.linkedin.com/company/carestance" target="_blank" rel="noopener" class="social-btn" title="Follow us on LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
@@ -1011,9 +1028,14 @@
         </div>
     </footer>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        AOS.init({ once: true, duration: 700 });
+        // Load AOS after page is interactive
+        window.addEventListener('load', function() {
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
+            s.onload = function() { AOS.init({ once: true, duration: 700 }); };
+            document.head.appendChild(s);
+        });
         const nav = document.getElementById('main-nav');
         window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 30); });
         const toggleBtn = document.getElementById('menu-toggle'), mobileMenu = document.getElementById('mobile-menu'), icon = document.getElementById('menu-icon');
