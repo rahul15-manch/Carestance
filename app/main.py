@@ -3582,34 +3582,49 @@ async def generate_college_recommendations(request: Request, req: CollegeRecRequ
     personality = result.personality if result else "Ambivert"
 
     prompt = f"""
-    You are an expert 'College Admission Strategist' and Academic Mentor for Indian and global students.
+    You are an expert 'College Admission Strategist' and Academic Mentor for Indian students.
 
-    Student Profile:
+    🎯 OBJECTIVE:
+    Recommend the Top 5 colleges/institutes located ONLY in India that are BEST suited for the student profile below.
+
+    🚫 STRICT EXCLUSION:
+    DO NOT include IITs, NITs, IIITs, IIMs, AIIMS, IISc, or any top-tier elite institutions.
+    Focus on strong Tier-2 / Tier-3 colleges that provide good ROI, practical exposure, and career growth.
+
+    👤 STUDENT PROFILE:
     - Current Stage: {current_class}
     - Archetype: {archetype}
     - Personality: {personality}
     - Target Career: {req.career_title}
 
-    TASK:
-    Recommend the Top 5 Colleges/Institutes (mix of Indian and International) that are BEST suited 
-    for a student aiming to become a "{req.career_title}".
+    🧠 PERSONALIZATION REQUIREMENT:
+    Match colleges based on:
+    - Teaching style (practical vs theoretical)
+    - Campus culture (competitive vs collaborative)
+    - Student personality fit (introvert/extrovert, structured/creative)
+    - Growth opportunities (internships, exposure, startup culture)
 
-    For EACH college, provide:
+    📌 TASK:
+    For EACH college, provide REALISTIC and FACTUALLY GROUNDED details:
+
     1. "name" — Full official name
-    2. "location" — City, Country
-    3. "ranking" — A short ranking label (e.g. "Top 3 in India", "#12 Globally")
-    4. "admission_criteria" — Detailed admission requirements (exams, cutoffs, key dates, eligibility). 3-4 sentences.
-    5. "courses_offered" — List of 3-5 specific relevant degree programs (e.g. "B.Tech Computer Science", "M.Sc Data Science")
-    6. "placement_rate" — Percentage or descriptor (e.g. "95%", "Near 100%")
-    7. "avg_package" — Average salary package for graduates (in INR or USD)
-    8. "top_recruiters" — List of 3-4 top companies that recruit from this institute
-    9. "highlights" — 2-3 sentence overview of what makes this institute special for this career
+    2. "location" — City, India
+    3. "ranking" — Relative positioning (e.g., "Top Private College in North India", avoid fake global ranks)
+    4. "admission_criteria" — Exams accepted, eligibility, approximate cutoffs, and admission process (3-4 sentences, realistic)
+    5. "courses_offered" — 3–5 relevant programs aligned with the career
+    6. "placement_rate" — Realistic estimate (avoid 100% claims unless justified)
+    7. "avg_package" — Realistic average package range (in INR LPA)
+    8. "top_recruiters" — 3–4 commonly known recruiters (avoid exaggeration)
+    9. "highlights" — Why this college is a GOOD FIT for THIS student's archetype and personality (VERY IMPORTANT)
     10. "website" — Official website URL
 
-    Also provide:
-    - "preparation_tips" — 3-4 bullet points of actionable advice for gaining admission to these institutes
+    ⚠️ IMPORTANT RULES:
+    - Do NOT hallucinate rankings or unrealistic salary figures
+    - Prefer well-known but non-elite institutions (e.g., VIT, SRM, Manipal, etc.)
+    - Ensure diversity (different states / types of colleges)
+    - Ensure explanation clearly connects to student personality
 
-    OUTPUT FORMAT (VALID JSON ONLY):
+    📦 OUTPUT FORMAT (STRICT JSON ONLY — NO EXTRA TEXT):
     {{
       "colleges": [
         {{
@@ -3627,6 +3642,9 @@ async def generate_college_recommendations(request: Request, req: CollegeRecRequ
       ],
       "preparation_tips": ["...", "...", "...", "..."]
     }}
+
+    🎯 PREPARATION TIPS:
+    Provide 3–4 highly practical and actionable tips tailored to this student profile (not generic advice).
     """
 
     try:
