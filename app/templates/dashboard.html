@@ -143,7 +143,7 @@
             <div class="absolute top-5 left-0 w-full rounded-full"
                 style="height: 6px; background: #e2e8f0; z-index: 1;"></div>
             <div class="absolute top-5 left-0 rounded-full transition-all duration-1000"
-                style="height: 6px; z-index: 2; background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {% if assessment.final_answers %}100%{% elif assessment.phase3_answers %}75%{% elif assessment %}50%{% else %}10%{% endif %}">
+                style="height: 6px; z-index: 2; background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {% if assessment.final_answers %}100%{% elif assessment.phase3_answers %}66%{% elif assessment %}33%{% else %}10%{% endif %}">
             </div>
 
             <div class="flex justify-between items-center w-full relative" style="z-index: 5;">
@@ -168,30 +168,18 @@
                     </div>
                     <p
                         class="text-xs font-bold {% if assessment.phase3_answers %}text-[#0b3b3c]{% elif assessment %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
-                        Deep Dive</p>
+                        Deep Dive with CareerBuddy</p>
                 </div>
 
-                <!-- Step 3 -->
+                <!-- Step 3: Result -->
                 <div class="flex flex-col items-center gap-3 group">
                     <div
                         class="w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-all duration-300
-                        {% if assessment.final_answers %}bg-[#0b3b3c] text-white scale-110{% elif assessment.phase3_answers %}bg-white border-[#0b3b3c] text-[#0b3b3c] animate-pulse{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
-                        <i class="fas fa-bullseye"></i>
-                    </div>
-                    <p
-                        class="text-xs font-bold {% if assessment.final_answers %}text-[#0b3b3c]{% elif assessment.phase3_answers %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
-                        Final Plan</p>
-                </div>
-
-                <!-- Step 4 -->
-                <div class="flex flex-col items-center gap-3 group">
-                    <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-all duration-300
-                        {% if assessment.final_answers %}bg-emerald-500 text-white animate-bounce{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
+                        {% if assessment.final_answers %}bg-emerald-500 text-white animate-bounce{% elif assessment.phase3_answers %}bg-white border-[#0b3b3c] text-[#0b3b3c] animate-pulse{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
                         <i class="fas fa-route"></i>
                     </div>
                     <p
-                        class="text-xs font-bold {% if assessment.final_answers %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                        class="text-xs font-bold {% if assessment.final_answers %}text-emerald-600{% elif assessment.phase3_answers %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
                         Career Path</p>
                 </div>
             </div>
@@ -285,7 +273,9 @@
                     <!-- Circular Progress/Score Placeholder -->
                     <div class="w-32 h-32 rounded-full p-1" style="background: var(--gradient-primary);">
                         <div class="w-full h-full bg-white rounded-full flex flex-col items-center justify-center">
-                            <span class="text-3xl font-extrabold text-slate-900">92%</span>
+                            <span class="text-3xl font-extrabold text-slate-900">
+                                {{ ((assessment.confidence or 0.85) * 100) | int }}%
+                            </span>
                             <span class="text-xs text-slate-500 font-medium">Match</span>
                         </div>
                     </div>
@@ -293,8 +283,9 @@
                 <div class="flex-1 text-center md:text-left">
                     <h2 class="text-2xl font-bold mb-2" style="color: var(--text-main);">Top Recommendation: <span
                             style="color: var(--primary);">{{ assessment.phase_2_category }}</span></h2>
-                    <p class="text-slate-500 mb-6">Based on your personality type ({{ assessment.personality }}) and
-                        goal status.</p>
+                    <p class="text-slate-500 mb-6">Based on your personality type ({{ assessment.personality }}),
+                        goal status, and <strong>{{ ((assessment.confidence or 0.85) * 100) | int }}% AI match
+                            confidence</strong>.</p>
                     <div class="flex flex-col sm:flex-row flex-wrap gap-3 w-full justify-center md:justify-start">
                         <a href="/assessment/result"
                             class="w-full sm:w-auto text-center px-6 py-3 text-white rounded-xl font-semibold transition shadow-lg"
@@ -529,22 +520,40 @@
                 </div>
 
                 {% if not assessment.final_answers %}
-                <h3 class="text-xl font-bold mb-2">One Step Remaining!</h3>
-                <p class="text-slate-300 mb-6 max-w-lg">You have completed the deep dive. Finish the final phase to
-                    unlock your comprehensive career roadmap.</p>
-                <a href="/assessment/final"
-                    class="block text-center w-full sm:inline-block sm:w-auto px-6 py-3 sm:py-4 bg-white text-[#0b3b3c] font-bold rounded-xl hover:bg-[#d9f0ef] transition shadow-md">
-                    Continue Assessment &rarr;
-                </a>
+                <h3 class="text-xl font-bold mb-2">Finalizing Your Results...</h3>
+                <p class="text-slate-300 mb-6 max-w-lg">We are processing your deep dive conversation to architect your
+                    perfect career path.</p>
+                <div class="animate-pulse flex items-center gap-2">
+                    <i class="fas fa-sync fa-spin"></i> Processing...
+                </div>
                 {% else %}
                 <h3 class="text-xl font-bold mb-2">Explore Your Career Path!</h3>
                 <p class="text-slate-300 mb-6 max-w-lg">Your assessment is complete! View your personalized career
                     roadmap and explore top colleges for your path.</p>
+
+                {% if assessment.simulation_evaluation %}
+                <div class="mb-6 p-4 bg-white/10 rounded-2xl border border-white/20 inline-flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center text-[#0b3b3c] font-black text-lg">
+                        {{ assessment.simulation_evaluation.match_score }}
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase font-bold tracking-wider text-amber-400">Simulation Score</p>
+                        <p class="text-sm font-medium">{{ assessment.simulation_career }} Alignment</p>
+                    </div>
+                </div>
+                {% endif %}
                 <div class="flex flex-wrap gap-4">
                     <a href="/assessment/result"
                         class="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#0b3b3c] rounded-2xl font-bold hover:bg-[#d9f0ef] transition shadow-md">
                         <i class="fas fa-map-marked-alt"></i>
                         View Career Blueprint
+                    </a>
+                    <a href="/assessment/reset"
+                        onclick="return confirm('Are you sure you want to retake the assessment? This will clear your current results.')"
+                        class="inline-flex items-center gap-2 px-8 py-4 bg-white/10 text-white border border-white/20 rounded-2xl font-bold hover:bg-white/20 transition shadow-md">
+                        <i class="fas fa-undo"></i>
+                        Retake Assessment
                     </a>
                 </div>
                 {% endif %}
@@ -563,11 +572,13 @@
                 <div class="space-y-4">
                     <div>
                         <div class="flex justify-between text-sm mb-1">
-                            <span class="text-slate-500">Aptitude</span>
-                            <span class="font-bold text-slate-900">High</span>
+                            <span class="text-slate-500">AI Match Confidence</span>
+                            <span class="font-bold text-slate-900">{{ assessment.confidence|int if assessment.confidence
+                                else 0 }}%</span>
                         </div>
                         <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div class="h-full bg-emerald-500 w-3/4"></div>
+                            <div class="h-full bg-emerald-500"
+                                style="width: {{ assessment.confidence|int if assessment.confidence else 0 }}%;"></div>
                         </div>
                     </div>
                     <div>
@@ -579,6 +590,22 @@
                             <div class="h-full bg-[#1b5e5f] w-2/3"></div>
                         </div>
                     </div>
+
+                    {% if assessment.simulation_evaluation %}
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-500">Simulation Alignment</span>
+                            <span class="font-bold text-slate-900">{{ assessment.simulation_evaluation.match_score
+                                }}</span>
+                        </div>
+                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            {% set score_str = assessment.simulation_evaluation.match_score|string %}
+                            <div class="h-full bg-amber-500"
+                                style="width: {{ score_str|replace('%', '')|replace('/100', '')|trim }}%;">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

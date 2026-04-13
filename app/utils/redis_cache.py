@@ -13,7 +13,14 @@ class RedisCache:
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         try:
-            self.client = redis.from_url(self.redis_url, decode_responses=True)
+            # Add timeouts to prevent hanging the event loop on remote connection failures
+            self.client = redis.from_url(
+                self.redis_url, 
+                decode_responses=True,
+                socket_timeout=2.0,
+                socket_connect_timeout=2.0,
+                retry_on_timeout=True
+            )
             self.client.ping()
             self.is_available = True
         except Exception as e:

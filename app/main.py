@@ -44,6 +44,7 @@ from .email_utils import (
 from itsdangerous import URLSafeTimedSerializer
 from .data.career_keywords import career_keywords
 from .utils.resource_aggregator import ResourceAggregator
+from .services import simulation_service
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -89,11 +90,12 @@ async def generate_content_with_fallback(prompt):
 
     print("AI CACHE MISS")
     try:
-        # Using 2.0 Flash for better reasoning speed and instruction following
-        model = genai.GenerativeModel("gemini-1.5-flash") # or gemini-2.0-flash if available
+        # Using 1.5 Flash latest for stability
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         response = await model.generate_content_async(prompt)
         text = response.text
     except Exception as e:
+        print(f"DEBUG: Gemini API Error Type: {type(e)}")
         print(f"Gemini Error (Switching to Groq): {e}")
         if not groq_client: raise e
         
@@ -228,7 +230,9 @@ def run_migrations():
                            ('phase3_answers', 'JSON'), ('phase3_analysis', 'TEXT'),
                            ('final_answers', 'JSON'), ('stream_scores', 'JSON'),
                            ('recommended_stream', 'VARCHAR'), ('final_analysis', 'TEXT'),
-                           ('stream_pros', 'JSON'), ('stream_cons', 'JSON')]:
+                           ('stream_pros', 'JSON'), ('stream_cons', 'JSON'),
+                           ('simulation_career', 'VARCHAR'), ('simulation_questions', 'JSON'),
+                           ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON')]:
                 if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
             
         # 6. Notifications
@@ -826,14 +830,52 @@ async def assessment_reset(request: Request, db: Session = Depends(get_db)):
     return RedirectResponse(url="/dashboard?message=Assessment+reset+successfully", status_code=status.HTTP_302_FOUND)
 
 
+from .data.phase2_questions_v2 import phase2_questions
+
 @app.get("/assessment", response_class=HTMLResponse)
 async def assessment_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    # Select a balanced subset of 10-11 questions (1 from each of the 11 logical categories)
+    # Categories: Learning Style, Decision Making, Problem Solving, Social Behaviour, Work Style, 
+    # Creativity, Career Inclination, Risk Taking, Planning vs Action, Curiosity vs Depth
+    import random
+    categories = {}
+    for q in phase2_questions:
+        cat = q.get("title", "General")
+        if cat not in categories: categories[cat] = []
+        categories[cat].append(q)
+    
+    # Map category images to questions
+    category_images = {
+        "Learning Style": "/static/images/assessment/Learning_Style.png",
+        "Decision Making": "/static/images/assessment/Decision_making.png",
+        "Problem Solving": "/static/images/assessment/Problem_Solving.png",
+        "Social Behaviour": "/static/images/assessment/Social_Behaviour.png",
+        "Work Style": "/static/images/assessment/Work_Style.png",
+        "Creativity": "/static/images/assessment/Creativity.png",
+        "Career Inclination": "/static/images/assessment/Career_Inclination.png",
+        "Risk Taking": "/static/images/assessment/Risk_taking.png",
+        "Planning vs Action": "/static/images/assessment/Planning_vs_Action.png",
+        "Curiosity vs Depth": "/static/images/assessment/curiosity_vs_depth.png"
+    }
+
+    selected_questions = []
+    for cat_name, cat_qs in categories.items():
+        # Select one random question from this category and copy it to add image path
+        q_orig = random.choice(cat_qs)
+        q_copy = q_orig.copy()
+        q_copy["category_image"] = category_images.get(cat_name, "/static/images/assessment/Learning_Style.png")
+        selected_questions.append(q_copy)
+    
+    # Shuffle the final subset
+    random.shuffle(selected_questions)
+
     try:
         template = templates.get_template("assessment.html")
-        content = template.render({"request": request, "user": user, "questions": questions})
+        content = template.render({"request": request, "user": user, "questions": selected_questions})
         return HTMLResponse(content=content)
     except Exception as e:
         import traceback
@@ -848,63 +890,62 @@ async def assessment_submit(
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    # 1. Collect Answers & Map to Text
     form_data = await request.form()
     user_answers_data = {}
+    archetype_scores = {
+        "Focused Specialist": 0,
+        "Adaptive Explorer": 0,
+        "Dynamic Generalist": 0,
+        "Quiet Explorer": 0,
+        "Strategic Builder": 0,
+        "Visionary Leader": 0
+    }
     
-    # helper map
-    questions_map = {q["id"]: q for q in questions}
+    # Map all existing questions for lookup
+    questions_map = {q["id"]: q for q in phase2_questions}
 
-    for key, value in form_data.items():
-        if key in questions_map:
-            q_data = questions_map[key]
-            # Find the selected option text
-            selected_option = next((opt for opt in q_data["options"] if opt["value"] == value), None)
-            if selected_option:
-                user_answers_data[key] = selected_option["text"]
-            else:
-                 user_answers_data[key] = value # Fallback
-        else:
-             user_answers_data[key] = value
+    for q_id, val in form_data.items():
+        if q_id in questions_map:
+            q_data = questions_map[q_id]
+            selected_opt = next((opt for opt in q_data["options"] if opt["value"] == val), None)
+            if selected_opt:
+                tag = selected_opt.get("tag")
+                if tag in archetype_scores:
+                    archetype_scores[tag] += 1
+                user_answers_data[q_data.get("question", q_data["id"])] = selected_opt["text"]
 
-    # 2. Construct Prompt
+    # Determine Winner by categorical mapping (Majority Vote)
+    sorted_scores = sorted(archetype_scores.items(), key=lambda x: (-x[1], x[0]))
+    winner_archetype = sorted_scores[0][0]
+    
+    # 2. Construct Prompt for AI Reasoning (passing the calculated result)
     prompt = f"""
-    You are an expert student career psychologist.
-
-    Your task:
-    1. Identify the user's Personality Type based on Q1–Q6:
-       - Introvert
-       - Ambivert
-       - Extrovert
-
-    2. Identify Goal Status based on Q7–Q10:
-       - Goal Aware
-       - Exploring
-
-    3. Combine them into ONE of these 6 categories (Phase 2 Category):
-       - Focused Specialist
-       - Quiet Explorer
-       - Strategic Builder
-       - Adaptive Explorer
-       - Visionary Leader
-       - Dynamic Generalist
-
-    Rules:
-    - Do NOT invent traits.
-    - Use majority patterns, but handle mixed answers intelligently.
-    - Output must be VALID JSON only. Do not include markdown formatting like ```json.
+    You are an expert student career psychologist analyzing a comprehensive psychometric assessment.
     
+    The user has been classified into the following Archetype based on categorical mappings:
+    ARCHETYPE: {winner_archetype}
+    
+    SCORING BREAKDOWN:
+    {json.dumps(archetype_scores, indent=2)}
+    
+    USER ANSWERS SNAPSHOT:
+    {json.dumps(user_answers_data, indent=2)}
+
+    TASK:
+    1. Validate the {winner_archetype} classification in your reasoning.
+    2. Provide a "personality" tag (Introvert/Ambivert/Extrovert) based on their Social Behaviour answers.
+    3. Provide a "goal_status" (Goal Aware/Exploring) based on their Career Inclination answers.
+    4. Write a 2-3 sentence personalized reasoning explaining why they fit this archetype.
+
+    Output must be VALID JSON only.
     Structure:
     {{
       "personality": "String",
       "goal_status": "String",
-      "phase_2_category": "String",
+      "phase_2_category": "{winner_archetype}",
       "confidence": Float (0.0-1.0),
-      "reasoning": "String (2-3 sentences max)"
+      "reasoning": "String"
     }}
-
-    User Answers (Text Descriptions of Visual Choices):
-    {json.dumps(user_answers_data, indent=2)}
     """
 
     # 3. Call Gemini
@@ -913,9 +954,9 @@ async def assessment_submit(
         result_data = {
             "personality": "Ambivert",
             "goal_status": "Exploring",
-            "phase_2_category": "Adaptive Explorer",
+            "phase_2_category": winner_archetype,
             "confidence": 0.85,
-            "reasoning": "Demo Mode: API Key missing. You showed balanced traits."
+            "reasoning": f"Demo Mode: API Key missing. Categorical Analysis suggests {winner_archetype}."
         }
     else:
         # Generate Analysis using Fallback Strategy
@@ -925,11 +966,11 @@ async def assessment_submit(
         except Exception as e:
             print(f"Analysis Error: {e}")
             result_data = {
-                "phase_2_category": "Focused Specialist",
+                "phase_2_category": winner_archetype,
                 "personality": "Ambivert",
                 "goal_status": "Exploring",
-            "confidence": 0.5,
-                "reasoning": "AI Analysis unavailable. Default profile assigned based on answers."
+                "confidence": 0.5,
+                "reasoning": f"AI Analysis failed. Internal mapping suggests {winner_archetype}."
             }
 
     # 4. Save to DB
@@ -2351,21 +2392,12 @@ async def assessment_phase3(request: Request, db: Session = Depends(get_db)):
     # Get user's Phase 2 result
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result or not result.phase_2_category:
-        # No category to deep dive into
         return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
 
     category = result.phase_2_category
-    scenarios = CATEGORY_SCENARIOS_MAP.get(category)
     
-    if not scenarios:
-        # Fallback if category not found or has no scenarios yet
-        # For now, maybe just show Focused Specialist as default or error
-        # Be safe and redirect w/ maybe a flash message (not impl yet)
-        return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
-    
-    return templates.TemplateResponse(request=request, name="assessment_phase3.html", context={
+    return templates.TemplateResponse(request=request, name="assessment_phase3_v2.html", context={
         "user": user, 
-        "scenarios": scenarios,
         "category_name": category
     })
 
@@ -2548,6 +2580,384 @@ Present the scenario story first, then clearly list Option A and Option B on sep
         "current_index": new_idx,
         "answers": chat_req.answers,
         "done": done
+    })
+
+
+# --- Phase 3 v2: Voice-Only Deep-Dive Conversation (Groq-Powered) ---
+
+PHASE3_V2_SYSTEM_PROMPT = """You are a warm, insightful, and professional AI Career Mentor named CareStance Mentor.
+You are conducting a deep-dive voice conversation with a student. This is a 10-minute session designed to FULLY ANALYZE the student — their interests, thinking ability, problem-solving approach, confidence, values, and personality.
+
+CRITICAL RULES:
+- Speak in English only.
+- Keep every response concise (2-4 sentences max) since this is a SPOKEN conversation. Short and punchy responses keep the flow going.
+- Be encouraging, warm, and intellectually stimulating.
+- NEVER break character or mention that you are an AI.
+- Do NOT use markdown formatting (no **, no #, no bullet points, no numbered lists). Speak naturally as if talking face-to-face.
+- NEVER suggest career options, career paths, or job roles during the conversation. Your ONLY job is to deeply understand the student. Career suggestions happen AFTER the session ends.
+- Ask only ONE question at a time. Wait for the student's response before moving on.
+- Vary your question types — mix open-ended, hypothetical, opinion-based, and scenario-based questions.
+- React genuinely to what the student says. Show you are listening. Reference their previous answers when relevant.
+
+CONVERSATION STRUCTURE (adapt naturally, do not announce steps):
+
+OPENING (first message when user message is empty):
+Introduce yourself warmly and set the tone. Ask what field or area excites them most right now. Keep it casual, like two people having coffee.
+
+INTEREST EXPLORATION (messages 1-3):
+Dig deeper into their stated interest. Share a thought-provoking real-world fact about that field. Ask leading open-ended questions that test critical thinking. Examples: "If you could change one thing about how [their field] works today, what would it be?", "What do you think most people misunderstand about [their field]?"
+
+THINKING & PROBLEM-SOLVING (messages 4-6):
+Present hypothetical scenarios related to their interest. Probe their reasoning depth. Examples: "Imagine you are given a team of 5 people and 6 months to solve a real problem in [field]. What problem would you pick and how would you start?", "If your first approach fails completely, what would your backup plan look like?"
+
+CONFIDENCE & VALUES (messages 7-9):
+Ask about their personal values and decision-making style. Explore what drives them beyond surface interests. Examples: "What is more important to you, financial stability or doing something you are passionate about? Why?", "Tell me about a time you had to make a tough decision. How did you approach it?", "When you picture yourself 5 years from now, what does a good day look like?"
+
+WRAP-UP (after ~10 exchanges or when timer runs out):
+Thank them warmly for the conversation. Tell them you have gathered great insights and they should now click the Finish button to see their personalized career recommendations based on everything you discussed."""
+
+class Phase3V2ChatRequest(BaseModel):
+    message: str = ""
+    answers: list = []
+
+@app.post("/assessment/phase3/chat_v2")
+async def phase3_chat_v2(request: Request, chat_req: Phase3V2ChatRequest, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from fastapi.responses import JSONResponse
+
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    phase2_category = result.phase_2_category if result else "Unknown"
+    phase2_personality = result.personality if result else "Unknown"
+
+    # Build conversation history as messages for Groq
+    messages = [
+        {"role": "system", "content": PHASE3_V2_SYSTEM_PROMPT + f"""
+
+STUDENT PROFILE (from Phase 2 Assessment):
+- Personality Archetype: {phase2_category}
+- Personality Trait: {phase2_personality}
+
+Use this profile to tailor your questions. For example, if they are a "Focused Specialist", probe their depth of focus. If they are an "Adaptive Explorer", probe their breadth of curiosity."""}
+    ]
+
+    # Add conversation history
+    if chat_req.answers:
+        for msg in chat_req.answers:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role in ["user", "assistant"]:
+                messages.append({"role": role, "content": content})
+
+    # Add current user message (if any)
+    if chat_req.message.strip():
+        messages.append({"role": "user", "content": chat_req.message})
+
+    # Determine if conversation should wrap up (after ~10 exchanges)
+    user_msg_count = sum(1 for m in chat_req.answers if m.get("role") == "user")
+    if chat_req.message.strip():
+        user_msg_count += 1
+
+    # Use Groq API directly
+    try:
+        if groq_client:
+            completion = await groq_client.chat.completions.create(
+                messages=messages,
+                model="llama-3.3-70b-versatile",
+                temperature=0.8,
+                max_tokens=300,
+            )
+            ai_text = completion.choices[0].message.content
+        elif GEMINI_API_KEY:
+            # Fallback to Gemini if Groq not available
+            flat_prompt = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in messages])
+            ai_text = await generate_content_with_fallback(flat_prompt)
+        else:
+            ai_text = "Welcome! I am your CareStance Career Mentor. Tell me, what area or field excites you the most right now?"
+    except Exception as e:
+        print(f"Phase 3 Chat Error: {e}")
+        ai_text = "I appreciate your patience. Could you tell me a bit more about that? I want to make sure I really understand your perspective."
+
+    return JSONResponse({
+        "response": ai_text,
+        "done": False,
+        "recommendation_ready": user_msg_count >= 5
+    })
+
+
+class Phase3FinalizeRequest(BaseModel):
+    history: list = []
+
+@app.post("/assessment/phase3/finalize")
+async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from fastapi.responses import JSONResponse
+
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result:
+        return JSONResponse({"redirect": "/assessment"})
+
+    # Build conversation transcript
+    transcript = ""
+    for msg in finalize_req.history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        transcript += f"{role.upper()}: {content}\n"
+
+    phase2_category = result.phase_2_category or "Unknown"
+
+    # Generate analysis + career suggestions from the full conversation using Groq
+    # We now skip Phase 4 and generate the final verdict directly here.
+    
+    selected_class = result.selected_class or "10th"
+    
+    if selected_class == '10th':
+        analysis_prompt = f"""You are an expert Career Analyst for 10th-grade students.
+        Analyze this full 10-minute voice conversation and the student's personality archetype to determine their alignment with three core thinking styles.
+        
+        Archetype (Phase 2): {phase2_category}
+        
+        FULL CONVERSATION TRANSCRIPT:
+        {transcript}
+        
+        🔬 Logical Thinking (Science): Problem-solving, "how things work", structured reasoning.
+        💼 Financial Thinking (Commerce): Decision-making based on outcomes, money, risk/reward.
+        🎨 Creative & Social Thinking (Arts): Storytelling, empathy, open-ended thinking.
+        
+        TASK:
+        Provide a final career recommendation for a 10th-grade student focusing on their thinking pattern.
+        
+        RETURN ONLY A JSON OBJECT with these keys:
+        - "fit_scores": {{"Science": XX, "Commerce": XX, "Arts": XX}} (Provide highly specific, non-rounded scores 0-100, e.g., 84, 93, 77)
+        - "recommended_stream": "The primary recommended stream (e.g., Science (PCM))"
+        - "explanation": "A 2-3 line explanation of why this fits their thinking style."
+        - "strength_insight": "1 key strength observed in their responses."
+        - "growth_suggestion": "1 simple action to explore this stream further."
+        - "phase3_analysis": "A concise summary of their interests Revealed in the interview."
+        """
+    else:
+        # 12th or Above
+        analysis_prompt = f"""You are an expert Career Analyst for {'college students' if selected_class == 'Above 12th' else 'high school seniors'}.
+        Analyze this full 10-minute voice conversation and the student's personality archetype.
+        
+        Archetype (Phase 2): {phase2_category}
+        
+        FULL CONVERSATION TRANSCRIPT:
+        {transcript}
+        
+        TASK:
+        Provide 3 specific professional career paths or university majors.
+        
+        RETURN ONLY A JSON OBJECT with these keys:
+        - "recommended_stream": "The broad primary field (e.g., Technology & Innovation)"
+        - "final_analysis": "A summary of their professional outlook based on the conversation."
+        - "phase3_analysis": "An analytical summary of their interests Revealed in the interview."
+        - "stream_pros": [
+            {{
+                "title": "Specific Career/Major 1",
+                "reason": "Why it fits...",
+                "pros": ["Pro 1", "Pro 2"],
+                "cons": ["Con 1", "Con 2"]
+            }},
+            {{
+                "title": "Specific Career/Major 2",
+                "reason": "Why it fits...",
+                "pros": ["Pro 1", "Pro 2"],
+                "cons": ["Con 1", "Con 2"]
+            }},
+            {{
+                "title": "Specific Career/Major 3",
+                "reason": "Why it fits...",
+                "pros": ["Pro 1", "Pro 2"],
+                "cons": ["Con 1", "Con 2"]
+            }}
+        ]
+        """
+
+    try:
+        import json
+        raw_text = ""
+        if groq_client:
+            completion = await groq_client.chat.completions.create(
+                messages=[{"role": "system", "content": "Return ONLY valid JSON."}, {"role": "user", "content": analysis_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.4,
+                max_tokens=1000,
+                response_format={"type": "json_object"}
+            )
+            raw_text = completion.choices[0].message.content
+        else:
+            raw_text = await generate_content_with_fallback(analysis_prompt + "\nIMPORTANT: Return ONLY valid JSON.")
+
+        # Parse JSON
+        data = json.loads(raw_text)
+        
+        # Broad fields common to all
+        result.phase3_analysis = data.get("phase3_analysis", "Detailed conversation analysis complete.")
+        if selected_class == '10th':
+            result.recommended_stream = data.get("recommended_stream")
+            result.stream_scores = data.get("fit_scores", {})
+            result.final_analysis = data.get("explanation", "")
+            result.stream_pros = [
+                f"**Key Strength:** {data.get('strength_insight', '')}",
+                f"**Growth Step:** {data.get('growth_suggestion', '')}"
+            ]
+            result.phase3_result = json.dumps(data)
+        else:
+            result.recommended_stream = data.get("recommended_stream")
+            result.stream_scores = data.get("stream_scores", {}) # Just in case
+            result.final_analysis = data.get("final_analysis", "")
+            result.stream_pros = data.get("stream_pros", [])
+            result.phase3_result = json.dumps(data.get("stream_pros", []))
+
+        result.final_answers = {"skipped": True, "flow": "simplified"}
+
+    except Exception as e:
+        print(f"Finalize Analysis Error: {e}")
+        # Soft fallback
+        result.phase3_analysis = "We've captured your insights and mapped them to your potential."
+        
+    db.commit()
+
+    return JSONResponse({"redirect": "/assessment/result"})
+
+
+# --- Simulation Phase Routes ---
+
+@app.get("/assessment/simulation/start/{career_title}", response_class=HTMLResponse)
+async def simulation_start(career_title: str, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result:
+        return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
+    
+    # Generate questions based on class
+    if result.selected_class == '10th':
+        questions = await simulation_service.generate_academic_simulation_questions(career_title)
+    else:
+        questions = await simulation_service.generate_simulation_questions(career_title)
+
+    if not questions:
+        return RedirectResponse(url="/assessment/result?error=failed_to_generate_simulation", status_code=status.HTTP_302_FOUND)
+    
+    result.simulation_career = career_title
+    result.simulation_questions = questions
+    result.simulation_answers = [] # Reset answers
+    result.simulation_evaluation = None # Reset evaluation
+    db.commit()
+    
+    return RedirectResponse(url="/assessment/simulation/question/0", status_code=status.HTTP_302_FOUND)
+
+@app.get("/assessment/simulation/question/{index}", response_class=HTMLResponse)
+async def simulation_question(index: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result or not result.simulation_questions:
+        return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
+    
+    questions = result.simulation_questions
+    if index < 0 or index >= len(questions):
+        return RedirectResponse(url="/assessment/simulation/result", status_code=status.HTTP_302_FOUND)
+    
+    return templates.TemplateResponse(request=request, name="assessment_simulation.html", context={
+        "user": user,
+        "career_title": result.simulation_career,
+        "question": questions[index],
+        "index": index,
+        "total": len(questions),
+        "progress": int(((index + 1) / len(questions)) * 100)
+    })
+
+@app.post("/assessment/simulation/answer")
+async def simulation_answer(
+    request: Request, 
+    index: int = Form(...), 
+    answer: str = Form(...), 
+    db: Session = Depends(get_db)
+):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result:
+        return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
+    
+    # Update answers list
+    current_answers = list(result.simulation_answers) if result.simulation_answers else []
+    # Ensure list is long enough
+    while len(current_answers) <= index:
+        current_answers.append("")
+    current_answers[index] = answer
+    
+    result.simulation_answers = current_answers
+    db.commit()
+    
+    next_index = index + 1
+    if next_index < len(result.simulation_questions):
+        return RedirectResponse(url=f"/assessment/simulation/question/{next_index}", status_code=status.HTTP_302_FOUND)
+    else:
+        return RedirectResponse(url="/assessment/simulation/result", status_code=status.HTTP_302_FOUND)
+
+@app.get("/assessment/simulation/result", response_class=HTMLResponse)
+async def simulation_result(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result or not result.simulation_answers:
+        return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
+    
+    # Trigger evaluation if not already done
+    if not result.simulation_evaluation:
+        if result.selected_class == '10th':
+            evaluation = await simulation_service.evaluate_academic_simulation(
+                result.simulation_career,
+                result.simulation_questions,
+                result.simulation_answers
+            )
+        else:
+            evaluation = await simulation_service.evaluate_simulation(
+                result.simulation_career,
+                result.simulation_questions,
+                result.simulation_answers
+            )
+        result.simulation_evaluation = evaluation
+        db.commit()
+    
+    return templates.TemplateResponse(request=request, name="simulation_result.html", context={
+        "user": user,
+        "career": result.simulation_career,
+        "evaluation": result.simulation_evaluation
+    })
+
+
+# --- Public Shareable Simulation Result ---
+@app.get("/share/simulation/{result_id}", response_class=HTMLResponse)
+async def share_simulation_result(result_id: int, request: Request, db: Session = Depends(get_db)):
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.id == result_id).first()
+    if not result or not result.simulation_evaluation:
+        raise HTTPException(status_code=404, detail="Simulation result not found")
+    
+    owner = db.query(models.User).filter(models.User.id == result.user_id).first()
+    return templates.TemplateResponse(request=request, name="simulation_result.html", context={
+        "user": None,
+        "owner": owner,
+        "career": result.simulation_career,
+        "evaluation": result.simulation_evaluation,
+        "is_public_share": True
     })
 
 
@@ -3043,12 +3453,11 @@ async def generate_tts(text: str):
             if response.status_code == 200:
                 return Response(content=response.content, media_type="audio/wav")
             elif response.status_code == 503:
-                return {"error": "Model is currently loading on Hugging Face. Please try again in a few seconds.", "loading": True}
+                return JSONResponse({"error": "Model loading..."}, status_code=503)
             else:
-                # If MMS fails, maybe try Bark small as a backup?
-                return {"error": f"HF API Error: {response.text}", "status": response.status_code}
+                return JSONResponse({"error": f"HF Error: {response.text}"}, status_code=500)
         except Exception as e:
-            return {"error": str(e)}
+            return JSONResponse({"error": str(e)}, status_code=500)
 
 
 # --- Chatbot Routes ---

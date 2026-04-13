@@ -62,39 +62,46 @@
                 {% for q in questions %}
                 <div class="question-step hidden space-y-8" data-step="{{ loop.index0 }}">
                     <div class="text-center">
-                        <h4 class="text-3xl font-extrabold text-slate-800 mb-6 question-title">{{ q.title }}</h4>
+                        {% if q.category_image %}
+                        <div class="mb-8 flex justify-center transform transition-all duration-700 hover:scale-105">
+                            <img src="{{ q.category_image }}" alt="{{ q.title }}"
+                                class="h-48 sm:h-56 w-auto object-contain rounded-3xl shadow-2xl shadow-slate-200/50 border-4 border-white bg-white/50 p-1">
+                        </div>
+                        {% endif %}
+                        <h4 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-6 px-4 leading-tight">
+                            {{ q.question if q.question else q.title }}
+                        </h4>
+                        <p class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-2">
+                            {{ q.title if q.question else "Assessment" }}
+                        </p>
                         <p class="text-sm text-slate-500 font-medium">
-                            Select one option below 👇
+                            Select the best option below 👇
                         </p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 gap-4">
                         {% for opt in q.options %}
                         <label class="relative cursor-pointer group">
                             <input type="radio" name="{{ q.id }}" value="{{ opt.value }}" required
                                 onchange="handleSelection(this)" class="peer sr-only">
 
                             <div
-                                class="h-full rounded-2xl border-2 border-slate-200/60 bg-white/80 overflow-hidden transition-all duration-500 ease-in-out hover:shadow-2xl hover:shadow-[#d9f0ef] hover:border-[#a8ded9] hover:-translate-y-2 peer-checked:border-emerald-500 peer-checked:ring-4 peer-checked:ring-emerald-100 group">
-                                <div class="aspect-w-16 aspect-h-12 bg-slate-100 relative overflow-hidden">
-                                    <img src="{{ opt.image }}" alt="{{ opt.text }}" loading="lazy"
-                                        class="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110">
-
-                                    <!-- Overlay for checked state -->
+                                class="h-full rounded-2xl border-2 border-slate-200/60 bg-white shadow-sm overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:border-[#a8ded9] hover:-translate-y-1 peer-checked:border-emerald-500 peer-checked:ring-4 peer-checked:ring-emerald-50 peer-checked:bg-emerald-50/30 group">
+                                <div class="p-6 flex items-center space-x-4">
                                     <div
-                                        class="absolute inset-0 bg-emerald-900/0 transition-all duration-500 peer-checked:bg-emerald-900/20 flex items-center justify-center opacity-0 peer-checked:opacity-100 backdrop-blur-[2px]">
-                                        <div
-                                            class="bg-emerald-500 rounded-full p-3 shadow-lg transform scale-0 peer-checked:scale-100 transition-transform duration-500 animate-[bounce_0.5s_ease-in-out]">
-                                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                    d="M5 13l4 4L19 7"></path>
-                                            </svg>
-                                        </div>
+                                        class="flex-shrink-0 w-10 h-10 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-[#d9f0ef] group-hover:text-[#0b3b3c] transition-colors peer-checked:bg-emerald-500 peer-checked:text-white">
+                                        <span class="font-bold text-lg">{{ opt.value }}</span>
                                     </div>
-                                </div>
-                                <div class="p-5 text-center">
-                                    <p class="text-slate-700 font-bold text-lg leading-snug">{{ opt.text }}</p>
+                                    <div class="flex-grow">
+                                        <p class="text-slate-700 font-bold text-lg leading-tight">{{ opt.text }}</p>
+                                    </div>
+                                    <div class="flex-shrink-0 opacity-0 peer-checked:opacity-100 transition-opacity">
+                                        <svg class="w-6 h-6 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         </label>

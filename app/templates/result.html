@@ -127,10 +127,7 @@
                         <i class="fas fa-layer-group"></i> Deep Dive Insights
                     </h3>
                     <div class="relative z-10 prose prose-invert text-sm leading-relaxed" style="color: #d9f0ef;">
-                        {{ result.phase3_analysis|truncate(200) }}
-                        <br>
-                        <span class="text-xs text-slate-500 italic mt-2 block">(Full analysis utilized in final
-                            recommendation)</span>
+                        {{ result.phase3_analysis }}
                     </div>
                 </div>
                 {% else %}
@@ -142,19 +139,83 @@
                         <i class="fas fa-lock"></i>
                     </div>
                     <h3 class="font-bold text-slate-700">Deep Dive Pending</h3>
-                    <p class="text-sm text-slate-500 mt-2">Complete Phase 3 to unlock specific insights.</p>
+                    <p class="text-sm text-slate-500 mt-2 mb-6">Complete Phase 3 to unlock specific insights.</p>
+                    <a href="/assessment/phase3/v2"
+                        class="px-6 py-2.5 bg-[#0b3b3c] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#1b5e5f] transition-all">
+                        Start Now &rarr;
+                    </a>
                 </div>
+
+                <!-- 2.5 SIMULATION RESULT (If completed) -->
+                {% if result.simulation_evaluation %}
+                <div
+                    class="bg-white rounded-3xl p-8 shadow-lg border-2 border-amber-200 mb-8 relative overflow-hidden animate__animated animate__fadeInUp">
+                    <div class="absolute top-0 right-0 p-4">
+                        <div
+                            class="bg-amber-100 text-amber-700 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                            Simulation Complete
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <i class="fas fa-gamepad text-amber-600"></i> Simulation Performance: {{
+                        result.simulation_career }}
+                    </h3>
+
+                    <div class="grid md:grid-cols-3 gap-8 items-center">
+                        <div class="text-center">
+                            <div
+                                class="inline-flex items-center justify-center w-32 h-32 rounded-full border-4 border-amber-400 bg-amber-50 mb-4 shadow-inner">
+                                <span class="text-4xl font-black text-amber-700">{{
+                                    result.simulation_evaluation.match_score }}</span>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Match Score</p>
+                        </div>
+
+                        <div class="md:col-span-2 space-y-4">
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                <p class="text-slate-700 text-sm leading-relaxed italic">"{{
+                                    result.simulation_evaluation.summary }}"</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-emerald-600 uppercase mb-2">Key Strengths</p>
+                                    <ul class="space-y-1">
+                                        {% for str in result.simulation_evaluation.strengths %}
+                                        <li class="text-[11px] text-slate-600 flex items-center gap-2">
+                                            <i class="fas fa-check-circle text-emerald-400"></i> {{ str }}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-amber-600 uppercase mb-2">Growth Areas</p>
+                                    <ul class="space-y-1">
+                                        {% for area in result.simulation_evaluation.improvement_areas %}
+                                        <li class="text-[11px] text-slate-600 flex items-center gap-2">
+                                            <i class="fas fa-arrow-up text-amber-400"></i> {{ area }}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
         {% endif %}
 
         <!-- 3. PROGRESS WORKFLOW (The "Next Steps") -->
-        {% if mode != 'minimal' %}
+        {% if mode != 'minimal' and (result.selected_class != '10th' or not result.phase3_analysis) %}
         <div class="bg-white rounded-3xl p-8 shadow-lg border border-slate-100">
             <h3 class="text-lg font-bold text-slate-900 mb-6">Assessment Roadmap</h3>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+                class="grid grid-cols-1 {% if result.selected_class == '10th' %}md:grid-cols-2{% else %}md:grid-cols-3{% endif %} gap-4">
 
                 <!-- Step 1: Done -->
                 <div class="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 opacity-60">
@@ -187,7 +248,7 @@
                     </div>
 
                     <div>
-                        <p class="text-sm font-bold text-slate-900">Phase 3: Scenarios</p>
+                        <p class="text-sm font-bold text-slate-900">Deep Dive with CareerBuddy</p>
                         <p class="text-xs text-slate-500">
                             {% if result.phase3_analysis %}Completed{% else %}<span
                                 class="text-[#0b3b3c] font-semibold">Start Now &rarr;</span>{% endif %}
@@ -196,32 +257,18 @@
                 </a>
                 {% endif %}
 
-                <!-- Step 3: Final Link -->
-                {% if result.phase3_analysis %}
-                <a href="/assessment/final" class="group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 border
-                   {% if result.recommended_stream %}
-                       bg-emerald-50 border-emerald-100
-                   {% else %}
-                       bg-white border-[#a8ded9] shadow-md shadow-[#d9f0ef] hover:shadow-lg hover:border-[#1b5e5f] hover:-translate-y-1
-                   {% endif %}">
-
-                    <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold transition-colors
-                        {% if result.recommended_stream %}
-                            bg-emerald-100 text-emerald-600
-                        {% else %}
-                            bg-[#0b3b3c] text-white group-hover:scale-110
-                        {% endif %}">
-                        {% if result.recommended_stream %}<i class="fas fa-check"></i>{% else %}4{% endif %}
+                {% if result.selected_class != '10th' %}
+                <!-- Step 3: Simulation (For 12th+) -->
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                    <div
+                        class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center bg-amber-100 text-amber-600 font-bold">
+                        3
                     </div>
-
                     <div>
-                        <p class="text-sm font-bold text-slate-900">Final Verdict</p>
-                        <p class="text-xs text-slate-500">
-                            {% if result.recommended_stream %}View Result{% else %}<span
-                                class="text-[#0b3b3c] font-semibold">Unlock Recommendation &rarr;</span>{% endif %}
-                        </p>
+                        <p class="text-sm font-bold text-slate-900">Final Phase</p>
+                        <p class="text-xs text-slate-500">Unlocked</p>
                     </div>
-                </a>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -242,7 +289,7 @@
                         <i class="fas fa-download"></i> Download PDF
                     </button>
                     <div class="px-4 py-1.5 bg-white/20 rounded-full text-white text-xs font-semibold backdrop-blur-sm">
-                        Verified by AI
+                        Verified by CareerBuddy
                     </div>
                 </div>
             </div>
@@ -253,19 +300,57 @@
                 <div class="text-center mb-10">
                     <p class="text-slate-500 uppercase tracking-widest text-xs font-bold mb-2">You should choose</p>
                     <h1 class="text-4xl md:text-5xl font-black text-slate-900 mb-6">{{ result.recommended_stream }}</h1>
-                    <div class="flex flex-wrap justify-center gap-3">
-                        <button onclick="generateRoadmap('{{ result.recommended_stream }}')"
-                            class="inline-flex items-center gap-3 px-8 py-3 bg-[#0b3b3c] text-white rounded-2xl font-bold hover:bg-[#0b3b3c] transition transform hover:-translate-y-1 shadow-xl shadow-[#d9f0ef] group">
-                            <i class="fas fa-route group-hover:animate-pulse"></i>
-                            <span>Generate Detailed Roadmap</span>
-                        </button>
-                        <button onclick="generateCollegeRecs('{{ result.recommended_stream }}')"
-                            class="inline-flex items-center gap-3 px-8 py-3 bg-[#0b3b3c] text-white rounded-2xl font-bold hover:bg-[#1b5e5f] transition transform hover:-translate-y-1 shadow-xl shadow-[#d9f0ef] group">
-                            <i class="fas fa-university group-hover:animate-pulse"></i>
-                            <span>Find Top Colleges</span>
-                        </button>
+
+                    <div class="flex flex-col items-center justify-center gap-4">
+                        {% if result.simulation_evaluation and result.simulation_career == result.recommended_stream %}
+                        <div
+                            class="p-6 bg-amber-50 rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50 flex flex-col items-center animate__animated animate__zoomIn">
+                            <div
+                                class="w-20 h-20 rounded-full bg-amber-400 flex items-center justify-center text-[#0b3b3c] font-black text-2xl mb-4 shadow-inner">
+                                {{ result.simulation_evaluation.match_score }}
+                            </div>
+                            <p class="text-xs font-black text-amber-700 uppercase tracking-widest mb-2">Simulation Score
+                            </p>
+                            <a href="/assessment/simulation/start/{{ result.recommended_stream }}"
+                                class="text-amber-600 hover:text-amber-700 font-bold text-sm underline transition-colors">
+                                <i class="fas fa-undo mr-1"></i> Retake Discovery Phase
+                            </a>
+                        </div>
+                        {% else %}
+                        <a href="/assessment/simulation/start/{{ result.recommended_stream }}"
+                            class="inline-flex items-center gap-3 px-10 py-4 bg-[#0b3b3c] text-white rounded-2xl font-bold hover:bg-[#1b5e5f] transition transform hover:-translate-y-1 shadow-2xl shadow-[#d9f0ef] group text-lg">
+                            <i class="fas fa-gamepad group-hover:rotate-12 transition-transform"></i>
+                            <span>Try Stream Simulation</span>
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
+
+                <!-- Thinking Style Spectrum (for Class 10) -->
+                {% if result.selected_class == '10th' and result.stream_scores %}
+                <div class="bg-white rounded-3xl p-8 mb-8 shadow-lg border border-slate-100">
+                    <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <i class="fas fa-brain text-[#1b5e5f]"></i> Thinking Style Spectrum
+                    </h3>
+                    <div class="space-y-6">
+                        {% for style, score in result.stream_scores.items() %}
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">{{ style }}
+                                    Thinking</span>
+                                <span class="text-sm font-black text-[#0b3b3c]">{{ score }}%</span>
+                            </div>
+                            <div class="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                <div class="h-full rounded-full transition-all duration-1000 relative"
+                                    style="width: {{ score }}%; background: {% if style == 'Science' %}linear-gradient(to right, #0891b2, #0ea5e9){% elif style == 'Commerce' %}linear-gradient(to right, #059669, #10b981){% else %}linear-gradient(to right, #7c3aed, #8b5cf6){% endif %};">
+                                    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
                 {% if result.final_analysis %}
                 <div class="bg-[#d9f0ef] rounded-xl p-6 mb-8 border border-[#a8ded9]">
@@ -359,14 +444,38 @@
                                     {% endif %}
                                 </div>
                                 {% endif %}
-                                <div class="mt-4 flex items-center gap-4">
+                                <div class="mt-4 flex flex-wrap items-center gap-4">
                                     <div class="flex items-center gap-2 text-[#0b3b3c] font-bold text-sm">
                                         <span>Get Full Roadmap</span>
                                         <i class="fas fa-arrow-right animate-pulse"></i>
                                     </div>
+                                    {% if result.simulation_evaluation and result.simulation_career == (option.title if
+                                    option is mapping else option) %}
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+                                            <span class="text-[10px] font-bold text-amber-600 uppercase">Score:</span>
+                                            <span class="text-sm font-black text-amber-700">{{
+                                                result.simulation_evaluation.match_score }}</span>
+                                        </div>
+                                        <button
+                                            onclick="event.stopPropagation(); window.location.href='/assessment/simulation/start/{{ option.title if option is mapping else option }}'"
+                                            class="text-amber-600 hover:text-amber-700 font-bold text-xs underline">
+                                            Retake
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <button
+                                        onclick="event.stopPropagation(); window.location.href='/assessment/simulation/start/{{ option.title if option is mapping else option }}'"
+                                        style="background-color: #d97706 !important;"
+                                        class="flex items-center gap-2 px-4 py-2 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-all transform hover:scale-105 shadow-md">
+                                        <i class="fas fa-terminal"></i>
+                                        <span>Enter Simulation</span>
+                                    </button>
+                                    {% endif %}
                                     <button
                                         onclick="event.stopPropagation(); generateCollegeRecs('{{ option.title if option is mapping else option }}')"
-                                        class="flex items-center gap-2 text-[#0b3b3c] font-bold text-sm hover:text-[#0b3b3c] transition-colors">
+                                        class="flex items-center gap-2 text-[#0b3b3c] font-bold text-sm hover:text-[#0b3b3c] transition-colors ml-auto">
                                         <i class="fas fa-university"></i>
                                         <span>Top Colleges</span>
                                     </button>
@@ -711,18 +820,18 @@
                     </a>
                 </div>
                 {% else %}
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <p class="text-slate-500 font-medium">Need more clarity? Talk to a human expert.</p>
-                    <div class="flex gap-3">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-6">
+                    <div class="text-left">
+                        <p class="text-slate-900 font-bold">Unsatisfied with these results?</p>
+                        <p class="text-slate-500 text-sm">You can retake the assessment to explore different interests.
+                        </p>
+                    </div>
+                    <div class="flex gap-4">
                         <a href="/assessment/reset"
                             onclick="return confirm('Are you sure you want to retake the assessment? This will clear your current results.')"
-                            class="px-5 py-2.5 rounded-xl border border-red-200 text-red-600 font-bold text-sm hover:bg-red-50 transition">Retake
-                            Assessment</a>
-                        <div
-                            class="px-6 py-3 bg-slate-100 text-slate-400 font-bold rounded-2xl flex items-center gap-2 cursor-not-allowed border border-slate-200">
-                            <i class="fas fa-lock text-xs"></i>
-                            More Features Coming Soon
-                        </div>
+                            class="px-8 py-3 bg-[#0b3b3c] text-white rounded-2xl font-bold shadow-xl shadow-[#d9f0ef] hover:bg-[#1b5e5f] transition transform hover:-translate-y-1">
+                            <i class="fas fa-undo mr-2"></i> Retake Assessment
+                        </a>
                     </div>
                 </div>
                 {% endif %}

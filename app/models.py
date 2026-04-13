@@ -48,6 +48,12 @@ class AssessmentResult(Base):
     stream_pros = Column(JSON, nullable=True) # List of strings
     stream_cons = Column(JSON, nullable=True) # List of strings
     
+    # Simulation Phase Fields
+    simulation_career = Column(String, nullable=True)
+    simulation_questions = Column(JSON, nullable=True) # List of 7 generated questions
+    simulation_answers = Column(JSON, nullable=True) # List of 7 user responses
+    simulation_evaluation = Column(JSON, nullable=True) # {match_score, summary, strengths, improvement_areas}
+    
     user = relationship("User", back_populates="assessment")
 
 from sqlalchemy import DateTime
