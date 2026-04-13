@@ -187,6 +187,8 @@ def run_migrations():
             if 'full_name' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
             if 'role' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
             if 'onboarded' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN onboarded BOOLEAN DEFAULT FALSE")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_users_full_name ON users (full_name)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_users_onboarded ON users (onboarded)")
 
         # 2. Counsellor Profiles
         cp_cols = get_columns('counsellor_profiles')
@@ -215,6 +217,7 @@ def run_migrations():
             # Add index for appointment_time if it doesn't exist
             # Note: This is a safe try-catch for PostgreSQL/SQLite differences
             migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_appointment_time ON appointments (appointment_time)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_chat_messages_timestamp ON chat_messages (timestamp)")
 
         # 4. Student Messages
         sm_cols = get_columns('student_messages')
@@ -222,6 +225,7 @@ def run_migrations():
             if 'attachment_path' not in sm_cols: migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_path VARCHAR")
             if 'attachment_type' not in sm_cols: migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_type VARCHAR")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_student_messages_timestamp ON student_messages (timestamp)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_student_messages_is_read ON student_messages (is_read)")
 
         # 5. Assessment Results
         ar_cols = get_columns('assessment_results')
@@ -234,11 +238,13 @@ def run_migrations():
                            ('simulation_career', 'VARCHAR'), ('simulation_questions', 'JSON'),
                            ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON')]:
                 if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_recommended_stream ON assessment_results (recommended_stream)")
             
         # 6. Notifications
         n_cols = get_columns('notifications')
         if n_cols:
             migrations.append("CREATE INDEX IF NOT EXISTS ix_notifications_created_at ON notifications (created_at)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_notifications_is_read ON notifications (is_read)")
 
         if migrations:
             print(f"DEBUG: Found {len(migrations)} pending migrations.", flush=True)

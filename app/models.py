@@ -8,13 +8,13 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    full_name = Column(String)
+    full_name = Column(String, index=True)
     contact_number = Column(String)
     profile_photo = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     role = Column(String, nullable=True, index=True)
     is_suspended = Column(Boolean, default=False)
-    onboarded = Column(Boolean, default=False)
+    onboarded = Column(Boolean, default=False, index=True)
     
     assessment = relationship("AssessmentResult", back_populates="user", uselist=False)
     given_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.student_id]", back_populates="student")
@@ -43,7 +43,7 @@ class AssessmentResult(Base):
     # Phase 4 (Final Stream Assessment)
     final_answers = Column(JSON, nullable=True) # Stores raw a/b/c/d answers
     stream_scores = Column(JSON, nullable=True) # Stores {"PCM": 10, "COMM": 8...}
-    recommended_stream = Column(String, nullable=True) # e.g. "Science (PCM)"
+    recommended_stream = Column(String, nullable=True, index=True) # e.g. "Science (PCM)"
     final_analysis = Column(Text, nullable=True) # Detailed AI reasoning
     stream_pros = Column(JSON, nullable=True) # List of strings
     stream_cons = Column(JSON, nullable=True) # List of strings
@@ -67,7 +67,7 @@ class ChatMessage(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     sender = Column(String, index=True) # "user" or "ai"
     content = Column(Text)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     user = relationship("User", back_populates="messages")
 
@@ -217,7 +217,7 @@ class StudentMessage(Base):
     attachment_path = Column(String, nullable=True)
     attachment_type = Column(String, nullable=True) # "image" or "file"
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    is_read = Column(Boolean, default=False)
+    is_read = Column(Boolean, default=False, index=True)
 
     sender = relationship("User", foreign_keys=[sender_id], backref="sent_student_messages")
     receiver = relationship("User", foreign_keys=[receiver_id], backref="received_student_messages")
@@ -231,7 +231,7 @@ class Notification(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     type = Column(String, index=True)  # e.g. "fee_change", "blocked", etc.
     message = Column(Text)
-    is_read = Column(Boolean, default=False)
+    is_read = Column(Boolean, default=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="notifications")
