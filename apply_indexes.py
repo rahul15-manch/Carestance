@@ -30,6 +30,13 @@ def apply_indexes():
         ("payments", "session_id", "ix_payments_session_id"),
         ("transfers", "payment_id", "ix_transfers_payment_id"),
         ("transfers", "counsellor_id", "ix_transfers_counsellor_id"),
+        ("assessment_results", "phase_2_category", "ix_assessment_results_phase_2_category"),
+        ("assessment_results", "personality", "ix_assessment_results_personality"),
+        ("assessment_results", "selected_class", "ix_assessment_results_selected_class"),
+        ("career_paths", "career_title", "ix_career_paths_career_title"),
+        ("college_recommendations", "career_title", "ix_college_recommendations_career_title"),
+        ("appointments", "payment_status", "ix_appointments_payment_status"),
+        ("counsellor_ratings", "rating", "ix_counsellor_ratings_rating"),
     ]
 
     with engine.connect() as conn:

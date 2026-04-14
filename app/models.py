@@ -25,15 +25,15 @@ class AssessmentResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    phase_2_category = Column(String)
-    personality = Column(String)
+    phase_2_category = Column(String, index=True)
+    personality = Column(String, index=True)
     goal_status = Column(String)
     confidence = Column(Float)
     reasoning = Column(Text)
     raw_answers = Column(JSON)
     
     # Phase 1 (Class Selection)
-    selected_class = Column(String, nullable=True) # "10", "12", "Above 12"
+    selected_class = Column(String, nullable=True, index=True) # "10", "12", "Above 12"
 
     # Phase 3 Fields
     phase3_result = Column(String, nullable=True)
@@ -100,7 +100,7 @@ class CareerPath(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    career_title = Column(String)
+    career_title = Column(String, index=True)
     path_data = Column(JSON) # Detailed path steps
     reminders = Column(JSON) # List of reminders/milestones
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -160,7 +160,7 @@ class Appointment(Base):
     counsellor_id = Column(Integer, ForeignKey("users.id"), index=True)
     appointment_time = Column(DateTime, index=True)
     status = Column(String, default="requested", index=True)  # requested, accepted, rejected, completed, cancelled
-    payment_status = Column(String, default="pending")  # pending, paid
+    payment_status = Column(String, default="pending", index=True)  # pending, paid
     meeting_link = Column(String, nullable=True)
     razorpay_order_id = Column(String, nullable=True)
     razorpay_payment_id = Column(String, nullable=True)
@@ -181,7 +181,7 @@ class CollegeRecommendation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    career_title = Column(String)
+    career_title = Column(String, index=True)
     college_data = Column(JSON)  # AI-generated list of colleges
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -296,7 +296,7 @@ class CounselorRating(Base):
     appointment_id = Column(Integer, ForeignKey("appointments.id"), unique=True, index=True)
     counsellor_id = Column(Integer, ForeignKey("users.id"), index=True)
     student_id = Column(Integer, ForeignKey("users.id"), index=True)
-    rating = Column(Integer, nullable=False) # 1-5
+    rating = Column(Integer, nullable=False, index=True) # 1-5
     review = Column(Text, nullable=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 

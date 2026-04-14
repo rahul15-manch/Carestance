@@ -156,7 +156,7 @@
                 <!-- AI Bubble -->
                 <div
                     class="bg-white text-slate-700 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 p-4 sm:p-5 max-w-[90%] sm:max-w-[80%]">
-                    <div class="prose prose-indigo prose-sm max-w-none history-content">
+                    <div class="prose prose-emerald prose-sm max-w-none history-content">
                         {{ msg.content }}
                     </div>
                 </div>
@@ -366,7 +366,7 @@
         div.innerHTML = `
             ${avatar}
             <div class="${bubbleClass} p-4 sm:p-5 max-w-[90%] sm:max-w-[80%]">
-                <div class="prose ${isUser ? 'prose-invert' : 'prose-indigo'} prose-sm max-w-none">
+                <div class="prose ${isUser ? 'prose-invert' : 'prose-emerald'} prose-sm max-w-none">
                    ${marked.parse(text)}
                 </div>
             </div>
@@ -403,7 +403,7 @@
                 <span class="text-lg text-white">🤖</span>
             </div>
             <div class="bg-white text-slate-700 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 p-4 sm:p-5 max-w-[90%] sm:max-w-[80%]">
-                <div id="ai-response-content" class="prose prose-indigo prose-sm max-w-none">
+                <div id="ai-response-content" class="prose prose-emerald prose-sm max-w-none">
                    <div class="flex space-x-1.5 h-5 items-center">
                         <div class="w-2 h-2 bg-[#1b5e5f] rounded-full animate-bounce"></div>
                         <div class="w-2 h-2 bg-[#1b5e5f] rounded-full animate-bounce" style="animation-delay: 0.15s"></div>

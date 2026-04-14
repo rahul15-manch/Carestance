@@ -102,12 +102,13 @@
                 <div class="mt-8 pt-8 border-t border-slate-100">
                     <div class="flex justify-between items-end mb-2">
                         <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Match Confidence</h4>
-                        <span class="text-2xl font-black text-[#0b3b3c]">{{ ((result.confidence or 0) * 100) |
+                        <span class="text-2xl font-black text-[#0b3b3c]">{{ ((display_confidence or result.confidence or
+                            0) * 100) |
                             round|int }}%</span>
                     </div>
                     <div class="h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                         <div class="h-full rounded-full relative"
-                            style="background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {{ ((result.confidence or 0) * 100)|round|int }}%">
+                            style="background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {{ ((display_confidence or result.confidence or 0) * 100)|round|int }}%">
                             <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
                         </div>
                     </div>
@@ -259,14 +260,25 @@
 
                 {% if result.selected_class != '10th' %}
                 <!-- Step 3: Simulation (For 12th+) -->
-                <div class="flex items-center gap-4 p-4 rounded-2xl bg-amber-50 border border-amber-100">
-                    <div
-                        class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center bg-amber-100 text-amber-600 font-bold">
-                        3
+                <div class="flex items-center gap-4 p-4 rounded-2xl transition-all duration-300
+                    {% if not result.phase3_analysis %}
+                        bg-slate-50 border-slate-100 opacity-60
+                    {% else %}
+                        bg-amber-50 border-amber-100
+                    {% endif %}">
+                    <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold transition-colors
+                        {% if not result.phase3_analysis %}
+                            bg-slate-200 text-slate-400
+                        {% else %}
+                            bg-amber-100 text-amber-600
+                        {% endif %}">
+                        {% if not result.phase3_analysis %}<i class="fas fa-lock"></i>{% else %}4{% endif %}
                     </div>
                     <div>
                         <p class="text-sm font-bold text-slate-900">Final Phase</p>
-                        <p class="text-xs text-slate-500">Unlocked</p>
+                        <p class="text-xs text-slate-500">
+                            {% if not result.phase3_analysis %}Locked{% else %}Unlocked{% endif %}
+                        </p>
                     </div>
                 </div>
                 {% endif %}
@@ -708,7 +720,8 @@
                         <div class="h-10 w-px bg-slate-200"></div>
                         <div class="text-left">
                             <p class="text-[10px] font-bold uppercase tracking-widest">Match Score</p>
-                            <p class="text-sm font-bold text-[#0b3b3c]">{{ ((result.confidence or 0) * 100) | round|int
+                            <p class="text-sm font-bold text-[#0b3b3c]">{{ ((display_confidence or result.confidence or
+                                0) * 100) | round|int
                                 }}%</p>
                         </div>
                     </div>

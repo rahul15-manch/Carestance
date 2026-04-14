@@ -8,13 +8,13 @@
     class="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-fade-in-up">
         <div
-            class="w-20 h-20 bg-violet-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-violet-200">
+            class="w-20 h-20 bg-emerald-800 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-emerald-200">
             🤖</div>
         <h2 class="text-2xl font-black text-slate-900 mb-2">Deep Dive with CareerBuddy</h2>
         <p class="text-slate-500 text-sm mb-8 leading-relaxed">Tap below to begin your voice-assisted session with the
             Career Mentor.</p>
-        <button id="start-session-btn" style="background-color: #7c3aed !important;"
-            class="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:bg-violet-700 active:scale-95 transition-all text-sm uppercase tracking-widest block mx-auto">
+        <button id="start-session-btn" style="background-color: #065f46 !important;"
+            class="w-full py-4 text-white font-bold rounded-2xl shadow-lg hover:bg-emerald-900 active:scale-95 transition-all text-sm uppercase tracking-widest block mx-auto">
             Let’s Dive In
         </button>
     </div>
@@ -28,9 +28,9 @@
         <div
             class="bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-6 shadow-lg flex flex-col items-center text-center">
             <div class="relative w-20 h-20 mb-3">
-                <div class="pulse-ring absolute inset-0 rounded-full bg-violet-400 opacity-0"></div>
+                <div class="pulse-ring absolute inset-0 rounded-full bg-emerald-500 opacity-0"></div>
                 <div id="talking-buddy-orb"
-                    class="relative w-full h-full bg-gradient-to-br from-violet-600 to-indigo-700 rounded-full border-4 border-white shadow-xl flex items-center justify-center overflow-hidden transition-all duration-300">
+                    class="relative w-full h-full bg-gradient-to-br from-emerald-800 to-green-900 rounded-full border-4 border-white shadow-xl flex items-center justify-center overflow-hidden transition-all duration-300">
                     <span class="text-3xl relative z-10" id="buddy-emoji">🎓</span>
                 </div>
             </div>
@@ -42,10 +42,10 @@
         <div class="bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-5 shadow-lg flex-1">
             <div class="text-center">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Time Remaining</p>
-                <div id="timer-sidebar" class="text-3xl font-black text-violet-600 tabular-nums">10:00</div>
+                <div id="timer-sidebar" class="text-3xl font-black text-emerald-800 tabular-nums">10:00</div>
                 <div class="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
                     <div id="timer-progress-sidebar"
-                        class="bg-gradient-to-r from-violet-500 to-indigo-600 h-full transition-all duration-1000"
+                        class="bg-gradient-to-r from-emerald-700 to-green-800 h-full transition-all duration-1000"
                         style="width: 100%"></div>
                 </div>
             </div>
@@ -59,7 +59,7 @@
             class="p-3 sm:p-4 bg-white/80 border-b border-slate-100 flex items-center justify-between backdrop-blur-md z-10">
             <div class="flex items-center gap-3">
                 <div
-                    class="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white text-lg shadow-lg">
+                    class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-800 to-green-900 flex items-center justify-center text-white text-lg shadow-lg">
                     🤖</div>
                 <div>
                     <span class="font-bold text-slate-800 block leading-tight text-sm sm:text-base">CareerBuddy</span>
@@ -82,10 +82,11 @@
                 <div id="transcript-display" class="text-sm text-slate-400 italic text-center min-h-[20px] max-w-md">Tap
                     the mic and start speaking...</div>
                 <button type="button" id="micBtn"
-                    class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white text-2xl sm:text-3xl shadow-xl shadow-indigo-200 hover:scale-110 active:scale-95 transition-all duration-200 relative">
+                    class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-emerald-800 to-green-900 flex items-center justify-center text-white text-2xl sm:text-3xl shadow-xl shadow-green-200 hover:scale-110 active:scale-95 transition-all duration-200 relative">
                     <span id="micIcon">🎙️</span>
                     <div id="mic-pulse"
-                        class="absolute inset-0 rounded-full border-4 border-violet-400 opacity-0 transition-all"></div>
+                        class="absolute inset-0 rounded-full border-4 border-emerald-500 opacity-0 transition-all">
+                    </div>
                 </button>
                 <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Tap to Talk</p>
                 <button id="finishBtn" onclick="finishAssessment()"
@@ -117,6 +118,7 @@
         let conversationDone = false;
         let isProcessing = false;
         let voiceUnlocked = false;
+        let currentAudio = null;
 
         // Ensure voices are loaded
         window.speechSynthesis.getVoices();
@@ -152,10 +154,11 @@
                 const response = await fetch(`/api/tts?text=${encodeURIComponent(text.replace(/[*_#]/g, ''))}`);
                 if (response.ok && response.headers.get('Content-Type')?.includes('audio')) {
                     const blob = await response.blob();
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    audio.onplay = startAnim;
-                    audio.onended = stopAnim;
-                    await audio.play();
+                    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+                    currentAudio = new Audio(URL.createObjectURL(blob));
+                    currentAudio.onplay = startAnim;
+                    currentAudio.onended = () => { stopAnim(); currentAudio = null; };
+                    await currentAudio.play();
                     return;
                 }
             } catch (e) {
@@ -204,11 +207,11 @@
             const div = document.createElement('div');
             div.className = 'flex items-start gap-3 animate-fade-in-up';
             div.innerHTML = `
-                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-200">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-emerald-800 to-green-900 flex items-center justify-center flex-shrink-0 shadow-lg shadow-green-200">
                     <span class="text-sm sm:text-lg text-white">🤖</span>
                 </div>
                 <div class="bg-white text-slate-700 p-4 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-[85%]">
-                    <div class="prose prose-indigo prose-sm max-w-none leading-relaxed">${marked.parse(text)}</div>
+                    <div class="prose prose-emerald prose-sm max-w-none leading-relaxed">${marked.parse(text)}</div>
                 </div>
             `;
             chatBox.appendChild(div);
@@ -224,7 +227,7 @@
                 <div class="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center flex-shrink-0 shadow-sm">
                     <span class="text-sm">🗣️</span>
                 </div>
-                <div class="bg-violet-50 text-violet-800 px-4 py-3 rounded-2xl rounded-tr-none shadow-sm border border-violet-100 max-w-[75%]">
+                <div class="bg-emerald-50 text-emerald-900 px-4 py-3 rounded-2xl rounded-tr-none shadow-sm border border-emerald-100 max-w-[75%]">
                     <p class="text-sm italic">${text}</p>
                 </div>
             `;
@@ -310,6 +313,20 @@
 
         window.finishAssessment = async function () {
             if (finishBtn) { finishBtn.disabled = true; finishBtn.textContent = '⏳ Finalizing...'; }
+            
+            // Stop all AI interactions
+            try {
+                window.speechSynthesis.cancel();
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                stopAnim();
+                isProcessing = false;
+            } catch (e) {
+                console.error("Error stopping AI:", e);
+            }
+
             try {
                 const resp = await fetch('/assessment/phase3/finalize', {
                     method: 'POST',
@@ -320,7 +337,7 @@
                 if (data.redirect) window.location.href = data.redirect;
             } catch (e) {
                 finishBtn.disabled = false;
-                finishBtn.textContent = '✨ Finish';
+                finishBtn.textContent = '✨ Finish & Get Results';
             }
         };
     });
