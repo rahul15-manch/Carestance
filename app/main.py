@@ -218,7 +218,10 @@ def run_migrations():
             # Add index for appointment_time if it doesn't exist
             # Note: This is a safe try-catch for PostgreSQL/SQLite differences
             migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_appointment_time ON appointments (appointment_time)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_payment_status ON appointments (payment_status)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_chat_messages_timestamp ON chat_messages (timestamp)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_chat_messages_sender ON chat_messages (sender)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_feedbacks_user_id ON feedbacks (user_id)")
 
         # 4. Student Messages
         sm_cols = get_columns('student_messages')
@@ -227,6 +230,9 @@ def run_migrations():
             if 'attachment_type' not in sm_cols: migrations.append("ALTER TABLE student_messages ADD COLUMN attachment_type VARCHAR")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_student_messages_timestamp ON student_messages (timestamp)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_student_messages_is_read ON student_messages (is_read)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_career_paths_career_title ON career_paths (career_title)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_college_recommendations_career_title ON college_recommendations (career_title)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_counsellor_ratings_rating ON counsellor_ratings (rating)")
 
         # 5. Assessment Results
         ar_cols = get_columns('assessment_results')
@@ -240,6 +246,9 @@ def run_migrations():
                            ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON')]:
                 if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_recommended_stream ON assessment_results (recommended_stream)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_phase_2_category ON assessment_results (phase_2_category)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_personality ON assessment_results (personality)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_selected_class ON assessment_results (selected_class)")
             
         # 6. Notifications
         n_cols = get_columns('notifications')
