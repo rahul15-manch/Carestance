@@ -25,7 +25,13 @@
                     class="text-[10px] font-bold text-rose-500 uppercase hover:underline mt-1 block">Restart
                     Assessment</a>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex space-x-2 items-center">
+                <div class="flex items-center bg-slate-100 rounded-xl p-1 shadow-inner border border-slate-200">
+                    <button type="button" onclick="setLanguage('en')" id="lang-en"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300">EN</button>
+                    <button type="button" onclick="setLanguage('hi')" id="lang-hi"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300">HI</button>
+                </div>
                 <button type="button" id="record-btn"
                     class="p-3 rounded-full bg-slate-100 text-slate-600 shadow-sm border border-slate-200 hover:bg-red-50 hover:text-red-600 transition-all transform hover:scale-105"
                     title="Record Answer">
@@ -93,7 +99,7 @@
                                         <span class="font-bold text-lg">{{ opt.value }}</span>
                                     </div>
                                     <div class="flex-grow">
-                                        <p class="text-slate-700 font-bold text-lg leading-tight">{{ opt.text }}</p>
+                                        <p class="text-slate-700 font-bold text-lg leading-tight option-text">{{ opt.text }}</p>
                                     </div>
                                     <div class="flex-shrink-0 opacity-0 peer-checked:opacity-100 transition-opacity">
                                         <svg class="w-6 h-6 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
@@ -168,11 +174,60 @@
 </div>
 
 <script>
+    const questions = {{ questions|tojson }};
     let currentStep = 0;
-    const steps = document.querySelectorAll('.question-step');
-    const totalSteps = steps.length;
+    const stepsElements = document.querySelectorAll('.question-step');
+    const totalSteps = questions.length;
     const progressBar = document.getElementById('progress-bar');
     const currentStepText = document.getElementById('current-step-text');
+    let currentLanguage = localStorage.getItem('assessmentLanguage') || 'hi';
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('assessmentLanguage', lang);
+        updateLanguageUI();
+    }
+
+    function updateLanguageUI() {
+        const btnEn = document.getElementById('lang-en');
+        const btnHi = document.getElementById('lang-hi');
+
+        if (currentLanguage === 'en') {
+            btnEn.classList.add('bg-[#0b3b3c]', 'text-white', 'shadow-md');
+            btnEn.classList.remove('text-slate-500');
+            btnHi.classList.remove('bg-[#0b3b3c]', 'text-white', 'shadow-md');
+            btnHi.classList.add('text-slate-500');
+        } else {
+            btnHi.classList.add('bg-[#0b3b3c]', 'text-white', 'shadow-md');
+            btnHi.classList.remove('text-slate-500');
+            btnEn.classList.remove('bg-[#0b3b3c]', 'text-white', 'shadow-md');
+            btnEn.classList.add('text-slate-500');
+        }
+
+        // Update current question and options text
+        const stepEl = stepsElements[currentStep];
+        if (stepEl) {
+            const qData = questions[currentStep];
+            const questionTitle = stepEl.querySelector('h4');
+            const optionsTexts = stepEl.querySelectorAll('.option-text');
+
+            if (currentLanguage === 'en') {
+                questionTitle.innerText = qData.question_en || qData.question || qData.title;
+                qData.options.forEach((opt, optIndex) => {
+                    if (optionsTexts[optIndex]) {
+                        optionsTexts[optIndex].innerText = opt.text_en || opt.text;
+                    }
+                });
+            } else {
+                questionTitle.innerText = qData.question || qData.title;
+                qData.options.forEach((opt, optIndex) => {
+                    if (optionsTexts[optIndex]) {
+                        optionsTexts[optIndex].innerText = opt.text;
+                    }
+                });
+            }
+        }
+    }
 
     function togglePauseVoice() {
         if (window.speechSynthesis.paused) {
@@ -188,7 +243,7 @@
     const buddyStatus = document.getElementById('buddy-status');
 
     function showStep(index) {
-        steps.forEach(step => step.classList.add('hidden'));
+        stepsElements.forEach(step => step.classList.add('hidden'));
 
         if (index >= totalSteps) {
             document.getElementById('submit-section').classList.remove('hidden');
@@ -197,11 +252,10 @@
             return;
         }
 
-        steps[index].classList.remove('hidden');
+        stepsElements[index].classList.remove('hidden');
         currentStepText.innerText = index + 1;
         updateProgress((index / totalSteps) * 100);
-
-        setTimeout(() => speakCurrentQuestion(), 500);
+        updateLanguageUI();
     }
 
     function updateProgress(percentage) {
@@ -225,9 +279,13 @@
     }
 
     async function speakCurrentQuestion() {
-        const currentQuestion = steps[currentStep]?.querySelector('.question-title')?.innerText;
-        if (!currentQuestion) return;
+        const qData = questions[currentStep];
+        if (!qData) return;
 
+        const textToSpeak = currentLanguage === 'en' 
+            ? (qData.question_en || qData.question || qData.title) 
+            : (qData.question || qData.title);
+            
         // Visual Feedback for AI Buddy
         const buddyTalkingClass = 'buddy-talking';
 
@@ -240,7 +298,7 @@
             buddyStatus.classList.add('bg-emerald-500');
 
             // Try Bark AI TTS via backend
-            const response = await fetch(`/api/tts?text=${encodeURIComponent(currentQuestion)}`);
+            const response = await fetch(`/api/tts?text=${encodeURIComponent(textToSpeak)}`);
 
             if (response.ok && response.headers.get('Content-Type').includes('audio')) {
                 const blob = await response.blob();
@@ -260,7 +318,7 @@
             }
         } catch (err) {
             // Fallback to Native Speech Synthesis
-            const utterance = new SpeechSynthesisUtterance(currentQuestion);
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
             utterance.voice = getBestVoice();
             utterance.rate = 1.0;
             utterance.pitch = 1.1;
@@ -362,6 +420,7 @@
     window.speechSynthesis.onvoiceschanged = () => getBestVoice();
 
     document.addEventListener('DOMContentLoaded', () => {
+        updateLanguageUI();
         showStep(currentStep);
         initVoiceRecording();
 
