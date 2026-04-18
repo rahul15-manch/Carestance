@@ -573,12 +573,14 @@
                     <div>
                         <div class="flex justify-between text-sm mb-1">
                             <span class="text-slate-500">AI Match Confidence</span>
-                            <span class="font-bold text-slate-900">{{ assessment.confidence|int if assessment.confidence
+                            <span class="font-bold text-slate-900">{{ (assessment.confidence * 100)|int if
+                                assessment.confidence
                                 else 0 }}%</span>
                         </div>
                         <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div class="h-full bg-emerald-500"
-                                style="width: {{ assessment.confidence|int if assessment.confidence else 0 }}%;"></div>
+                                style="width: {{ (assessment.confidence * 100)|int if assessment.confidence else 0 }}%;">
+                            </div>
                         </div>
                     </div>
                     <div>
@@ -635,13 +637,6 @@
                     </div>
                     <span class="text-sm font-bold text-slate-700">Colleges</span>
                 </a>
-                <a href="/chatbot"
-                    class="bg-white/80 p-4 rounded-2xl shadow-sm border border-[#a8ded9] shadow-[#d9f0ef] hover:border-[#1b5e5f] hover:shadow-md transition text-center group">
-                    <div
-                        class="w-10 h-10 mx-auto bg-[#d9f0ef] text-[#1b5e5f] rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition">
-                        <i class="fas fa-comment-dots"></i>
-                    </div>
-                    <span class="text-sm font-bold text-slate-700">Mentor AI</span>
                 </a>
                 <a href="/counsellors"
                     class="bg-white/80 p-4 rounded-2xl shadow-sm border border-[#a8ded9] shadow-[#d9f0ef] hover:border-[#1b5e5f] hover:shadow-md transition text-center group">
