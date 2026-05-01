@@ -2301,13 +2301,13 @@ async def rate_appointment(appointment_id: int, request: Request, rating: int = 
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     # Verify appointment student
-    appointment = db.query(models.Appointment).filter(
-        models.Appointment.id == appointment_id, 
-        models.Appointment.student_id == user.id
-    ).first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     
     if not appointment:
-        raise HTTPException(status_code=404, detail="Appointment not found or not yours")
+        raise HTTPException(status_code=404, detail=f"Appointment {appointment_id} does not exist.")
+        
+    if appointment.student_id != user.id:
+        raise HTTPException(status_code=403, detail=f"This appointment does not belong to your user (ID: {user.id}).")
     
     if appointment.status != "completed":
         raise HTTPException(status_code=400, detail="Only completed appointments can be rated")
