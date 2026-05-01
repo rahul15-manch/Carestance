@@ -25,8 +25,8 @@ engine_args = {
     "connect_args": {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
 }
 
-# Fix for Supabase Transaction Mode (Port 6543)
-if ":6543" in SQLALCHEMY_DATABASE_URL and "prepare_threshold" not in SQLALCHEMY_DATABASE_URL:
+# Fix for Supabase Transaction Mode/Poolers
+if ("6543" in SQLALCHEMY_DATABASE_URL or "pooler" in SQLALCHEMY_DATABASE_URL or "supabase" in SQLALCHEMY_DATABASE_URL) and "prepare_threshold" not in SQLALCHEMY_DATABASE_URL:
     if "?" in SQLALCHEMY_DATABASE_URL:
         SQLALCHEMY_DATABASE_URL += "&prepare_threshold=0"
     else:
