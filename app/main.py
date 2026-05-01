@@ -215,12 +215,13 @@ def run_migrations():
         if ap_cols:
             for col, ty in [('counsellor_joined', 'BOOLEAN DEFAULT FALSE'), ('joined_at', 'TIMESTAMP'), 
                            ('student_joined', 'BOOLEAN DEFAULT FALSE'), ('student_joined_at', 'TIMESTAMP'),
-                           ('actual_overlap_minutes', 'INTEGER DEFAULT 0')]:
+                           ('actual_overlap_minutes', 'INTEGER DEFAULT 0'),
+                           ('cancelled_by', 'VARCHAR'), ('cancelled_by_role', 'VARCHAR')]:
                 if col not in ap_cols: migrations.append(f"ALTER TABLE appointments ADD COLUMN {col} {ty}")
-            # Add index for appointment_time if it doesn't exist
-            # Note: This is a safe try-catch for PostgreSQL/SQLite differences
             migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_appointment_time ON appointments (appointment_time)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_payment_status ON appointments (payment_status)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_cancelled_by ON appointments (cancelled_by)")
+            migrations.append("CREATE INDEX IF NOT EXISTS ix_appointments_cancelled_by_role ON appointments (cancelled_by_role)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_chat_messages_timestamp ON chat_messages (timestamp)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_chat_messages_sender ON chat_messages (sender)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_feedbacks_user_id ON feedbacks (user_id)")
