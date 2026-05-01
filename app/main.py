@@ -333,7 +333,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         return templates.TemplateResponse(
             request=request,
             name="error_update.html",
-            context={},
+            context={"error": str(exc)},
             status_code=500
         )
     except Exception as template_exc:

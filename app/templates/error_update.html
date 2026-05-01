@@ -82,6 +82,12 @@
             <p class="text-slate-500 text-base md:text-lg max-w-sm mx-auto leading-relaxed font-medium">
                 We're currently making some improvements. CareStance is going under update and will get fixed soon.
             </p>
+            {% if error %}
+            <div class="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-left">
+                <p class="text-xs font-bold text-red-500 uppercase tracking-wider mb-1">Error Details:</p>
+                <code class="text-xs text-red-700 font-mono break-all">{{ error }}</code>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Call to Actions -->
