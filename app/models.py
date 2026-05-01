@@ -161,16 +161,20 @@ class Appointment(Base):
     appointment_time = Column(DateTime, index=True)
     status = Column(String, default="requested", index=True)  # requested, accepted, rejected, completed, cancelled
     payment_status = Column(String, default="pending", index=True)  # pending, paid
-    meeting_link = Column(String, nullable=True)
-    razorpay_order_id = Column(String, nullable=True)
-    razorpay_payment_id = Column(String, nullable=True)
+    meeting_link = Column(String, nullable=True, index=True)
+    razorpay_order_id = Column(String, nullable=True, index=True)
+    razorpay_payment_id = Column(String, nullable=True, index=True)
 
     # Join tracking
-    counsellor_joined = Column(Boolean, default=False)
-    joined_at = Column(DateTime, nullable=True)
-    student_joined = Column(Boolean, default=False)
-    student_joined_at = Column(DateTime, nullable=True)
-    actual_overlap_minutes = Column(Integer, default=0)
+    counsellor_joined = Column(Boolean, default=False, index=True)
+    joined_at = Column(DateTime, nullable=True, index=True)
+    student_joined = Column(Boolean, default=False, index=True)
+    student_joined_at = Column(DateTime, nullable=True, index=True)
+    actual_overlap_minutes = Column(Integer, default=0, index=True)
+
+    # Cancellation tracking
+    cancelled_by = Column(String, nullable=True, index=True)
+    cancelled_by_role = Column(String, nullable=True, index=True)  # 'student' or 'counsellor'
 
     student = relationship("User", foreign_keys=[student_id], back_populates="student_appointments")
     counsellor = relationship("User", foreign_keys=[counsellor_id], back_populates="counsellor_appointments")

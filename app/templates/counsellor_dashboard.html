@@ -468,7 +468,27 @@
             <div class="space-y-4">
                 {% for apt in appointments %}
                 <div
-                    class="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:shadow-lg transition-all gap-4">
+                    class="flex flex-col md:flex-row items-start md:items-center justify-between p-5 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white hover:shadow-lg transition-all gap-4"
+                    x-data="{
+                        aptTime: new Date('{{ apt.appointment_time.strftime('%Y-%m-%dT%H:%M:%S') }}'),
+                        now: new Date(),
+                        get windowStart() { return this.aptTime; },
+                        get windowEnd() { return new Date(this.aptTime.getTime() + 60 * 60 * 1000); },
+                        get isActive() { return this.now >= this.windowStart && this.now <= this.windowEnd; },
+                        get isExpired() { return this.now > this.windowEnd; },
+                        get isBefore() { return this.now < this.windowStart; },
+                        get timeLabel() {
+                            if (this.isActive) return 'Join Call';
+                            if (this.isExpired) return 'Session Expired';
+                            const h = this.aptTime.getHours();
+                            const m = this.aptTime.getMinutes();
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            const hh = h % 12 || 12;
+                            const mm = m < 10 ? '0' + m : m;
+                            return 'Opens at ' + hh + ':' + mm + ' ' + ampm;
+                        },
+                        init() { setInterval(() => { this.now = new Date(); }, 30000); }
+                    }">
                     <div class="flex items-center gap-4">
                         <div
                             class="w-12 h-12 bg-[#d9f0ef] rounded-2xl flex items-center justify-center text-[#0b3b3c] text-xl shadow-inner">
@@ -517,10 +537,23 @@
                         </a>
                         {% endif %}
                         {% if apt.status == 'scheduled' %}
-                        <a href="/join_meeting/{{ apt.id }}" target="_blank"
-                            class="px-5 py-2.5 bg-[#0b3b3c] hover:bg-[#0b3b3c] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#d9f0ef] flex items-center gap-2">
-                            <i class="fas fa-video"></i> Join Call
-                        </a>
+                        <!-- Join Call: Only active during session window (scheduled time → +1 hour) -->
+                        <template x-if="isActive">
+                            <a href="/join_meeting/{{ apt.id }}" target="_blank"
+                                class="px-5 py-2.5 bg-[#0b3b3c] hover:bg-[#1b5e5f] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#d9f0ef] flex items-center gap-2 animate-pulse">
+                                <i class="fas fa-video"></i> <span x-text="timeLabel"></span>
+                            </a>
+                        </template>
+                        <template x-if="isBefore">
+                            <span class="px-5 py-2.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed flex items-center gap-2 select-none">
+                                <i class="fas fa-clock"></i> <span x-text="timeLabel"></span>
+                            </span>
+                        </template>
+                        <template x-if="isExpired">
+                            <span class="px-5 py-2.5 bg-red-100 text-red-400 font-bold rounded-xl cursor-not-allowed flex items-center gap-2 select-none">
+                                <i class="fas fa-times-circle"></i> <span x-text="timeLabel"></span>
+                            </span>
+                        </template>
                         {% endif %}
                     </div>
                 </div>
@@ -560,12 +593,64 @@
                                     class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1b5e5f]">
                                 {% endif %}
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-500 uppercase">Availability</label>
-                                <input type="text" name="availability_text" placeholder="e.g., Sat-Sun 10am-2pm"
-                                    required
-                                    value="{% if profile.availability %}{{ profile.availability.get('text', '') }}{% endif %}"
-                                    class="mt-1 block w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl">
+                            <script>
+                                document.addEventListener('alpine:init', () => {
+                                    Alpine.data('availabilityPicker', () => ({
+                                        days: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'],
+                                        slots: {% if profile.availability and profile.availability.get('slots') %}{{ profile.availability.slots | tojson }}{% else %}{}{% endif %},
+                                        toggleDay(day) {
+                                            if (this.slots[day]) { delete this.slots[day]; }
+                                            else { this.slots[day] = {start: '09:00', end: '17:00'}; }
+                                        },
+                                        get slotsJson() { return JSON.stringify(this.slots); },
+                                        get textSummary() {
+                                            const active = this.days.filter(d => this.slots[d]);
+                                            if (!active.length) return 'Not set';
+                                            return active.map(d => {
+                                                const s = this.slots[d];
+                                                return d.substring(0,3) + ' ' + this.fmt(s.start) + '-' + this.fmt(s.end);
+                                            }).join(', ');
+                                        },
+                                        fmt(t) {
+                                            const parts = t.split(':').map(Number);
+                                            const h = parts[0]; const m = parts[1];
+                                            const ampm = h >= 12 ? 'PM' : 'AM';
+                                            return (h % 12 || 12) + ':' + (m < 10 ? '0' + m : m) + ' ' + ampm;
+                                        }
+                                    }));
+                                });
+                            </script>
+                            <div x-data="availabilityPicker">
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Availability</label>
+                                <p class="text-[10px] text-slate-400 mb-3 italic">Select the days and time slots you are available for sessions.</p>
+                                
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                                    <template x-for="day in days" :key="day">
+                                        <button type="button" @click="toggleDay(day)"
+                                            :class="slots[day] ? 'bg-[#0b3b3c] text-white border-[#0b3b3c] shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-[#a8ded9]'"
+                                            class="px-3 py-2 rounded-xl border text-xs font-bold transition-all">
+                                            <span x-text="day.substring(0,3)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <!-- Time slots for selected days -->
+                                <template x-for="day in days.filter(d => slots[d])" :key="day + '_slot'">
+                                    <div class="flex items-center gap-2 mb-2 p-2 bg-slate-50 rounded-xl border border-slate-100">
+                                        <span x-text="day.substring(0,3)" class="text-xs font-bold text-[#0b3b3c] w-8"></span>
+                                        <input type="time" :value="slots[day].start" @change="slots[day].start = $event.target.value"
+                                            class="flex-1 px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-[#1b5e5f]">
+                                        <span class="text-slate-400 text-xs">to</span>
+                                        <input type="time" :value="slots[day].end" @change="slots[day].end = $event.target.value"
+                                            class="flex-1 px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-[#1b5e5f]">
+                                    </div>
+                                </template>
+
+                                <p class="text-[10px] text-slate-500 mt-2 font-medium"><i class="fas fa-info-circle mr-1 text-[#1b5e5f]"></i> Summary: <span x-text="textSummary"></span></p>
+
+                                <!-- Hidden inputs to send data -->
+                                <input type="hidden" name="availability_text" :value="textSummary">
+                                <input type="hidden" name="availability_slots" :value="slotsJson">
                             </div>
                             <button type="submit"
                                 class="w-full py-3 bg-[#0b3b3c] text-white font-bold rounded-xl shadow-lg hover:bg-[#0b3b3c] transition-all">

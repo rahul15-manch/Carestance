@@ -74,9 +74,22 @@
                         <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Availability
                             </p>
+                            {% if c.availability and c.availability.get('slots') %}
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for day, slot in c.availability.get('slots', {}).items() %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-[#d9f0ef] text-[#0b3b3c] text-[10px] font-bold rounded-lg border border-[#a8ded9]">
+                                    {{ day[:3] }}
+                                    <span class="text-[9px] text-[#1b5e5f] font-medium">
+                                        {{ slot.get('start', '09:00') }}-{{ slot.get('end', '17:00') }}
+                                    </span>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
                             <p class="text-sm text-slate-600 font-semibold leading-relaxed">{{
                                 c.availability.get('text', 'Flexible Hours') if c.availability else 'Flexible Hours' }}
                             </p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -91,6 +104,8 @@
                             <input type="datetime-local" id="time_{{ c.user_id }}"
                                 class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-white text-slate-900 outline-none font-medium focus:ring-2 focus:ring-[#1b5e5f]">
                         </div>
+                        <!-- Availability feedback message -->
+                        <p id="avail_msg_{{ c.user_id }}" class="text-[10px] mt-1.5 ml-1 font-medium hidden"></p>
                     </div>
 
                     <button id="btn_{{ c.user_id }}"
@@ -119,6 +134,7 @@
 <script>
     async function payNow(counsellorId, fee, counsellorName) {
         const apptTime = document.getElementById(`time_${counsellorId}`).value;
+        const msgEl = document.getElementById(`avail_msg_${counsellorId}`);
         if (!apptTime) {
             alert("Please select an appointment time first.");
             return;
@@ -128,6 +144,29 @@
         const originalContent = btn.innerHTML;
 
         btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i> Checking availability...`;
+
+        // Check availability first
+        try {
+            const availResp = await fetch(`/check_availability/${counsellorId}?appointment_time=${encodeURIComponent(apptTime)}`);
+            const availData = await availResp.json();
+            if (!availData.available) {
+                msgEl.textContent = `⚠️ ${availData.error}`;
+                msgEl.className = "text-[10px] mt-1.5 ml-1 font-medium text-red-500";
+                msgEl.classList.remove("hidden");
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                return;
+            }
+            // Clear any previous error
+            msgEl.textContent = "✓ Counsellor is available at this time.";
+            msgEl.className = "text-[10px] mt-1.5 ml-1 font-medium text-emerald-600";
+            msgEl.classList.remove("hidden");
+        } catch (err) {
+            console.error("Availability check failed:", err);
+            // Proceed anyway if check fails (graceful degradation)
+        }
+
         btn.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i> Processing...`;
 
         if (parseFloat(fee) === 0) {
@@ -174,7 +213,7 @@
 
         // 2. Open Razorpay Checkout
         const options = {
-            "key": "{{ RAZORPAY_KEY_ID }}", // This will be passed from backend if configured in app.state or similar, but for now we'll assumes it's available or we can inject it
+            "key": "{{ RAZORPAY_KEY_ID }}",
             "amount": orderData.amount,
             "currency": orderData.currency,
             "name": "CareStance",
@@ -231,5 +270,31 @@
 
         rzp.open();
     }
+
+    // Live availability feedback when selecting a time
+    document.querySelectorAll('input[type="datetime-local"]').forEach(input => {
+        input.addEventListener('change', async function() {
+            const counsellorId = this.id.replace('time_', '');
+            const msgEl = document.getElementById(`avail_msg_${counsellorId}`);
+            const apptTime = this.value;
+            if (!apptTime) { msgEl.classList.add('hidden'); return; }
+            
+            try {
+                const resp = await fetch(`/check_availability/${counsellorId}?appointment_time=${encodeURIComponent(apptTime)}`);
+                const data = await resp.json();
+                if (data.available) {
+                    msgEl.textContent = "✓ Counsellor is available at this time.";
+                    msgEl.className = "text-[10px] mt-1.5 ml-1 font-medium text-emerald-600";
+                } else {
+                    msgEl.textContent = `⚠️ ${data.error}`;
+                    msgEl.className = "text-[10px] mt-1.5 ml-1 font-medium text-red-500";
+                }
+                msgEl.classList.remove("hidden");
+            } catch (e) {
+                msgEl.classList.add("hidden");
+            }
+        });
+    });
+
 </script>
 {% endblock %}

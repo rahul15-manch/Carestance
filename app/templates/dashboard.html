@@ -143,7 +143,7 @@
             <div class="absolute top-5 left-0 w-full rounded-full"
                 style="height: 6px; background: #e2e8f0; z-index: 1;"></div>
             <div class="absolute top-5 left-0 rounded-full transition-all duration-1000"
-                style="height: 6px; z-index: 2; background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {% if assessment.final_answers %}100%{% elif assessment.phase3_answers %}66%{% elif assessment %}33%{% else %}10%{% endif %}">
+                style="height: 6px; z-index: 2; background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {% if appointments %}100%{% elif assessment.final_answers %}75%{% elif assessment.phase3_answers %}50%{% elif assessment %}25%{% else %}8%{% endif %}">
             </div>
 
             <div class="flex justify-between items-center w-full relative" style="z-index: 5;">
@@ -171,16 +171,28 @@
                         Deep Dive with CareerBuddy</p>
                 </div>
 
-                <!-- Step 3: Result -->
+                <!-- Step 3: Career Path -->
                 <div class="flex flex-col items-center gap-3 group">
                     <div
                         class="w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-all duration-300
-                        {% if assessment.final_answers %}bg-emerald-500 text-white animate-bounce{% elif assessment.phase3_answers %}bg-white border-[#0b3b3c] text-[#0b3b3c] animate-pulse{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
+                        {% if assessment.final_answers %}bg-[#0b3b3c] text-white scale-110{% elif assessment.phase3_answers %}bg-white border-[#0b3b3c] text-[#0b3b3c] animate-pulse{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
                         <i class="fas fa-route"></i>
                     </div>
                     <p
-                        class="text-xs font-bold {% if assessment.final_answers %}text-emerald-600{% elif assessment.phase3_answers %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
+                        class="text-xs font-bold {% if assessment.final_answers %}text-[#0b3b3c]{% elif assessment.phase3_answers %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
                         Career Path</p>
+                </div>
+
+                <!-- Step 4: Counsellor Expert -->
+                <div class="flex flex-col items-center gap-3 group">
+                    <div
+                        class="w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-all duration-300
+                        {% if appointments %}bg-emerald-500 text-white animate-bounce{% elif assessment.final_answers %}bg-white border-[#0b3b3c] text-[#0b3b3c] animate-pulse{% else %}bg-white text-slate-400 border-slate-200{% endif %}">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <p
+                        class="text-xs font-bold {% if appointments %}text-emerald-600{% elif assessment.final_answers %}text-[#1b5e5f]{% else %}text-slate-400{% endif %}">
+                        Counsellor Expert</p>
                 </div>
             </div>
         </div>
@@ -310,7 +322,27 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for appt in appointments %}
                     <div
-                        class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                        class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all"
+                        x-data="{
+                            aptTime: new Date('{{ appt.appointment_time.strftime('%Y-%m-%dT%H:%M:%S') }}'),
+                            now: new Date(),
+                            get windowStart() { return this.aptTime; },
+                            get windowEnd() { return new Date(this.aptTime.getTime() + 60 * 60 * 1000); },
+                            get isActive() { return this.now >= this.windowStart && this.now <= this.windowEnd; },
+                            get isExpired() { return this.now > this.windowEnd; },
+                            get isBefore() { return this.now < this.windowStart; },
+                            get timeLabel() {
+                                if (this.isActive) return 'Join Video Call';
+                                if (this.isExpired) return 'Session Expired';
+                                const h = this.aptTime.getHours();
+                                const m = this.aptTime.getMinutes();
+                                const ampm = h >= 12 ? 'PM' : 'AM';
+                                const hh = h % 12 || 12;
+                                const mm = m < 10 ? '0' + m : m;
+                                return 'Opens at ' + hh + ':' + mm + ' ' + ampm;
+                            },
+                            init() { setInterval(() => { this.now = new Date(); }, 30000); }
+                        }">
                         <div class="flex justify-between items-start mb-4">
                             <div
                                 class="h-12 w-12 rounded-xl bg-[#d9f0ef] flex items-center justify-center text-[#0b3b3c]">
@@ -341,17 +373,41 @@
 
                         <div id="join-container-{{ appt.id }}">
                             {% if appt.status == 'scheduled' %}
-                            <a href="{{ appt.meeting_link }}" target="_blank"
-                                class="inline-flex w-full items-center justify-center px-4 py-3 bg-[#0b3b3c] text-white text-sm font-bold rounded-xl hover:bg-[#1b5e5f] transition-all transform active:scale-95 shadow-lg shadow-[#d9f0ef]">
-                                Join Video Call
-                            </a>
-                            <form action="/appointment/delete/{{ appt.id }}" method="POST" class="mt-2"
-                                onsubmit="return confirm('Are you sure you want to cancel this appointment?')">
-                                <button type="submit"
-                                    class="w-full text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider transition-colors">
-                                    <i class="fas fa-trash-alt mr-1"></i> Cancel Session
-                                </button>
-                            </form>
+                            <!-- Join Video Call: Only active during session window (scheduled time → +1 hour) -->
+                            <template x-if="isActive">
+                                <div>
+                                    <a href="{{ appt.meeting_link }}" target="_blank"
+                                        class="inline-flex w-full items-center justify-center px-4 py-3 bg-[#0b3b3c] text-white text-sm font-bold rounded-xl hover:bg-[#1b5e5f] transition-all transform active:scale-95 shadow-lg shadow-[#d9f0ef] animate-pulse">
+                                        <i class="fas fa-video mr-2"></i> <span x-text="timeLabel"></span>
+                                    </a>
+                                    <form action="/appointment/delete/{{ appt.id }}" method="POST" class="mt-2"
+                                        onsubmit="return confirm('Are you sure you want to cancel this appointment?')">
+                                        <button type="submit"
+                                            class="w-full text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider transition-colors">
+                                            <i class="fas fa-trash-alt mr-1"></i> Cancel Session
+                                        </button>
+                                    </form>
+                                </div>
+                            </template>
+                            <template x-if="isBefore">
+                                <div>
+                                    <span class="inline-flex w-full items-center justify-center px-4 py-3 bg-slate-200 text-slate-500 text-sm font-bold rounded-xl cursor-not-allowed select-none">
+                                        <i class="fas fa-clock mr-2"></i> <span x-text="timeLabel"></span>
+                                    </span>
+                                    <form action="/appointment/delete/{{ appt.id }}" method="POST" class="mt-2"
+                                        onsubmit="return confirm('Are you sure you want to cancel this appointment?')">
+                                        <button type="submit"
+                                            class="w-full text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider transition-colors">
+                                            <i class="fas fa-trash-alt mr-1"></i> Cancel Session
+                                        </button>
+                                    </form>
+                                </div>
+                            </template>
+                            <template x-if="isExpired">
+                                <span class="inline-flex w-full items-center justify-center px-4 py-3 bg-red-50 text-red-400 text-sm font-bold rounded-xl cursor-not-allowed select-none">
+                                    <i class="fas fa-times-circle mr-2"></i> <span x-text="timeLabel"></span>
+                                </span>
+                            </template>
                             {% elif appt.status == 'completed' %}
                             {% if not appt.rating_record %}
                             <button @click="ratingModal = true; selectedAppt = {{ appt.id }}"

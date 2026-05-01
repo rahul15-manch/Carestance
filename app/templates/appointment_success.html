@@ -27,9 +27,9 @@
                 A confirmation email has been dispatched to both you and your counsellor. Get ready for an insightful session!
             </p>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-3xl mx-auto mb-16">
+            <div class="flex justify-center max-w-3xl mx-auto mb-16">
                 <!-- Info Card -->
-                <div class="bg-[#d9f0ef]/50 rounded-[32px] p-8 border border-[#a8ded9]/50 text-left">
+                <div class="bg-[#d9f0ef]/50 rounded-[32px] p-8 border border-[#a8ded9]/50 text-left w-full max-w-md">
                     <h4 class="text-[10px] font-black text-[#1b5e5f] uppercase tracking-[0.2em] mb-6">Reservation Summary</h4>
                     
                     <div class="space-y-6">
@@ -54,27 +54,6 @@
                             </span>
                         </div>
                     </div>
-                </div>
-
-                <!-- Meeting Link Area -->
-                <div class="bg-[#d9f0ef]/50 rounded-[32px] p-8 border border-[#a8ded9]/50 text-left flex flex-col justify-between">
-                    <div>
-                        <h4 class="text-[10px] font-black text-[#1b5e5f] uppercase tracking-[0.2em] mb-6">Join Details</h4>
-                        <p class="text-xs text-slate-500 font-semibold mb-3">Copy this link or use the join button below:</p>
-                        <div class="flex items-center gap-2 p-3 bg-white border border-[#a8ded9] rounded-xl mb-4 group/box">
-                            <span class="text-xs text-slate-400 font-mono truncate flex-grow">{{ appointment.meeting_link }}</span>
-                            <button onclick="navigator.clipboard.writeText('{{ appointment.meeting_link }}'); alert('Link copied!')" 
-                                    class="text-[#1b5e5f] hover:text-[#0b3b3c] transition"
-                                    title="Copy link">
-                                <i class="far fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <a href="{{ appointment.meeting_link }}" target="_blank"
-                        class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0b3b3c] to-[#1b5e5f] text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-[#d9f0ef] hover:scale-[1.03] active:scale-95 transition-all text-center group/btn">
-                        <i class="fas fa-video mr-2 group-hover/btn:animate-bounce"></i> Launch Meeting
-                    </a>
                 </div>
             </div>
             

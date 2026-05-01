@@ -675,6 +675,211 @@
             </div>
         </div>
 
+        <!-- ═══════════════════ Session Management ═══════════════════ -->
+        {% if all_appointments %}
+        <div class="mb-12">
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Session Management
+                <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 border border-indigo-200 ml-2">
+                    {{ all_appointments|length }} sessions
+                </span>
+            </h2>
+            <div class="shadow-xl overflow-hidden border border-slate-200 sm:rounded-2xl">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <tr>
+                                <th class="px-4 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Student</th>
+                                <th class="px-4 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Counsellor</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Scheduled</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Counsellor Joined</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Student Joined</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Cancelled By</th>
+                                <th class="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Refund</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">
+                            {% for appt in all_appointments %}
+                            <tr class="hover:bg-slate-50 transition-colors {{ 'bg-red-50/40' if appt.status == 'cancelled' }}">
+                                <!-- Student -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    {% if appt.student %}
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 text-[10px] font-bold">
+                                            {{ appt.student.full_name[:1] }}
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-bold text-slate-800">{{ appt.student.full_name }}</div>
+                                            <div class="text-[10px] text-slate-400">{{ appt.student.email[:22] }}{% if appt.student.email|length > 22 %}...{% endif %}</div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300 italic">—</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Counsellor -->
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    {% if appt.counsellor %}
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 text-[10px] font-bold">
+                                            {{ appt.counsellor.full_name[:1] }}
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-bold text-slate-800">{{ appt.counsellor.full_name }}</div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300 italic">—</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Scheduled Time -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.appointment_time %}
+                                    <span class="text-xs font-medium text-slate-600">{{ appt.appointment_time.strftime('%b %d, %Y') }}</span>
+                                    <br>
+                                    <span class="text-[10px] text-slate-400">{{ appt.appointment_time.strftime('%I:%M %p') }}</span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300">—</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Status -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.status == 'completed' %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                        ✅ Completed
+                                    </span>
+                                    {% elif appt.status == 'scheduled' %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                                        📅 Scheduled
+                                    </span>
+                                    {% elif appt.status == 'cancelled' %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                        ❌ Cancelled
+                                    </span>
+                                    {% elif appt.status == 'requested' %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                        ⏳ Requested
+                                    </span>
+                                    {% else %}
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                        {{ appt.status|capitalize }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <!-- Counsellor Joined -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.counsellor_joined %}
+                                    <div class="flex flex-col items-center">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                            ✅ Yes
+                                        </span>
+                                        {% if appt.joined_at %}
+                                        <span class="text-[9px] text-slate-400 mt-0.5">{{ appt.joined_at.strftime('%I:%M %p') }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                        ⚪ No
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <!-- Student Joined -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.student_joined %}
+                                    <div class="flex flex-col items-center">
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                            ✅ Yes
+                                        </span>
+                                        {% if appt.student_joined_at %}
+                                        <span class="text-[9px] text-slate-400 mt-0.5">{{ appt.student_joined_at.strftime('%I:%M %p') }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                        ⚪ No
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <!-- Cancelled By -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.status == 'cancelled' %}
+                                        {% if appt.cancelled_by_role == 'counsellor' %}
+                                        <div class="flex flex-col items-center gap-0.5">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">
+                                                🧑‍💼 Counsellor
+                                            </span>
+                                            <span class="text-[9px] text-slate-400">{{ appt.cancelled_by }}</span>
+                                        </div>
+                                        {% elif appt.cancelled_by_role == 'student' %}
+                                        <div class="flex flex-col items-center gap-0.5">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 border border-sky-200">
+                                                🎓 Student
+                                            </span>
+                                            <span class="text-[9px] text-slate-400">{{ appt.cancelled_by }}</span>
+                                        </div>
+                                        {% elif appt.cancelled_by %}
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                                            {{ appt.cancelled_by }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-xs text-slate-300 italic">Unknown</span>
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="text-xs text-slate-300">—</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Refund -->
+                                <td class="px-4 py-3 text-center">
+                                    {% if appt.status == 'cancelled' and appt.cancelled_by_role == 'counsellor' %}
+                                        {% if appt.payment_status == 'paid' or appt.payment_status == 'captured' %}
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                            ⚠️ Refund Needed
+                                        </span>
+                                        {% elif appt.payment_status == 'free' %}
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                            Free Session
+                                        </span>
+                                        {% else %}
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                            N/A
+                                        </span>
+                                        {% endif %}
+                                    {% elif appt.status == 'cancelled' and appt.cancelled_by_role == 'student' %}
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                        No Refund
+                                    </span>
+                                    {% elif appt.status == 'cancelled' %}
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                        —
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="flex flex-col">
             <!-- Search Bar -->
             <form action="/admin" method="GET" class="mb-4 flex items-center gap-3">

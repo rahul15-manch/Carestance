@@ -286,6 +286,38 @@ async def startup_event():
         run_migrations()
     except Exception as e:
         print(f"Startup database error: {e}")
+    
+    # Start background task to auto-delete old completed video sessions (>2 days)
+    asyncio.create_task(_cleanup_old_sessions_loop())
+
+async def _cleanup_old_sessions_loop():
+    """Periodically delete completed/expired video session appointments older than 2 days."""
+    while True:
+        try:
+            db = SessionLocal()
+            cutoff = datetime.datetime.now() - datetime.timedelta(days=2)
+            old_appointments = db.query(models.Appointment).filter(
+                models.Appointment.status.in_(["completed", "scheduled"]),
+                models.Appointment.appointment_time < cutoff
+            ).all()
+            deleted_count = 0
+            for appt in old_appointments:
+                # Delete associated ratings first to avoid FK issues
+                db.query(models.CounselorRating).filter(
+                    models.CounselorRating.appointment_id == appt.id
+                ).delete(synchronize_session=False)
+                db.delete(appt)
+                deleted_count += 1
+            if deleted_count > 0:
+                db.commit()
+                print(f"AUTO-CLEANUP: Deleted {deleted_count} old video session(s) older than 2 days.")
+            else:
+                db.commit()
+            db.close()
+        except Exception as e:
+            print(f"AUTO-CLEANUP ERROR: {e}")
+        # Run every 6 hours
+        await asyncio.sleep(6 * 60 * 60)
 
 # ─── Include Split Payments Router (Razorpay Route) ───────────────────────────
 from .routes.payments import router as payments_router
@@ -1388,6 +1420,12 @@ async def admin_dashboard(
         # Fetch Moderation Flags (Limited for performance)
         moderation_flags = db.query(models.ModerationFlag).order_by(models.ModerationFlag.timestamp.desc()).limit(50).all()
 
+        # Fetch all appointments for admin Session Management table
+        all_appointments = db.query(models.Appointment).options(
+            joinedload(models.Appointment.student),
+            joinedload(models.Appointment.counsellor)
+        ).order_by(models.Appointment.appointment_time.desc()).limit(50).all()
+
         try:
             template = templates.get_template("admin_dashboard.html")
             content = template.render({
@@ -1413,6 +1451,7 @@ async def admin_dashboard(
                 "failed_transfers": failed_transfers,
                 "captured_payments_count": captured_payments_count,
                 "moderation_flags": moderation_flags,
+                "all_appointments": all_appointments,
                 "user_search": user_search,
                 "counsellor_search": counsellor_search
             })
@@ -1560,6 +1599,7 @@ async def counsellor_update(
     request: Request,
     fee: str = Form(None),
     availability_text: str = Form(None),
+    availability_slots: str = Form(None),
     bank_name: str = Form(None),
     account_num: str = Form(None),
     ifsc_code: str = Form(None),
@@ -1585,7 +1625,13 @@ async def counsellor_update(
                 pass # Ignore invalid fee format
         
         if availability_text is not None:
-            profile.availability = {"text": availability_text}
+            slots_data = {}
+            if availability_slots:
+                try:
+                    slots_data = json.loads(availability_slots)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            profile.availability = {"text": availability_text, "slots": slots_data}
         
         # Update Account Details (merge with existing)
         # Check if any account-related fields were sent in the form
@@ -1952,6 +1998,56 @@ async def create_razorpay_order(counsellor_id: int, request: Request, fee: float
         print(f"Razorpay Error: {e}")
         raise HTTPException(status_code=500, detail="Could not create payment order")
 
+def _check_availability(counsellor_profile, appt_time: datetime.datetime) -> Optional[str]:
+    """Check if the appointment time falls within the counsellor's availability.
+    Returns None if available, or an error message string if not."""
+    if not counsellor_profile or not counsellor_profile.availability:
+        return None  # No availability set = always available (backward compat)
+    
+    slots = counsellor_profile.availability.get("slots", {})
+    if not slots:
+        return None  # No structured slots = always available
+    
+    # Get day name from appointment time
+    day_name = appt_time.strftime("%A")  # e.g. "Monday"
+    if day_name not in slots:
+        avail_days = ", ".join(slots.keys())
+        return f"This counsellor is not available on {day_name}. Available days: {avail_days}"
+    
+    # Check time range
+    slot = slots[day_name]
+    start_parts = slot.get("start", "00:00").split(":")
+    end_parts = slot.get("end", "23:59").split(":")
+    start_hour, start_min = int(start_parts[0]), int(start_parts[1])
+    end_hour, end_min = int(end_parts[0]), int(end_parts[1])
+    
+    appt_hour = appt_time.hour
+    appt_min = appt_time.minute
+    appt_total = appt_hour * 60 + appt_min
+    start_total = start_hour * 60 + start_min
+    end_total = end_hour * 60 + end_min
+    
+    if appt_total < start_total or appt_total > end_total:
+        start_fmt = f"{start_hour % 12 or 12}:{start_min:02d} {'PM' if start_hour >= 12 else 'AM'}"
+        end_fmt = f"{end_hour % 12 or 12}:{end_min:02d} {'PM' if end_hour >= 12 else 'AM'}"
+        return f"This counsellor is only available from {start_fmt} to {end_fmt} on {day_name}."
+    
+    return None
+
+@app.get("/check_availability/{counsellor_id}")
+async def check_availability_api(counsellor_id: int, appointment_time: str, db: Session = Depends(get_db)):
+    """API endpoint to check counsellor availability before booking."""
+    try:
+        appt_time = datetime.datetime.fromisoformat(appointment_time)
+    except ValueError:
+        return {"available": False, "error": "Invalid time format."}
+    
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
+    error = _check_availability(profile, appt_time)
+    if error:
+        return {"available": False, "error": error}
+    return {"available": True}
+
 @app.post("/book_free_counsellor/{counsellor_id}")
 async def book_free_counsellor(counsellor_id: int, request: Request, background_tasks: BackgroundTasks, appointment_time: str = Form(...), db: Session = Depends(get_db)):
     user = get_current_user(request, db)
@@ -1964,6 +2060,15 @@ async def book_free_counsellor(counsellor_id: int, request: Request, background_
         # Allow a small margin for float comparison
         if counsellor_profile and counsellor_profile.fee > 0.01:
             raise HTTPException(status_code=400, detail="This counsellor is not free. Please use the payment booking flow.")
+    
+    # Check availability before booking
+    try:
+        appt_time_check = datetime.datetime.fromisoformat(appointment_time)
+        avail_error = _check_availability(counsellor_profile, appt_time_check)
+        if avail_error:
+            raise HTTPException(status_code=400, detail=avail_error)
+    except ValueError:
+        pass  # Will be handled below
         
     # Meeting link generation (Jitsi Meet for instant, working rooms)
     meeting_id = str(uuid.uuid4())[:12]
@@ -2016,11 +2121,21 @@ async def join_meeting(appointment_id: int, request: Request, db: Session = Depe
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Enforce time-window: only allow joining during scheduled time → +1 hour
+    now = datetime.datetime.now()
+    window_start = appointment.appointment_time
+    window_end = appointment.appointment_time + datetime.timedelta(hours=1)
+    if now < window_start or now > window_end:
+        time_str = appointment.appointment_time.strftime('%I:%M %p on %b %d')
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Session is only accessible during the scheduled time window ({time_str} to 1 hour after). Please come back at the scheduled time."
+        )
     
     return RedirectResponse(url=f"/meeting/{appointment_id}")
 
@@ -2131,7 +2246,10 @@ async def delete_appointment(appointment_id: int, request: Request, background_t
             get_cancellation_template(counsellor.full_name, student.full_name, appt_time_str, "counsellor")
         )
 
-    db.delete(appointment)
+    # Soft-delete: mark as cancelled instead of removing, so admin can track
+    appointment.status = "cancelled"
+    appointment.cancelled_by = user.full_name
+    appointment.cancelled_by_role = "counsellor" if user.id == appointment.counsellor_id else "student"
     db.commit()
     
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
@@ -2287,6 +2405,18 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
     meeting_link = f"https://meet.jit.si/CareStance_{meeting_id}"
     
     # Parse appointment time or use a default
+    if appointment_time_str:
+        try:
+            appt_time_check = datetime.datetime.fromisoformat(appointment_time_str)
+            counsellor_profile_check = db.query(models.CounsellorProfile).filter(
+                models.CounsellorProfile.user_id == counsellor_id
+            ).first()
+            avail_error = _check_availability(counsellor_profile_check, appt_time_check)
+            if avail_error:
+                return RedirectResponse(url=f"/counsellors?error={avail_error}", status_code=status.HTTP_302_FOUND)
+        except ValueError:
+            pass
+    
     if appointment_time_str:
         appt_time = datetime.datetime.fromisoformat(appointment_time_str)
     else:

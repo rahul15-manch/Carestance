@@ -781,7 +781,9 @@
             <div class="nav-links">
                 {% if user %}
                 <a href="/dashboard"><i class="fa-regular fa-house" style="margin-right:0.25rem;"></i>Dashboard</a>
+                {% if user.role != 'counsellor' %}
                 <a href="/chatbot"><i class="fa-regular fa-comment-dots" style="margin-right:0.25rem;"></i>Chat AI</a>
+                {% endif %}
                 <a href="/community"><i class="fa-regular fa-users" style="margin-right:0.25rem;"></i>Community</a>
                 <a href="/feedback"><i class="fa-regular fa-star" style="margin-right:0.25rem;"></i>Feedback</a>
                 <a href="/ticket"><i class="fa-regular fa-life-ring" style="margin-right:0.25rem;"></i>Support</a>
@@ -808,7 +810,9 @@
         <div class="mobile-menu" id="base-mobile-menu">
             {% if user %}
             <a href="/dashboard">Dashboard</a>
+            {% if user.role != 'counsellor' %}
             <a href="/chatbot">Chat with AI</a>
+            {% endif %}
             <a href="/community">Community</a>
             <a href="/feedback">Feedback</a>
             <a href="/ticket">Support</a>
