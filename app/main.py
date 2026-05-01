@@ -809,41 +809,51 @@ async def login_google(request: Request):
 @app.get("/auth/callback")
 async def auth_callback(request: Request, db: Session = Depends(get_db)):
     try:
-        # authlib retrieves redirect_uri from session automatically — do NOT pass it again
-        token = await oauth.google.authorize_access_token(request)
-    except Exception as e:
+        try:
+            # authlib retrieves redirect_uri from session automatically — do NOT pass it again
+            token = await oauth.google.authorize_access_token(request)
+        except Exception as e:
+            import traceback
+            print(f"OAuth Token Exchange Error: {e}")
+            traceback.print_exc()
+            error_msg = str(e).replace(" ", "+")[:200]
+            return RedirectResponse(url=f'/login?error={error_msg}', status_code=status.HTTP_302_FOUND)
+        
+        user_info = token.get('userinfo')
+        if not user_info:
+            return RedirectResponse(url='/login?error=No+user+info', status_code=status.HTTP_302_FOUND)
+        
+        email = user_info.get('email')
+        full_name = user_info.get('name', 'Google User')
+        
+        # Check if user exists, otherwise create with no role (will be selected next)
+        user = db.query(models.User).filter(models.User.email == email).first()
+        is_new_user = False
+        if not user:
+            hashed_pw = get_password_hash(os.urandom(24).hex())
+            user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=None, role=None)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            is_new_user = True
+        
+        # Pre-populate suspension cache
+        try:
+            user_cache.set_user_status(user.id, {"is_suspended": getattr(user, 'is_suspended', False)})
+        except Exception as cache_err:
+            print(f"Cache update error in callback: {cache_err}")
+        
+        # Users without a role must select it first
+        redirect_url = "/select-role" if (is_new_user or not user.role) else "/dashboard"
+        response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+        response.set_cookie(key="user_id", value=str(user.id))
+        return response
+    except Exception as exc:
         import traceback
-        print(f"OAuth Token Exchange Error: {e}")
+        print(f"Auth Callback general exception: {exc}")
         traceback.print_exc()
-        error_msg = str(e).replace(" ", "+")[:200]
-        return RedirectResponse(url=f'/login?error={error_msg}', status_code=status.HTTP_302_FOUND)
-    
-    user_info = token.get('userinfo')
-    if not user_info:
-        return RedirectResponse(url='/login?error=No user info', status_code=status.HTTP_302_FOUND)
-    
-    email = user_info.get('email')
-    full_name = user_info.get('name', 'Google User')
-    
-    # Check if user exists, otherwise create with no role (will be selected next)
-    user = db.query(models.User).filter(models.User.email == email).first()
-    is_new_user = False
-    if not user:
-        hashed_pw = get_password_hash(os.urandom(24).hex())
-        user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=None, role=None)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        is_new_user = True
-    
-    # Pre-populate suspension cache
-    user_cache.set_user_status(user.id, {"is_suspended": user.is_suspended})
-    
-    # Users without a role must select it first
-    redirect_url = "/select-role" if (is_new_user or not user.role) else "/dashboard"
-    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
-    response.set_cookie(key="user_id", value=str(user.id))
-    return response
+        error_msg = str(exc).replace(" ", "+")[:200]
+        return RedirectResponse(url=f'/login?error=Callback+error:+{error_msg}', status_code=status.HTTP_302_FOUND)
 
 @app.get("/suspended", response_class=HTMLResponse)
 async def suspended_page(request: Request):
