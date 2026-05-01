@@ -329,10 +329,19 @@ async def global_exception_handler(request: Request, exc: Exception):
     import traceback
     print(f"GLOBAL ERROR: {exc}", flush=True)
     traceback.print_exc()
-    return HTMLResponse(
-        content=f"<html><body><h1>Internal Server Error</h1><p>{exc}</p><pre>{traceback.format_exc()}</pre></body></html>",
-        status_code=500
-    )
+    try:
+        return templates.TemplateResponse(
+            request=request,
+            name="error_update.html",
+            context={},
+            status_code=500
+        )
+    except Exception as template_exc:
+        print(f"Error rendering error template: {template_exc}")
+        return HTMLResponse(
+            content=f"<html><body><h1>Internal Server Error</h1><p>We'll be right back. Fixed soon!</p></body></html>",
+            status_code=500
+        )
 
 from fastapi.middleware.gzip import GZipMiddleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
