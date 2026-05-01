@@ -33,17 +33,9 @@ if ":6543" in SQLALCHEMY_DATABASE_URL and "prepare_threshold" not in SQLALCHEMY_
         SQLALCHEMY_DATABASE_URL += "?prepare_threshold=0"
 
 if not SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    # On Vercel (serverless), it's best to use NullPool to avoid connection exhaustion
-    if os.getenv("VERCEL"):
-        from sqlalchemy.pool import NullPool
-        engine_args["poolclass"] = NullPool
-    else:
-        # Optimized for Supabase (Transaction Mode)
-        engine_args["pool_size"] = 15
-        engine_args["max_overflow"] = 30
-        engine_args["pool_timeout"] = 30
-        engine_args["pool_recycle"] = 1200 # Recycle connections more often to prevent staleness
-        engine_args["pool_pre_ping"] = True
+    # Use NullPool to completely avoid connection exhaustion/limitations on Supabase or Serverless deployments
+    from sqlalchemy.pool import NullPool
+    engine_args["poolclass"] = NullPool
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
