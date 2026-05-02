@@ -2511,7 +2511,26 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
         )
         db.add(notif)
 
-        # 5. Final Commit
+        # 5. Dispatch confirmation emails
+        counsellor_user = db.query(models.User).filter(models.User.id == counsellor_id).first()
+        if counsellor_user:
+            appt_time_str = appt_time.strftime('%b %d, %I:%M %p')
+            # To Student
+            background_tasks.add_task(
+                send_email, 
+                user.email, 
+                "CareStance Session Booked! 🚀", 
+                get_booking_template(user.full_name, counsellor_user.full_name, appt_time_str, meeting_link, "student")
+            )
+            # To Counsellor
+            background_tasks.add_task(
+                send_email, 
+                counsellor_user.email, 
+                "New Booking Request Received! 📅", 
+                get_booking_template(counsellor_user.full_name, user.full_name, appt_time_str, meeting_link, "counsellor")
+            )
+
+        # 6. Final Commit
         db.commit()
     except Exception as e:
         print(f"Payment verification DB error: {e}")
