@@ -1319,7 +1319,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         joinedload(models.Appointment.rating_record)
     ).filter(
         models.Appointment.student_id == user.id,
-        models.Appointment.status.in_(["scheduled", "completed"])
+        models.Appointment.status.in_(["scheduled", "completed", "requested", "accepted"])
     ).order_by(models.Appointment.appointment_time.desc()).all()
     
     # Fetch student tickets

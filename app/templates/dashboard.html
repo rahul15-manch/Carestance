@@ -354,6 +354,12 @@
                                     <span
                                         class="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full uppercase tracking-wider">Scheduled</span>
                                 </div>
+                                {% elif appt.status == 'requested' %}
+                                <span
+                                    class="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-wider">Requested</span>
+                                {% elif appt.status == 'accepted' %}
+                                <span
+                                    class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full uppercase tracking-wider">Accepted</span>
                                 {% elif appt.status == 'completed' %}
                                 <span
                                     class="px-3 py-1 bg-[#d9f0ef] text-[#0b3b3c] text-xs font-bold rounded-full uppercase tracking-wider">Completed</span>
@@ -372,7 +378,7 @@
                         </p>
 
                         <div id="join-container-{{ appt.id }}">
-                            {% if appt.status == 'scheduled' %}
+                            {% if appt.status in ['scheduled', 'requested', 'accepted'] %}
                             <!-- Join Video Call: Only active during session window (scheduled time → +1 hour) -->
                             <template x-if="isActive">
                                 <div>
