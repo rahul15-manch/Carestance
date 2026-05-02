@@ -472,8 +472,20 @@
                                     Rating</button>
                             </div>
                         </form>
-                    </div>
                 </div>
+            </div>
+            {% else %}
+            <div class="db-card p-8 text-center flex flex-col items-center gap-6">
+                <div class="h-16 w-16 bg-[#d9f0ef] text-[#0b3b3c] rounded-2xl flex items-center justify-center text-3xl mx-auto">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="text-xl font-bold" style="color:var(--text-main);">No Sessions Scheduled Yet</h3>
+                    <p class="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed">Book a consultation session with a certified counsellor to unlock your personalized academic roadmap.</p>
+                </div>
+                <a href="/counsellors" class="px-6 py-3.5 bg-[#0b3b3c] hover:bg-[#1b5e5f] text-white font-bold text-sm rounded-xl transition shadow-lg shadow-[#d9f0ef] flex items-center gap-2">
+                    <i class="fas fa-user-tie"></i> Book a Session
+                </a>
             </div>
             {% endif %}
 
