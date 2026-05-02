@@ -1214,11 +1214,11 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     
     if user.role == "counsellor":
         profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
-        # Only show active/scheduled appointments on dashboard
+        # Show active/scheduled, requested, accepted, and completed appointments on dashboard
         appointments = db.query(models.Appointment).filter(
             models.Appointment.counsellor_id == user.id,
-            models.Appointment.status == "scheduled"
-        ).all()
+            models.Appointment.status.in_(["scheduled", "requested", "accepted", "completed"])
+        ).order_by(models.Appointment.appointment_time.desc()).all()
         # Fetch unread notifications for this counsellor
         notifications = db.query(models.Notification).filter(
             models.Notification.user_id == user.id,
