@@ -2146,15 +2146,21 @@ async def join_meeting(appointment_id: int, request: Request, db: Session = Depe
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # Enforce time-window: only allow joining during scheduled time → +1 hour
-    now = datetime.datetime.now()
-    window_start = appointment.appointment_time
-    window_end = appointment.appointment_time + datetime.timedelta(hours=1)
-    if now < window_start or now > window_end:
+    # Enforce time-window: generous window (1 hour before to 2 hours after)
+    now_utc = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    now_ist = now_utc + datetime.timedelta(hours=5, minutes=30)
+    
+    window_start = appointment.appointment_time - datetime.timedelta(hours=1)
+    window_end = appointment.appointment_time + datetime.timedelta(hours=2)
+    
+    is_valid_utc = window_start <= now_utc <= window_end
+    is_valid_ist = window_start <= now_ist <= window_end
+    
+    if not (is_valid_utc or is_valid_ist):
         time_str = appointment.appointment_time.strftime('%I:%M %p on %b %d')
         raise HTTPException(
             status_code=403, 
-            detail=f"Session is only accessible during the scheduled time window ({time_str} to 1 hour after). Please come back at the scheduled time."
+            detail=f"Session is only accessible during the scheduled time window ({time_str} to 2 hours after). Please come back at the scheduled time."
         )
     
     return RedirectResponse(url=f"/meeting/{appointment_id}")
