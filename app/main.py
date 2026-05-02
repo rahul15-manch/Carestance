@@ -2175,6 +2175,15 @@ async def meeting_page(appointment_id: int, request: Request, db: Session = Depe
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
+    now = datetime.datetime.now()
+    if user.id == appointment.counsellor_id:
+        appointment.counsellor_joined = True
+        appointment.joined_at = now
+    elif user.id == appointment.student_id:
+        appointment.student_joined = True
+        appointment.student_joined_at = now
+    db.commit()
+    
     other_user_id = appointment.student_id if user.id == appointment.counsellor_id else appointment.counsellor_id
     other_user = db.query(models.User).filter(models.User.id == other_user_id).first()
     
