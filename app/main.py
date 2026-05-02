@@ -2163,6 +2163,15 @@ async def join_meeting(appointment_id: int, request: Request, db: Session = Depe
             detail=f"Session is only accessible during the scheduled time window ({time_str} to 2 hours after). Please come back at the scheduled time."
         )
     
+    now = datetime.datetime.now()
+    if int(user.id) == int(appointment.counsellor_id):
+        appointment.counsellor_joined = True
+        appointment.joined_at = now
+    if int(user.id) == int(appointment.student_id):
+        appointment.student_joined = True
+        appointment.student_joined_at = now
+    db.commit()
+    
     return RedirectResponse(url=f"/meeting/{appointment_id}")
 
 @app.get("/meeting/{appointment_id}", response_class=HTMLResponse)
@@ -2176,10 +2185,10 @@ async def meeting_page(appointment_id: int, request: Request, db: Session = Depe
         raise HTTPException(status_code=404, detail="Appointment not found")
     
     now = datetime.datetime.now()
-    if user.id == appointment.counsellor_id:
+    if int(user.id) == int(appointment.counsellor_id):
         appointment.counsellor_joined = True
         appointment.joined_at = now
-    elif user.id == appointment.student_id:
+    if int(user.id) == int(appointment.student_id):
         appointment.student_joined = True
         appointment.student_joined_at = now
     db.commit()
@@ -2204,10 +2213,10 @@ async def track_join(appointment_id: int, request: Request, db: Session = Depend
         raise HTTPException(status_code=404)
     
     now = datetime.datetime.now()
-    if user.id == appointment.counsellor_id:
+    if int(user.id) == int(appointment.counsellor_id):
         appointment.counsellor_joined = True
         appointment.joined_at = now
-    elif user.id == appointment.student_id:
+    if int(user.id) == int(appointment.student_id):
         appointment.student_joined = True
         appointment.student_joined_at = now
     
