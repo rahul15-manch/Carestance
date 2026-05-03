@@ -15,6 +15,8 @@ class User(Base):
     role = Column(String, nullable=True, index=True)
     is_suspended = Column(Boolean, default=False)
     onboarded = Column(Boolean, default=False, index=True)
+    simulations_completed = Column(Integer, default=0, nullable=False)
+    simulation_paid = Column(Boolean, default=False, nullable=False)
     
     assessment = relationship("AssessmentResult", back_populates="user", uselist=False)
     given_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.student_id]", back_populates="student")

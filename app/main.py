@@ -190,6 +190,8 @@ def run_migrations():
             if 'full_name' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN full_name VARCHAR")
             if 'role' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN role VARCHAR")
             if 'onboarded' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN onboarded BOOLEAN DEFAULT FALSE")
+            if 'simulations_completed' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN simulations_completed INTEGER DEFAULT 0")
+            if 'simulation_paid' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN simulation_paid BOOLEAN DEFAULT FALSE")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_users_full_name ON users (full_name)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_users_onboarded ON users (onboarded)")
 
@@ -3251,17 +3253,21 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
     if result:
         result.simulation_paid = True
         
-        # Add payment record
-        career_title = data.get("career_title", result.simulation_career or "General")
-        sim_pay = models.SimulationPayment(
-            user_id=user.id,
-            razorpay_order_id=razorpay_order_id,
-            razorpay_payment_id=razorpay_payment_id,
-            amount=10.0,
-            career=career_title
-        )
-        db.add(sim_pay)
-        db.commit()
+    db_user = db.query(models.User).filter(models.User.id == user.id).first()
+    if db_user:
+        db_user.simulation_paid = True
+        
+    # Add payment record
+    career_title = data.get("career_title", (result.simulation_career if result else None) or "General")
+    sim_pay = models.SimulationPayment(
+        user_id=user.id,
+        razorpay_order_id=razorpay_order_id,
+        razorpay_payment_id=razorpay_payment_id,
+        amount=10.0,
+        career=career_title
+    )
+    db.add(sim_pay)
+    db.commit()
         
     return {"status": "ok"}
 
@@ -3275,7 +3281,11 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     if not result:
         return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
     
-    if result.simulations_completed >= 1 and not result.simulation_paid:
+    db_user = db.query(models.User).filter(models.User.id == user.id).first()
+    sims_completed = max(result.simulations_completed or 0, db_user.simulations_completed or 0 if db_user else 0)
+    sim_is_paid = result.simulation_paid or (db_user.simulation_paid if db_user else False)
+
+    if sims_completed >= 1 and not sim_is_paid:
         return RedirectResponse(url=f"/assessment/simulation/pay/{career_title}", status_code=status.HTTP_302_FOUND)
     
     # Generate questions based on class
@@ -3297,6 +3307,9 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     result.simulation_evaluation = None # Reset evaluation
     if result.simulation_paid:
         result.simulation_paid = False
+    if db_user:
+        if db_user.simulation_paid:
+            db_user.simulation_paid = False
     db.commit()
     
     return RedirectResponse(url="/assessment/simulation/question/0", status_code=status.HTTP_302_FOUND)
@@ -3390,6 +3403,9 @@ async def simulation_result(request: Request, db: Session = Depends(get_db)):
         # SQL Fallback
         result.simulation_evaluation = evaluation
         result.simulations_completed += 1
+        db_user = db.query(models.User).filter(models.User.id == user.id).first()
+        if db_user:
+            db_user.simulations_completed += 1
         db.commit()
     
     return templates.TemplateResponse(request=request, name="simulation_result.html", context={
