@@ -963,6 +963,12 @@ async def assessment_start(request: Request, class_level: str, db: Session = Dep
             result.final_analysis = None
             result.stream_pros = None
             result.stream_cons = None
+            
+            # Clear current simulation attempt if retaking, but keep simulations_completed & simulation_paid
+            result.simulation_career = None
+            result.simulation_questions = None
+            result.simulation_answers = None
+            result.simulation_evaluation = None
         else:
             result = models.AssessmentResult(user_id=user.id)
             db.add(result)
@@ -986,7 +992,26 @@ async def assessment_reset(request: Request, db: Session = Depends(get_db)):
     
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
-        db.delete(result)
+        result.phase_2_category = None
+        result.personality = None
+        result.goal_status = None
+        result.confidence = None
+        result.reasoning = None
+        result.raw_answers = None
+        result.phase3_result = None
+        result.phase3_answers = None
+        result.phase3_analysis = None
+        result.final_answers = None
+        result.stream_scores = None
+        result.recommended_stream = None
+        result.final_analysis = None
+        result.stream_pros = None
+        result.stream_cons = None
+        
+        result.simulation_career = None
+        result.simulation_questions = None
+        result.simulation_answers = None
+        result.simulation_evaluation = None
         db.commit()
     
     return RedirectResponse(url="/dashboard?message=Assessment+reset+successfully", status_code=status.HTTP_302_FOUND)
