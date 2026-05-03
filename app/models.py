@@ -308,3 +308,16 @@ class CounselorRating(Base):
     student = relationship("User", foreign_keys=[student_id], back_populates="given_ratings")
     counsellor = relationship("User", foreign_keys=[counsellor_id], back_populates="received_ratings")
     appointment = relationship("Appointment", back_populates="rating_record")
+
+class SimulationPayment(Base):
+    __tablename__ = "simulation_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    razorpay_order_id = Column(String, nullable=True, index=True)
+    razorpay_payment_id = Column(String, nullable=True, index=True)
+    amount = Column(Float, default=10.0, index=True)
+    career = Column(String, nullable=True, index=True)
+    created_at = Column(DateTime, default=func.now())
+
+    user = relationship("User")

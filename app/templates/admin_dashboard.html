@@ -675,6 +675,65 @@
             </div>
         </div>
 
+        <!-- ═══════════════════ Simulation Payments ═══════════════════ -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Simulation Payments
+                <span class="text-sm font-medium text-slate-400 ml-2">(Last 50)</span>
+            </h2>
+            <div class="shadow-xl overflow-hidden border border-slate-200 sm:rounded-2xl">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-gradient-to-r from-indigo-50 to-blue-50">
+                            <tr>
+                                <th class="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Candidate Name</th>
+                                <th class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Amount Paid</th>
+                                <th class="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Simulated Career</th>
+                                <th class="px-5 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Simulations Done</th>
+                                <th class="px-5 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-100">
+                            {% for sim_pay in simulation_payments %}
+                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-slate-800">
+                                    {{ sim_pay.user.full_name }}
+                                </td>
+                                <td class="px-5 py-4 whitespace-nowrap text-center">
+                                    <span class="px-3 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-sm rounded-full border border-indigo-100">
+                                        ₹{{ "%.2f"|format(sim_pay.amount) }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-4 whitespace-nowrap text-sm text-[#1b5e5f] font-bold">
+                                    {{ sim_pay.career }}
+                                </td>
+                                <td class="px-5 py-4 whitespace-nowrap text-center text-sm font-extrabold text-slate-800">
+                                    {{ sim_pay.user.assessment[0].simulations_completed if sim_pay.user.assessment else '0' }}
+                                </td>
+                                <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500">
+                                    {{ sim_pay.created_at.strftime('%Y-%m-%d %H:%M') if sim_pay.created_at else '' }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-10 text-center text-slate-400 italic">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <span class="text-3xl opacity-30">🚀</span>
+                                        <span>No simulation payments recorded yet.</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- ═══════════════════ Session Management ═══════════════════ -->
         {% if all_appointments %}
         <div class="mb-12">

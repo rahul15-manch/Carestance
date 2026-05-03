@@ -260,6 +260,21 @@ def run_migrations():
             migrations.append("CREATE INDEX IF NOT EXISTS ix_notifications_created_at ON notifications (created_at)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_notifications_is_read ON notifications (is_read)")
 
+        # 7. Simulation Payments
+        sp_cols = get_columns('simulation_payments')
+        if sp_cols is None:
+            migrations.append("""
+            CREATE TABLE simulation_payments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                razorpay_order_id VARCHAR,
+                razorpay_payment_id VARCHAR,
+                amount FLOAT,
+                career VARCHAR,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+
         if migrations:
             print(f"DEBUG: Found {len(migrations)} pending migrations.", flush=True)
             with engine.connect() as conn:
@@ -1447,6 +1462,11 @@ async def admin_dashboard(
             joinedload(models.Appointment.counsellor)
         ).order_by(models.Appointment.appointment_time.desc()).limit(50).all()
 
+        # Fetch simulation payments
+        simulation_payments = db.query(models.SimulationPayment).options(
+            joinedload(models.SimulationPayment.user)
+        ).order_by(models.SimulationPayment.id.desc()).limit(50).all()
+
         try:
             template = templates.get_template("admin_dashboard.html")
             content = template.render({
@@ -1473,6 +1493,7 @@ async def admin_dashboard(
                 "captured_payments_count": captured_payments_count,
                 "moderation_flags": moderation_flags,
                 "all_appointments": all_appointments,
+                "simulation_payments": simulation_payments,
                 "user_search": user_search,
                 "counsellor_search": counsellor_search
             })
@@ -3204,6 +3225,17 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
         result.simulation_paid = True
+        
+        # Add payment record
+        career_title = data.get("career_title", result.simulation_career or "General")
+        sim_pay = models.SimulationPayment(
+            user_id=user.id,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id,
+            amount=10.0,
+            career=career_title
+        )
+        db.add(sim_pay)
         db.commit()
         
     return {"status": "ok"}
