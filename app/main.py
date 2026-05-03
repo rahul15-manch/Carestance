@@ -246,7 +246,8 @@ def run_migrations():
                            ('recommended_stream', 'VARCHAR'), ('final_analysis', 'TEXT'),
                            ('stream_pros', 'JSON'), ('stream_cons', 'JSON'),
                            ('simulation_career', 'VARCHAR'), ('simulation_questions', 'JSON'),
-                           ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON')]:
+                           ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON'),
+                           ('simulations_completed', 'INTEGER DEFAULT 0'), ('simulation_paid', 'BOOLEAN DEFAULT FALSE')]:
                 if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_recommended_stream ON assessment_results (recommended_stream)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_phase_2_category ON assessment_results (phase_2_category)")
@@ -3145,6 +3146,68 @@ async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest,
 
 # --- Simulation Phase Routes ---
 
+@app.get("/assessment/simulation/pay/{career_title}", response_class=HTMLResponse)
+async def simulation_pay(career_title: str, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    return templates.TemplateResponse(request=request, name="simulation_payment.html", context={
+        "user": user,
+        "career_title": career_title,
+        "RAZORPAY_KEY_ID": RAZORPAY_KEY_ID
+    })
+
+@app.post("/assessment/simulation/create-order")
+async def simulation_create_order(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+    
+    data = {
+        "amount": 10 * 100, # 1000 paise
+        "currency": "INR",
+        "receipt": f"receipt_sim_{uuid.uuid4().hex[:10]}",
+        "payment_capture": 1
+    }
+    
+    try:
+        order = razorpay_client.order.create(data=data)
+        return order
+    except Exception as e:
+        print(f"Razorpay Simulation Order Create Error: {e}")
+        raise HTTPException(status_code=500, detail="Could not create payment order")
+
+@app.post("/assessment/simulation/verify-payment")
+async def simulation_verify_payment(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401)
+        
+    data = await request.json()
+    razorpay_payment_id = data.get("razorpay_payment_id")
+    razorpay_order_id = data.get("razorpay_order_id")
+    razorpay_signature = data.get("razorpay_signature")
+    
+    params_dict = {
+        'razorpay_order_id': razorpay_order_id,
+        'razorpay_payment_id': razorpay_payment_id,
+        'razorpay_signature': razorpay_signature
+    }
+    
+    try:
+        razorpay_client.utility.verify_payment_signature(params_dict)
+    except Exception as e:
+        print(f"Simulation Payment Verification Failed: {e}")
+        raise HTTPException(status_code=400, detail="Signature verification failed")
+        
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if result:
+        result.simulation_paid = True
+        db.commit()
+        
+    return {"status": "ok"}
+
 @app.get("/assessment/simulation/start/{career_title}", response_class=HTMLResponse)
 async def simulation_start(career_title: str, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
@@ -3154,6 +3217,9 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
+    
+    if result.simulations_completed >= 1 and not result.simulation_paid:
+        return RedirectResponse(url=f"/assessment/simulation/pay/{career_title}", status_code=status.HTTP_302_FOUND)
     
     # Generate questions based on class
     if result.selected_class == '10th':
@@ -3172,6 +3238,8 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     result.simulation_questions = questions
     result.simulation_answers = [] # Reset answers
     result.simulation_evaluation = None # Reset evaluation
+    if result.simulation_paid:
+        result.simulation_paid = False
     db.commit()
     
     return RedirectResponse(url="/assessment/simulation/question/0", status_code=status.HTTP_302_FOUND)
@@ -3264,6 +3332,7 @@ async def simulation_result(request: Request, db: Session = Depends(get_db)):
         
         # SQL Fallback
         result.simulation_evaluation = evaluation
+        result.simulations_completed += 1
         db.commit()
     
     return templates.TemplateResponse(request=request, name="simulation_result.html", context={

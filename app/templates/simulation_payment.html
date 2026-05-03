@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Payment to Start Your Next Simulation{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50/50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md mx-auto bg-white rounded-3xl p-8 border border-slate-100 shadow-xl hover:shadow-2xl transition-all duration-300">
+        <!-- Badge -->
+        <div class="flex justify-center mb-6">
+            <span class="px-4 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200 flex items-center gap-1.5 tracking-wider uppercase">
+                <i class="fas fa-lock text-[10px]"></i> Action Required
+            </span>
+        </div>
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-[#d9f0ef] text-[#0b3b3c] rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-inner">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 leading-tight mb-2">Start Next Career Simulation</h1>
+            <p class="text-xs text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
+                You've already taken your first free simulation! To proceed with your next simulation for <strong class="text-[#1b5e5f]">{{ career_title }}</strong>, a small fee applies.
+            </p>
+        </div>
+
+        <!-- Summary & Price -->
+        <div class="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 flex flex-col gap-4">
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-500 font-medium">Item:</span>
+                <span class="text-slate-800 font-bold">1x Career Simulation</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-500 font-medium">Career Category:</span>
+                <span class="text-[#1b5e5f] font-bold">{{ career_title }}</span>
+            </div>
+            <div class="border-t border-slate-200/60 pt-4 mt-2 flex justify-between items-center">
+                <span class="text-slate-700 font-bold">Amount to Pay:</span>
+                <span class="text-2xl font-black text-slate-900">₹10.00</span>
+            </div>
+        </div>
+
+        <!-- Payment Actions -->
+        <div class="space-y-4">
+            <button id="pay-btn" onclick="startPayment()" 
+                class="w-full py-4 bg-[#0b3b3c] hover:bg-[#1b5e5f] text-white font-bold rounded-2xl transition shadow-lg shadow-[#d9f0ef] hover:shadow-xl flex items-center justify-center gap-2">
+                <i class="fas fa-credit-card"></i> Pay ₹10 & Start Simulation
+            </button>
+            <a href="/dashboard" 
+                class="w-full py-4 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-2xl transition border border-slate-200 flex items-center justify-center gap-2 text-sm">
+                <i class="fas fa-arrow-left text-xs"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function startPayment() {
+    const payBtn = document.getElementById('pay-btn');
+    payBtn.disabled = true;
+    payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    
+    try {
+        const response = await fetch('/assessment/simulation/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to create order');
+        }
+        
+        const orderData = await response.json();
+        
+        const options = {
+            "key": "{{ RAZORPAY_KEY_ID }}",
+            "amount": orderData.amount,
+            "currency": "INR",
+            "name": "CareStance",
+            "description": "Simulation Payment",
+            "order_id": orderData.id,
+            "handler": async function (response) {
+                // Post verification to backend
+                const verifyRes = await fetch('/assessment/simulation/verify-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature,
+                        career_title: "{{ career_title }}"
+                    })
+                });
+                
+                if (verifyRes.ok) {
+                    window.location.href = `/assessment/simulation/start/{{ career_title }}`;
+                } else {
+                    alert("Payment verification failed. Please contact support.");
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay ₹10 & Start Simulation';
+                }
+            },
+            "theme": {
+                "color": "#0b3b3c"
+            }
+        };
+        
+        const rzp1 = new Razorpay(options);
+        rzp1.open();
+    } catch (err) {
+        console.error(err);
+        alert("An error occurred creating order. Please try again.");
+        payBtn.disabled = false;
+        payBtn.innerHTML = '<i class="fas fa-credit-card"></i> Pay ₹10 & Start Simulation';
+    }
+}
+</script>
+{% endblock %}
