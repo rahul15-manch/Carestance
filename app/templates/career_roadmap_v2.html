@@ -275,6 +275,16 @@
                                     </p>
                                 </div>
                                 {% endif %}
+                                
+                                {% if not step.completed %}
+                                <div class="mb-5 flex flex-wrap gap-3">
+                                    <a href="/career/roadmap/{{ path.id }}/step/{{ loop.index0 }}/chat"
+                                       class="inline-flex items-center gap-2 px-5 py-3 bg-[#0b3b3c] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#1b5e5f] transition-all border border-[#a8ded9]/50 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                        <i class="fas fa-robot text-emerald-400"></i> Report to CareerBuddy
+                                    </a>
+                                </div>
+                                {% endif %}
+                                
                                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
                                     <!-- Power-Ups (Skills) -->
                                     <div

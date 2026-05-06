@@ -4427,6 +4427,161 @@ async def view_roadmaps(request: Request, db: Session = Depends(get_db)):
     paths = db.query(models.CareerPath).filter(models.CareerPath.user_id == user.id).all()
     return templates.TemplateResponse(request=request, name="career_roadmaps.html", context={"user": user, "paths": paths})
 
+ROADMAP_STEP_SYSTEM_PROMPT = """You are CareerBuddy, an encouraging and highly professional AI Career Mentor. 
+The student is currently reporting on their progress for a specific milestone in their career roadmap.
+
+CAREER ROADMAP: {career_title}
+MILESTONE STEP: {step_action}
+STEP DETAILS: {step_task}
+
+YOUR MISSION:
+Conduct a brief, friendly 5-question interview to assess and guide them on this specific milestone.
+1. Ask one question at a time.
+2. The questions should be general but highly relevant to this milestone (e.g., asking what they've learned, what challenges they faced, what tools they used, or what their next immediate action is).
+3. Do not ask more than 5 questions.
+4. On the 5th response, summarize their accomplishments for this step, congratulate them warmly, and instruct them to click the "Finish & Complete Milestone" button to mark this step as completed and return to their roadmap.
+"""
+
+class RoadmapStepChatRequest(BaseModel):
+    message: str = ""
+    answers: list = []
+
+@app.get("/career/roadmap/{path_id}/step/{step_index}/chat", response_class=HTMLResponse)
+async def roadmap_step_chat_page(path_id: int, step_index: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+    data = path.path_data
+    steps = []
+    if isinstance(data, dict) and "steps" in data:
+        steps = data["steps"]
+    elif isinstance(data, list):
+        steps = data
+        
+    if not (0 <= step_index < len(steps)):
+        raise HTTPException(status_code=404, detail="Step not found")
+        
+    step = steps[step_index]
+    return templates.TemplateResponse(request=request, name="roadmap_step_chat.html", context={
+        "user": user,
+        "path": path,
+        "step_index": step_index,
+        "step": step
+    })
+
+@app.post("/career/roadmap/{path_id}/step/{step_index}/chat/message")
+async def roadmap_step_chat_message(path_id: int, step_index: int, request: Request, chat_req: RoadmapStepChatRequest, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+    data = path.path_data
+    steps = []
+    if isinstance(data, dict) and "steps" in data:
+        steps = data["steps"]
+    elif isinstance(data, list):
+        steps = data
+        
+    if not (0 <= step_index < len(steps)):
+        raise HTTPException(status_code=404, detail="Step not found")
+        
+    step = steps[step_index]
+    
+    # Build prompt
+    system_prompt = ROADMAP_STEP_SYSTEM_PROMPT.format(
+        career_title=path.career_title,
+        step_action=step.get("action", ""),
+        step_task=step.get("detailed_task", "")
+    )
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    # Add conversation history
+    if chat_req.answers:
+        for msg in chat_req.answers:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role in ["user", "assistant"]:
+                messages.append({"role": role, "content": content})
+                
+    # Add current user message
+    if chat_req.message.strip():
+        messages.append({"role": "user", "content": chat_req.message})
+        
+    user_msg_count = sum(1 for m in chat_req.answers if m.get("role") == "user")
+    if chat_req.message.strip():
+        user_msg_count += 1
+        
+    ai_text = ""
+    try:
+        if groq_client:
+            completion = await groq_client.chat.completions.create(
+                messages=messages,
+                model="llama-3.3-70b-versatile",
+                temperature=0.7,
+                max_tokens=300,
+            )
+            ai_text = completion.choices[0].message.content
+        elif GEMINI_API_KEY:
+            flat_prompt = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in messages])
+            ai_text = await generate_content_with_fallback(flat_prompt)
+        else:
+            ai_text = "I am ready to help you complete this milestone! Share your progress with me."
+    except Exception as e:
+        ai_text = f"Let's discuss your progress on this milestone step! Tell me what you have completed so far."
+
+    # Mark ready on the 5th user message
+    recommendation_ready = user_msg_count >= 5
+    
+    return {
+        "response": ai_text,
+        "recommendation_ready": recommendation_ready
+    }
+
+@app.post("/career/roadmap/{path_id}/step/{step_index}/chat/finalize")
+async def roadmap_step_chat_finalize(path_id: int, step_index: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
+    if not path:
+        raise HTTPException(status_code=404, detail="Roadmap not found")
+        
+    data = path.path_data
+    steps = []
+    if isinstance(data, dict) and "steps" in data:
+        steps = data["steps"]
+    elif isinstance(data, list):
+        steps = data
+        
+    if 0 <= step_index < len(steps):
+        steps[step_index]["completed"] = True
+        
+        # Update progress percentage
+        if isinstance(data, dict) and "steps" in data:
+            completed_count = sum(1 for s in data["steps"] if s.get("completed", False))
+            data["progress_percentage"] = int((completed_count / len(data["steps"])) * 100)
+            
+        path.path_data = data
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(path, "path_data")
+        
+        db.add(path)
+        db.commit()
+        db.refresh(path)
+        
+    return {"redirect": f"/career/roadmap/{path_id}"}
+
 @app.get("/career/roadmap/{path_id}", response_class=HTMLResponse)
 async def view_roadmap_detail(path_id: int, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
