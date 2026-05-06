@@ -206,6 +206,11 @@
                 <p id="progress-text"
                     class="text-[#0b3b3c] font-bold text-center mt-3 text-sm md:text-lg transition-all">{{
                     path.path_data.progress_percentage|default(0) if path.path_data is mapping else 0 }}% Mastery</p>
+                {% if completed_count.val >= 6 %}
+                <div class="mt-2 flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest w-fit mx-auto border border-emerald-100">
+                    <i class="fas fa-heart text-rose-500 animate-pulse"></i> Effort: {{ avg_effort }}%
+                </div>
+                {% endif %}
             </div>
 
             {% if path.path_data is mapping and path.path_data.career_outlook %}
