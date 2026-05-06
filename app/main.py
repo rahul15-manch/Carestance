@@ -2228,13 +2228,15 @@ async def join_meeting(appointment_id: int, request: Request, db: Session = Depe
     now = datetime.datetime.now()
     if int(user.id) == int(appointment.counsellor_id):
         appointment.counsellor_joined = True
-        appointment.joined_at = now
+        if not appointment.joined_at:
+            appointment.joined_at = now
     if int(user.id) == int(appointment.student_id):
         appointment.student_joined = True
-        appointment.student_joined_at = now
+        if not appointment.student_joined_at:
+            appointment.student_joined_at = now
     db.commit()
     
-    return RedirectResponse(url=f"/meeting/{appointment_id}")
+    return RedirectResponse(url=appointment.meeting_link)
 
 @app.get("/meeting/{appointment_id}", response_class=HTMLResponse)
 async def meeting_page(appointment_id: int, request: Request, db: Session = Depends(get_db)):
@@ -2249,10 +2251,12 @@ async def meeting_page(appointment_id: int, request: Request, db: Session = Depe
     now = datetime.datetime.now()
     if int(user.id) == int(appointment.counsellor_id):
         appointment.counsellor_joined = True
-        appointment.joined_at = now
+        if not appointment.joined_at:
+            appointment.joined_at = now
     if int(user.id) == int(appointment.student_id):
         appointment.student_joined = True
-        appointment.student_joined_at = now
+        if not appointment.student_joined_at:
+            appointment.student_joined_at = now
     db.commit()
     
     other_user_id = appointment.student_id if user.id == appointment.counsellor_id else appointment.counsellor_id
@@ -2277,10 +2281,12 @@ async def track_join(appointment_id: int, request: Request, db: Session = Depend
     now = datetime.datetime.now()
     if int(user.id) == int(appointment.counsellor_id):
         appointment.counsellor_joined = True
-        appointment.joined_at = now
+        if not appointment.joined_at:
+            appointment.joined_at = now
     if int(user.id) == int(appointment.student_id):
         appointment.student_joined = True
-        appointment.student_joined_at = now
+        if not appointment.student_joined_at:
+            appointment.student_joined_at = now
     
     db.commit()
     return {"status": "ok"}

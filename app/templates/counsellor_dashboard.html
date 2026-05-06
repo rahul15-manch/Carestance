@@ -553,10 +553,17 @@
                         {% if apt.status == 'scheduled' %}
                         <!-- Join Call: Only active during session window (scheduled time → +1 hour) -->
                         <template x-if="isActive">
-                            <a href="/join_meeting/{{ apt.id }}" target="_blank"
-                                class="px-5 py-2.5 bg-[#0b3b3c] hover:bg-[#1b5e5f] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#d9f0ef] flex items-center gap-2 animate-pulse">
-                                <i class="fas fa-video"></i> <span x-text="timeLabel"></span>
-                            </a>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <a href="/join_meeting/{{ apt.id }}" target="_blank"
+                                    class="px-5 py-2.5 bg-[#0b3b3c] hover:bg-[#1b5e5f] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#d9f0ef] flex items-center gap-2 animate-pulse">
+                                    <i class="fas fa-video"></i> <span x-text="timeLabel"></span>
+                                </a>
+                                <form action="/appointment/complete/{{ apt.id }}" method="POST" class="inline">
+                                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md flex items-center gap-2">
+                                        <i class="fas fa-check-double"></i> Mark Completed
+                                    </button>
+                                </form>
+                            </div>
                         </template>
                         <template x-if="isBefore">
                             <span class="px-5 py-2.5 bg-slate-300 text-slate-500 font-bold rounded-xl cursor-not-allowed flex items-center gap-2 select-none">
@@ -564,9 +571,16 @@
                             </span>
                         </template>
                         <template x-if="isExpired">
-                            <span class="px-5 py-2.5 bg-red-100 text-red-400 font-bold rounded-xl cursor-not-allowed flex items-center gap-2 select-none">
-                                <i class="fas fa-times-circle"></i> <span x-text="timeLabel"></span>
-                            </span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-5 py-2.5 bg-red-100 text-red-400 font-bold rounded-xl cursor-not-allowed flex items-center gap-2 select-none">
+                                    <i class="fas fa-times-circle"></i> <span x-text="timeLabel"></span>
+                                </span>
+                                <form action="/appointment/complete/{{ apt.id }}" method="POST" class="inline">
+                                    <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-md flex items-center gap-2">
+                                        <i class="fas fa-check-double"></i> Mark Completed
+                                    </button>
+                                </form>
+                            </div>
                         </template>
                         {% endif %}
                     </div>
