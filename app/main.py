@@ -1464,22 +1464,28 @@ async def admin_dashboard(
             all_payments = db.query(models.Payment).order_by(models.Payment.created_at.desc()).limit(20).all()
             
             # Using scalars directly for performance
-            total_revenue = db.query(sql_func.sum(models.Payment.amount)).filter(
+            session_revenue = db.query(sql_func.sum(models.Payment.amount)).filter(
                 models.Payment.status == "captured"
             ).scalar() or 0.0
+
+            sim_revenue = db.query(sql_func.sum(models.SimulationPayment.amount)).scalar() or 0.0
+            
+            total_revenue = session_revenue + sim_revenue
 
             total_counselor_payouts = db.query(sql_func.sum(models.Transfer.amount)).filter(
                 models.Transfer.status == "processed"
             ).scalar() or 0.0
 
-            platform_commission = total_revenue - total_counselor_payouts
+            platform_commission = session_revenue - total_counselor_payouts + sim_revenue
 
             pending_transfers = db.query(models.Transfer).filter(models.Transfer.status == "pending").count()
             failed_transfers = db.query(models.Transfer).filter(models.Transfer.status == "failed").count()
             captured_payments_count = db.query(models.Payment).filter(models.Payment.status == "captured").count()
+            sim_payments_count = db.query(models.SimulationPayment).count()
         except Exception as pe:
             print(f"Payment analytics error: {pe}")
             all_payments, total_revenue, total_counselor_payouts, platform_commission = [], 0.0, 0.0, 0.0
+            session_revenue, sim_revenue, sim_payments_count = 0.0, 0.0, 0
             pending_transfers, failed_transfers, captured_payments_count = 0, 0, 0
         
         # Fetch Moderation Flags (Limited for performance)
@@ -1515,11 +1521,14 @@ async def admin_dashboard(
                 "all_counsellors": all_counsellors,
                 "all_payments": all_payments,
                 "total_revenue": total_revenue,
+                "session_revenue": session_revenue,
+                "sim_revenue": sim_revenue,
                 "total_counselor_payouts": total_counselor_payouts,
                 "platform_commission": platform_commission,
                 "pending_transfers": pending_transfers,
                 "failed_transfers": failed_transfers,
                 "captured_payments_count": captured_payments_count,
+                "sim_payments_count": sim_payments_count,
                 "moderation_flags": moderation_flags,
                 "all_appointments": all_appointments,
                 "simulation_payments": simulation_payments,
@@ -1707,12 +1716,14 @@ async def counsellor_update(
         # Update Account Details (merge with existing)
         # Check if any account-related fields were sent in the form
         if any(x is not None for x in [bank_name, account_num, ifsc_code, upi_id]):
-            account_data = profile.account_details or {}
-            # We treat empty string as clearing the value or just setting it to empty
+            # Create a new dictionary so SQLAlchemy detects the JSON change
+            account_data = dict(profile.account_details or {})
+            
             if bank_name is not None: account_data["bank_name"] = bank_name
             if account_num is not None: account_data["account_num"] = account_num
             if ifsc_code is not None: account_data["ifsc"] = ifsc_code
             if upi_id is not None: account_data["upi"] = upi_id
+            
             profile.account_details = account_data
         
         db.commit()
