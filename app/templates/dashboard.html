@@ -386,13 +386,9 @@
                                         class="inline-flex w-full items-center justify-center px-4 py-3 bg-[#0b3b3c] text-white text-sm font-bold rounded-xl hover:bg-[#1b5e5f] transition-all transform active:scale-95 shadow-lg shadow-[#d9f0ef] animate-pulse">
                                         <i class="fas fa-video mr-2"></i> <span x-text="timeLabel"></span>
                                     </a>
-                                    <form action="/appointment/delete/{{ appt.id }}" method="POST" class="mt-2"
-                                        onsubmit="return confirm('Are you sure you want to cancel this appointment?')">
-                                        <button type="submit"
-                                            class="w-full text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-wider transition-colors">
-                                            <i class="fas fa-trash-alt mr-1"></i> Cancel Session
-                                        </button>
-                                    </form>
+                                    <span class="block text-center mt-2 w-full text-[10px] text-slate-400 font-bold uppercase tracking-wider cursor-not-allowed" title="Sessions cannot be cancelled during the active window">
+                                        <i class="fas fa-ban mr-1"></i> Cannot Cancel Now
+                                    </span>
                                 </div>
                             </template>
                             <template x-if="isBefore">
