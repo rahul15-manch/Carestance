@@ -282,12 +282,12 @@
                                 </div>
                                 {% endif %}
                                 
-                                {% if not step.completed %}
+                                {% if not step.completed or (step.completed and step.effort_percentage|default(100)|int < 60) %}
                                 <div class="mb-5 flex flex-wrap gap-3">
                                     {% if loop.first or (steps[loop.index0 - 1].completed and steps[loop.index0 - 1].effort_percentage|default(100)|int >= 60) %}
                                     <a href="/career/roadmap/{{ path.id }}/step/{{ loop.index0 }}/chat"
-                                       class="inline-flex items-center gap-2 px-5 py-3 bg-[#0b3b3c] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#1b5e5f] transition-all border border-[#a8ded9]/50 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
-                                        <i class="fas fa-robot text-emerald-400"></i> Report to CareerBuddy
+                                       class="inline-flex items-center gap-2 px-5 py-3 {% if step.completed and step.effort_percentage|default(100)|int < 60 %}bg-rose-600 hover:bg-rose-700{% else %}bg-[#0b3b3c] hover:bg-[#1b5e5f]{% endif %} text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-[#a8ded9]/50 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
+                                        <i class="fas fa-robot text-emerald-400"></i> {% if step.completed and step.effort_percentage|default(100)|int < 60 %}Re-Report to CareerBuddy (Improve Effort){% else %}Report to CareerBuddy{% endif %}
                                     </a>
                                     {% else %}
                                     <button disabled
