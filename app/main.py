@@ -192,6 +192,7 @@ def run_migrations():
             if 'onboarded' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN onboarded BOOLEAN DEFAULT FALSE")
             if 'simulations_completed' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN simulations_completed INTEGER DEFAULT 0")
             if 'simulation_paid' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN simulation_paid BOOLEAN DEFAULT FALSE")
+            if 'simulation_credits' not in u_cols: migrations.append("ALTER TABLE users ADD COLUMN simulation_credits INTEGER DEFAULT 0")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_users_full_name ON users (full_name)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_users_onboarded ON users (onboarded)")
 
@@ -249,7 +250,8 @@ def run_migrations():
                            ('stream_pros', 'JSON'), ('stream_cons', 'JSON'),
                            ('simulation_career', 'VARCHAR'), ('simulation_questions', 'JSON'),
                            ('simulation_answers', 'JSON'), ('simulation_evaluation', 'JSON'),
-                           ('simulations_completed', 'INTEGER DEFAULT 0'), ('simulation_paid', 'BOOLEAN DEFAULT FALSE')]:
+                           ('simulations_completed', 'INTEGER DEFAULT 0'), ('simulation_paid', 'BOOLEAN DEFAULT FALSE'),
+                           ('simulation_credits', 'INTEGER DEFAULT 0')]:
                 if col not in ar_cols: migrations.append(f"ALTER TABLE assessment_results ADD COLUMN {col} {ty}")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_recommended_stream ON assessment_results (recommended_stream)")
             migrations.append("CREATE INDEX IF NOT EXISTS ix_assessment_results_phase_2_category ON assessment_results (phase_2_category)")
@@ -2643,15 +2645,23 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
     appt.status = "scheduled"
     db.commit()
 
-    # 3. Notify Student
+    # 3. Notify Student and Counsellor
     student = db.query(models.User).filter(models.User.id == appt.student_id).first()
     if student:
         appt_time_str = appt.appointment_time.strftime('%b %d, %I:%M %p')
+        # To Student
         background_tasks.add_task(
             send_email,
             student.email,
-            "Booking Accepted! 🚀",
-            f"Hi {student.full_name}, your session with {user.full_name} on {appt_time_str} has been accepted and confirmed."
+            "CareStance Session Confirmed! 🚀",
+            get_booking_template(student.full_name, user.full_name, appt_time_str, appt.meeting_link, "student")
+        )
+        # To Counsellor
+        background_tasks.add_task(
+            send_email,
+            user.email,
+            "CareStance Session Confirmed! 🚀",
+            get_booking_template(user.full_name, student.full_name, appt_time_str, appt.meeting_link, "counsellor")
         )
         # Add internal notification
         notif = models.Notification(
@@ -2663,6 +2673,7 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
         db.commit()
 
     return RedirectResponse(url="/dashboard?message=Appointment+accepted", status_code=status.HTTP_302_FOUND)
+
 
 @app.post("/appointment/reject/{appt_id}")
 async def reject_appointment(appt_id: int, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -2723,26 +2734,6 @@ async def delete_roadmap(path_id: int, request: Request, db: Session = Depends(g
     db.commit()
     return RedirectResponse(url="/career/roadmaps?message=Roadmap+deleted", status_code=status.HTTP_302_FOUND)
 
-    if counsellor_user:
-        appt_time_str = appt_time.strftime('%b %d, %I:%M %p')
-        # To Student
-        background_tasks.add_task(
-            send_email, 
-            student_email, 
-            "CareStance Session Confirmed! 🚀", 
-            get_booking_template(user.full_name, counsellor_user.full_name, appt_time_str, meeting_link, "student")
-        )
-        # To Counsellor
-        background_tasks.add_task(
-            send_email, 
-            counsellor_user.email, 
-            "Session Paid & Confirmed! 💰", 
-            get_booking_template(counsellor_user.full_name, user.full_name, appt_time_str, meeting_link, "counsellor")
-        )
-
-    print(f"DEBUG: Appointment created successfully for student {user.id} and counsellor {counsellor_id}")
-    
-    return templates.TemplateResponse(request=request, name="appointment_success.html", context={"user": user, "appointment": appointment})
 
 # --- Phase 3 Routes ---
 
@@ -3194,9 +3185,15 @@ async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest,
 
 # --- Simulation Phase Routes ---
 
+@app.get("/assessment/simulation/pay/{category}/{career_title}", response_class=HTMLResponse)
+async def simulation_pay_with_category(category: str, career_title: str, request: Request, db: Session = Depends(get_db)):
+    return await simulation_pay(career_title, request, db)
+
 @app.get("/assessment/simulation/pay/{career_title}", response_class=HTMLResponse)
 async def simulation_pay(career_title: str, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
+
+
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3211,9 +3208,13 @@ async def simulation_create_order(request: Request, db: Session = Depends(get_db
     user = get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401)
+        
+    req_data = await request.json()
+    package = req_data.get("package", "single") # "single" or "bundle"
+    amount_in_inr = 35 if package == "bundle" else 15
     
     data = {
-        "amount": 10 * 100, # 1000 paise
+        "amount": amount_in_inr * 100, # paise
         "currency": "INR",
         "receipt": f"receipt_sim_{uuid.uuid4().hex[:10]}",
         "payment_capture": 1
@@ -3236,6 +3237,7 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
     razorpay_payment_id = data.get("razorpay_payment_id")
     razorpay_order_id = data.get("razorpay_order_id")
     razorpay_signature = data.get("razorpay_signature")
+    package = data.get("package", "single")
     
     params_dict = {
         'razorpay_order_id': razorpay_order_id,
@@ -3249,13 +3251,18 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
         print(f"Simulation Payment Verification Failed: {e}")
         raise HTTPException(status_code=400, detail="Signature verification failed")
         
+    credits_to_add = 3 if package == "bundle" else 1
+    amount_paid = 35.0 if package == "bundle" else 15.0
+        
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
         result.simulation_paid = True
+        result.simulation_credits = (result.simulation_credits or 0) + credits_to_add
         
     db_user = db.query(models.User).filter(models.User.id == user.id).first()
     if db_user:
         db_user.simulation_paid = True
+        db_user.simulation_credits = (db_user.simulation_credits or 0) + credits_to_add
         
     # Add payment record
     career_title = data.get("career_title", (result.simulation_career if result else None) or "General")
@@ -3263,7 +3270,7 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
         user_id=user.id,
         razorpay_order_id=razorpay_order_id,
         razorpay_payment_id=razorpay_payment_id,
-        amount=10.0,
+        amount=amount_paid,
         career=career_title
     )
     db.add(sim_pay)
@@ -3271,9 +3278,14 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
         
     return {"status": "ok"}
 
+@app.get("/assessment/simulation/start/{category}/{career_title}", response_class=HTMLResponse)
+async def simulation_start_with_category(category: str, career_title: str, request: Request, db: Session = Depends(get_db)):
+    return await simulation_start(career_title, request, db)
+
 @app.get("/assessment/simulation/start/{career_title}", response_class=HTMLResponse)
 async def simulation_start(career_title: str, request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
+
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3283,9 +3295,9 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     
     db_user = db.query(models.User).filter(models.User.id == user.id).first()
     sims_completed = max(result.simulations_completed or 0, db_user.simulations_completed or 0 if db_user else 0)
-    sim_is_paid = result.simulation_paid or (db_user.simulation_paid if db_user else False)
+    sim_credits = max(result.simulation_credits or 0, db_user.simulation_credits or 0 if db_user else 0)
 
-    if sims_completed >= 1 and not sim_is_paid:
+    if sims_completed >= 1 and sim_credits <= 0:
         return RedirectResponse(url=f"/assessment/simulation/pay/{career_title}", status_code=status.HTTP_302_FOUND)
     
     # Generate questions based on class
@@ -3305,11 +3317,18 @@ async def simulation_start(career_title: str, request: Request, db: Session = De
     result.simulation_questions = questions
     result.simulation_answers = [] # Reset answers
     result.simulation_evaluation = None # Reset evaluation
+    
+    if sims_completed >= 1:
+        if result.simulation_credits > 0:
+            result.simulation_credits -= 1
+        if db_user and db_user.simulation_credits > 0:
+            db_user.simulation_credits -= 1
+
     if result.simulation_paid:
         result.simulation_paid = False
-    if db_user:
-        if db_user.simulation_paid:
-            db_user.simulation_paid = False
+    if db_user and db_user.simulation_paid:
+        db_user.simulation_paid = False
+        
     db.commit()
     
     return RedirectResponse(url="/assessment/simulation/question/0", status_code=status.HTTP_302_FOUND)

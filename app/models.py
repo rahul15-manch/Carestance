@@ -17,6 +17,7 @@ class User(Base):
     onboarded = Column(Boolean, default=False, index=True)
     simulations_completed = Column(Integer, default=0, nullable=False)
     simulation_paid = Column(Boolean, default=False, nullable=False)
+    simulation_credits = Column(Integer, default=0, nullable=False)
     
     assessment = relationship("AssessmentResult", back_populates="user", uselist=False)
     given_ratings = relationship("CounselorRating", foreign_keys="[CounselorRating.student_id]", back_populates="student")
@@ -56,6 +57,7 @@ class AssessmentResult(Base):
     simulation_evaluation = Column(JSON, nullable=True) # {match_score, summary, strengths, improvement_areas}
     simulations_completed = Column(Integer, default=0, nullable=False)
     simulation_paid = Column(Boolean, default=False, nullable=False)
+    simulation_credits = Column(Integer, default=0, nullable=False)
     
     user = relationship("User", back_populates="assessment")
 
