@@ -11,12 +11,14 @@
 {% set effort_sum = namespace(val=0) %}
 {% set effort_count = namespace(val=0) %}
 {% for s in steps %}
-    {% if s.completed %}
+    {% if s.completed or s.get('completed') %}
         {% set completed_count.val = completed_count.val + 1 %}
-        {% if s.effort_percentage %}
-            {% set effort_sum.val = effort_sum.val + s.effort_percentage|int %}
-            {% set effort_count.val = effort_count.val + 1 %}
+        {% set effort = s.effort_percentage or s.get('effort_percentage') %}
+        {% if not effort %}
+            {% set effort = 80 %}
         {% endif %}
+        {% set effort_sum.val = effort_sum.val + effort|int %}
+        {% set effort_count.val = effort_count.val + 1 %}
     {% endif %}
 {% endfor %}
 {% set avg_effort = (effort_sum.val / effort_count.val)|int if effort_count.val > 0 else 0 %}
