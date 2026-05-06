@@ -382,7 +382,7 @@
                             <!-- Join Video Call: Only active during session window (scheduled time → +1 hour) -->
                             <template x-if="isActive">
                                 <div>
-                                    <a href="{{ appt.meeting_link }}" target="_blank"
+                                    <a href="/join_meeting/{{ appt.id }}" target="_blank"
                                         class="inline-flex w-full items-center justify-center px-4 py-3 bg-[#0b3b3c] text-white text-sm font-bold rounded-xl hover:bg-[#1b5e5f] transition-all transform active:scale-95 shadow-lg shadow-[#d9f0ef] animate-pulse">
                                         <i class="fas fa-video mr-2"></i> <span x-text="timeLabel"></span>
                                     </a>
