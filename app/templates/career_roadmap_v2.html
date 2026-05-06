@@ -284,7 +284,7 @@
                                 
                                 {% if not step.completed %}
                                 <div class="mb-5 flex flex-wrap gap-3">
-                                    {% if loop.first or steps[loop.index0 - 1].completed %}
+                                    {% if loop.first or (steps[loop.index0 - 1].completed and steps[loop.index0 - 1].effort_percentage|default(100)|int >= 60) %}
                                     <a href="/career/roadmap/{{ path.id }}/step/{{ loop.index0 }}/chat"
                                        class="inline-flex items-center gap-2 px-5 py-3 bg-[#0b3b3c] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#1b5e5f] transition-all border border-[#a8ded9]/50 shadow-sm hover:shadow-md transform hover:-translate-y-0.5">
                                         <i class="fas fa-robot text-emerald-400"></i> Report to CareerBuddy
@@ -292,7 +292,7 @@
                                     {% else %}
                                     <button disabled
                                             class="inline-flex items-center gap-2 px-5 py-3 bg-slate-100 text-slate-400 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-200 cursor-not-allowed opacity-75">
-                                        <i class="fas fa-lock text-slate-400"></i> Locked (Complete previous step first)
+                                        <i class="fas fa-lock text-slate-400"></i> Locked {% if not steps[loop.index0 - 1].completed %}(Complete previous step first){% else %}(Previous step effort was too low, look back and redo){% endif %}
                                     </button>
                                     {% endif %}
                                 </div>

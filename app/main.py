@@ -4441,7 +4441,7 @@ Conduct a short and engaging 5-question mentorship interview focused ONLY on thi
 
 GUIDELINES:
 1. Ask ONLY one question at a time.
-2. Keep the conversation supportive, positive, and practical.
+2. Keep the conversation supportive, positive, and practical.But also be strict while calculating effort percentage.
 3. Every question must be relevant to the milestone and may include topics such as:
    - What they learned
    - Challenges they faced
@@ -4454,6 +4454,9 @@ GUIDELINES:
 5. Questions should feel conversational, not robotic or repetitive.
 6. Encourage reflection and motivation throughout the interaction.
 7. Be precise while Calculating effort percentage. account each detail of student response. Be strict while calculating effort percentage.
+8. If user shifts off topic . Redirect student to correct topic and ask questions related to milestone.
+9. Do not ask questions related to any other milestone than the current one.
+10. If donot find any info related to task or milestone in response then  provide low effort percentage.
 
 FINAL RESPONSE RULES (AFTER THE 5TH USER RESPONSE):
 1. Provide:
@@ -4478,6 +4481,7 @@ Example:
 [EFFORT: 85%]
 
 5. Do NOT include the [EFFORT: XX%] tag in earlier responses.
+6. If the effort percentage you calculated is less than 60%, advise the student to look back at this step, spend more time on it, and explain that the next milestone will remain locked until they show greater effort (>= 60%).
 """
 
 class RoadmapStepChatRequest(BaseModel):
@@ -4506,7 +4510,7 @@ async def roadmap_step_chat_page(path_id: int, step_index: int, request: Request
         
     if step_index > 0:
         previous_step = steps[step_index - 1]
-        if not previous_step.get("completed", False):
+        if not previous_step.get("completed", False) or previous_step.get("effort_percentage", 100) < 60:
             return RedirectResponse(url=f"/career/roadmap/{path_id}", status_code=status.HTTP_302_FOUND)
         
     step = steps[step_index]
@@ -4539,8 +4543,8 @@ async def roadmap_step_chat_message(path_id: int, step_index: int, request: Requ
          
     if step_index > 0:
         previous_step = steps[step_index - 1]
-        if not previous_step.get("completed", False):
-            raise HTTPException(status_code=400, detail="Previous step is not completed yet.")
+        if not previous_step.get("completed", False) or previous_step.get("effort_percentage", 100) < 60:
+            raise HTTPException(status_code=400, detail="Previous step is not completed or effort was less than 60%. Please redo it.")
          
     step = steps[step_index]
     
