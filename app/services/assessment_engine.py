@@ -17,30 +17,30 @@ def load_grade_data(student_type: str) -> Dict:
     folder = "grade_10" if student_type == "10th" else "grade_12"
     path = os.path.join(DATA_DIR, folder)
     data = {}
-    
-    # Load Cards
-    with open(os.path.join(path, "cards.json"), "r", encoding="utf-8") as f:
-        data["cards"] = json.load(f)
-        
-    # Load Proxy Questions
-    proxy_path = os.path.join(path, "proxy_questions.json")
-    if os.path.exists(proxy_path):
-        with open(proxy_path, "r", encoding="utf-8") as f:
+    try:
+        with open(os.path.join(path, "cards.json"), "r", encoding="utf-8") as f:
+            data["cards"] = json.load(f)
+        with open(os.path.join(path, "proxy_questions.json"), "r", encoding="utf-8") as f:
             data["proxy_questions"] = json.load(f)
-    elif folder == "grade_12":
-        # Fallback to context_proxies.json for G12 if named differently
-        alt_path = os.path.join(path, "context_proxies.json")
-        with open(alt_path, "r", encoding="utf-8") as f:
-            data["proxy_questions"] = json.load(f).get("context_questions", [])
-            
-    # Load Scenarios (For 10th grade)
-    scenarios_path = os.path.join(path, "scenarios.json")
-    if os.path.exists(scenarios_path):
-        with open(scenarios_path, "r", encoding="utf-8") as f:
+        with open(os.path.join(path, "scenarios.json"), "r", encoding="utf-8") as f:
             data["scenarios"] = json.load(f)
-    else:
-        data["scenarios"] = []
-        
+    except FileNotFoundError:
+        if student_type in ("12th", "12th_above"):
+            # Load cards from grade_12 if possible, otherwise grade_10
+            try:
+                with open(os.path.join(os.path.join(DATA_DIR, "grade_12"), "cards.json"), "r", encoding="utf-8") as f:
+                    data["cards"] = json.load(f)
+            except FileNotFoundError:
+                with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "cards.json"), "r", encoding="utf-8") as f:
+                    data["cards"] = json.load(f)
+            
+            # Fall back to grade_10 for proxy questions and scenarios
+            with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "proxy_questions.json"), "r", encoding="utf-8") as f:
+                data["proxy_questions"] = json.load(f)
+            with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "scenarios.json"), "r", encoding="utf-8") as f:
+                data["scenarios"] = json.load(f)
+            return data
+        raise
     return data
 
 def load_g12_interview_questions() -> Dict:

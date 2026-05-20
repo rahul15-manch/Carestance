@@ -940,14 +940,6 @@ async def select_role(
     
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
-# --- Assessment Data ---
-
-# Assessment questions are imported from .data.questions_data
-
-
-
-# --- Assessment Routes ---
-
 @app.get("/assessment/start")
 async def assessment_start(
     request: Request,
@@ -955,7 +947,7 @@ async def assessment_start(
     stream: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """Phase 0: Class Selection & Reset for New Attempt"""
+    """Phase 0 / Start: Reset and initialize assessment"""
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -966,11 +958,14 @@ async def assessment_start(
         # Check/Create Result
         result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
         
+        # Grade 12 starts at current_phase=0 (Intake Chat), Grade 10 starts at current_phase=1 (Swipe)
+        start_phase = 0 if student_type == "12th" else 1
+        
         if result:
             # Clear all previous progress fields
             result.selected_class = class_level
             result.student_type = student_type
-            result.current_phase = 1
+            result.current_phase = start_phase
             result.intake_turn = 1
             result.intake_name = user.full_name
             result.intake_grade = 10 if student_type == "10th" else 12
@@ -1006,7 +1001,7 @@ async def assessment_start(
                 user_id=user.id,
                 selected_class=class_level,
                 student_type=student_type,
-                current_phase=1,
+                current_phase=start_phase,
                 intake_turn=1,
                 intake_name=user.full_name,
                 intake_grade=10 if student_type == "10th" else 12,
@@ -1032,7 +1027,8 @@ async def assessment_reset(request: Request, db: Session = Depends(get_db)):
     
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
-        result.current_phase = 1
+        start_phase = 0 if result.student_type == "12th" else 1
+        result.current_phase = start_phase
         result.intake_turn = 1
         result.telemetry_logs = None
         result.reality_answers = None
@@ -1095,8 +1091,70 @@ async def assessment_api_state(request: Request, db: Session = Depends(get_db)):
         "intake_name": result.intake_name,
         "intake_grade": result.intake_grade,
         "intake_stream": result.intake_stream,
+        "intake_turn": result.intake_turn,
         "chat_turn": result.chat_turn
     }
+
+@app.post("/assessment/api/intake")
+async def assessment_api_intake(request: Request, payload: dict, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    if not result or result.student_type != "12th":
+        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
+        
+    user_message = payload.get("message", "").strip()
+    
+    # Extract metadata using service
+    extraction = assessment_engine.extract_intake_metadata(result.intake_turn, user_message)
+    if result.intake_turn == 1 and extraction.get("name"): 
+        result.intake_name = extraction["name"]
+    elif result.intake_turn == 2 and extraction.get("grade"): 
+        result.intake_grade = extraction["grade"]
+    elif result.intake_turn == 3 and extraction.get("current_stream"): 
+        result.intake_stream = extraction["current_stream"]
+
+    response_text = ""
+    is_complete = False
+    validation_payload = None
+    
+    if result.intake_turn == 1:
+        if not result.intake_name: 
+            response_text = "Invalid format. Please provide just your name."
+        else: 
+            response_text = "Got it. What grade or year are you currently in?"
+            result.intake_turn = 2
+    elif result.intake_turn == 2:
+        if not result.intake_grade: 
+            response_text = "Invalid integer. What grade are you currently in?"
+        elif result.intake_grade < 12: 
+            response_text = "Validation failure: Grade must be 12 or above for this track."
+        else: 
+            response_text = "Thanks. Which academic stream are you currently pursuing?"
+            result.intake_turn = 3
+    elif result.intake_turn == 3:
+        if not result.intake_stream: 
+            response_text = "Unrecognized stream. Are you pursuing Science, Commerce, or Arts?"
+        else:
+            validation_payload = {
+                "student_metadata": {
+                    "name": result.intake_name, 
+                    "grade": result.intake_grade, 
+                    "current_stream": result.intake_stream
+                }, 
+                "system_validation": {
+                    "stream_lock_flag": True, 
+                    "normalization_confidence": 0.95
+                }
+            }
+            response_text = "Metadata locked. Transitioning to Phase 1."
+            result.current_phase = 1
+            is_complete = True
+
+    db.commit()
+    return {"status": "success", "content": response_text, "is_complete": is_complete, "payload": validation_payload}
 
 @app.get("/assessment/api/questions")
 async def assessment_api_questions(request: Request, db: Session = Depends(get_db)):
@@ -1109,56 +1167,27 @@ async def assessment_api_questions(request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Assessment not found")
         
     student_type = result.student_type or "10th"
-    phase = result.current_phase or 1
+    phase = result.current_phase or 0
     
-    if student_type == "10th":
-        data = assessment_engine.load_grade_data("10th")
-        if phase == 1:
-            import random
-            cards = data.get("cards", [])
-            shuffled = list(cards)
-            random.seed(result.id or 42)
-            random.shuffle(shuffled)
-            return {"cards": shuffled[:20]}
-        elif phase == 2:
-            return {"chat_messages": result.chat_messages or [], "chat_turn": result.chat_turn or 0}
-        elif phase == 3:
-            return {"proxy_questions": data.get("proxy_questions", [])}
-        elif phase == 4:
-            return {"scenarios": data.get("scenarios", [])}
-        else:
-            return {"status": "phase_not_applicable"}
+    data = assessment_engine.load_grade_data(student_type)
+    
+    if phase == 0 and student_type == "12th":
+        return {"message": "Hello! I'm Alex, your career mentor. Let's start with your name. What's your name?"}
+    elif phase == 1:
+        import random
+        cards = data.get("cards", [])
+        shuffled = list(cards)
+        random.seed(result.id or 42)
+        random.shuffle(shuffled)
+        return {"cards": shuffled[:10]}
+    elif phase == 2:
+        return {"chat_messages": result.chat_messages or [], "chat_turn": result.chat_turn or 0}
+    elif phase == 3:
+        return {"proxy_questions": data.get("proxy_questions", [])}
+    elif phase == 4:
+        return {"scenarios": data.get("scenarios", [])}
     else:
-        if phase == 1:
-            import random
-            data = assessment_engine.load_grade_data("12th")
-            cards = data.get("cards", [])
-            shuffled = list(cards)
-            random.seed(result.id or 42)
-            random.shuffle(shuffled)
-            return {"cards": shuffled[:30]}
-        elif phase == 2:
-            reality_cards = assessment_engine.load_g12_reality_cards()
-            return {"reality_cards": reality_cards}
-        elif phase == 3:
-            return {"chat_messages": result.chat_messages or [], "chat_turn": result.chat_turn or 0}
-        elif phase == 4:
-            data = assessment_engine.load_grade_data("12th")
-            return {"proxy_questions": data.get("proxy_questions", [])}
-        elif phase == 5:
-            return {"status": "noise_cancel_transition"}
-        elif phase == 6:
-            metrics = assessment_engine.load_g12_worldview_metrics()
-            return {
-                "iq_text": metrics.get("part_a_iq_proxy", {}).get("dense_passage", ""),
-                "iq_questions": metrics.get("part_a_iq_proxy", {}).get("questions", []),
-                "eq_vignettes": metrics.get("part_b_eq_proxy", {}).get("vignettes", [])
-            }
-        elif phase == 7:
-            sims = assessment_engine.load_g12_future_simulations()
-            return {"simulations": sims.get("future_scenarios", [])}
-        else:
-            return {"status": "phase_not_applicable"}
+        return {"status": "phase_not_applicable"}
 
 @app.post("/assessment/api/swipe")
 async def assessment_api_swipe(request: Request, payload: dict, db: Session = Depends(get_db)):
@@ -1173,50 +1202,15 @@ async def assessment_api_swipe(request: Request, payload: dict, db: Session = De
     swipes = payload.get("swipes", [])
     result.telemetry_logs = swipes
     
-    student_type = result.student_type or "10th"
-    if student_type == "10th":
-        metrics = assessment_engine.calculate_telemetry_metrics(swipes, "10th")
-        result.personality = json.dumps(metrics.get("latent_profile", {}))
-        result.confidence = metrics.get("consistency_index", 0.85)
-    else:
-        data = assessment_engine.load_grade_data("12th")
-        metrics = assessment_engine.calculate_telemetry_metrics_g12(swipes, data.get("cards", []))
-        result.personality = json.dumps(metrics.get("computed_latent_vector", {}))
-        result.confidence = 1.0 - (0.5 if metrics.get("telemetry_metrics", {}).get("profile_integrity_compromised", False) else 0.0)
-        result.raw_answers = metrics
-        
+    # Standard 13-parameter calculations
+    metrics = assessment_engine.calculate_telemetry_metrics(swipes, result.student_type)
+    result.personality = json.dumps(metrics.get("latent_profile", {}))
+    result.confidence = metrics.get("consistency_index", 0.85)
+    
     result.current_phase = 2
     db.commit()
     
     return {"status": "success", "next_phase": 2}
-
-@app.post("/assessment/api/reality")
-async def assessment_api_reality(request: Request, payload: dict, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result or result.student_type != "12th":
-        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
-        
-    ratings = payload.get("ratings", [])
-    result.reality_answers = ratings
-    
-    p1_vector = json.loads(result.personality) if result.personality else {}
-    reality_data = assessment_engine.load_g12_reality_cards()
-    metrics = assessment_engine.calculate_reality_dissonance_g12(p1_vector, ratings, reality_data)
-    
-    result.current_phase = 3
-    if result.raw_answers:
-        curr_raw = dict(result.raw_answers)
-        curr_raw["reality_dissonance"] = metrics
-        result.raw_answers = curr_raw
-    else:
-        result.raw_answers = {"reality_dissonance": metrics}
-        
-    db.commit()
-    return {"status": "success", "next_phase": 3}
 
 @app.post("/assessment/api/chat")
 async def assessment_api_chat(request: Request, payload: dict, db: Session = Depends(get_db)):
@@ -1228,18 +1222,11 @@ async def assessment_api_chat(request: Request, payload: dict, db: Session = Dep
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
-    student_type = result.student_type or "10th"
     user_message = payload.get("message", "").strip()
-    
     chat_history = result.chat_messages or []
     
     if len(chat_history) == 0 and not user_message:
-        if student_type == "10th":
-            first_q = assessment_engine.get_alex_response(0, "")
-        else:
-            questions = assessment_engine.load_g12_interview_questions()
-            first_q = assessment_engine.get_alex_response_g12(0, questions.get("interview_questions", []))
-            
+        first_q = assessment_engine.get_alex_response(0, "")
         chat_history.append({"role": "ai", "content": first_q})
         result.chat_messages = chat_history
         result.chat_turn = 0
@@ -1250,26 +1237,16 @@ async def assessment_api_chat(request: Request, payload: dict, db: Session = Dep
     turn = result.chat_turn or 0
     next_turn = turn + 1
     
-    max_turns = 6 if student_type == "10th" else 5
+    max_turns = 6
     
     if next_turn >= max_turns:
         result.chat_messages = chat_history
         result.chat_turn = next_turn
         
-        if student_type == "10th":
-            riasec = assessment_engine.extract_riasec_vector(chat_history)
-            result.personality = json.dumps(riasec)
-            result.current_phase = 3
-        else:
-            identity = assessment_engine.analyze_identity_anchor_g12(chat_history)
-            if result.raw_answers:
-                curr_raw = dict(result.raw_answers)
-                curr_raw["identity_anchor"] = identity
-                result.raw_answers = curr_raw
-            else:
-                result.raw_answers = {"identity_anchor": identity}
-            result.current_phase = 4
-            
+        # Extract RIASEC vector when complete
+        riasec = assessment_engine.extract_riasec_vector(chat_history)
+        result.personality = json.dumps(riasec)
+        result.current_phase = 3
         db.commit()
         return {
             "status": "success",
@@ -1278,12 +1255,7 @@ async def assessment_api_chat(request: Request, payload: dict, db: Session = Dep
             "phase_complete": True
         }
     else:
-        if student_type == "10th":
-            next_q = assessment_engine.get_alex_response(next_turn, user_message)
-        else:
-            questions = assessment_engine.load_g12_interview_questions()
-            next_q = assessment_engine.get_alex_response_g12(next_turn, questions.get("interview_questions", []))
-            
+        next_q = assessment_engine.get_alex_response(next_turn, user_message)
         chat_history.append({"role": "ai", "content": next_q})
         result.chat_messages = chat_history
         result.chat_turn = next_turn
@@ -1304,21 +1276,9 @@ async def assessment_api_proxy(request: Request, payload: dict, db: Session = De
     answers = payload.get("answers", [])
     result.proxy_answers = answers
     
-    student_type = result.student_type or "10th"
-    if student_type == "10th":
-        result.current_phase = 4
-    else:
-        env = assessment_engine.calculate_environmental_context_g12(answers)
-        if result.raw_answers:
-            curr_raw = dict(result.raw_answers)
-            curr_raw["environmental_context"] = env
-            result.raw_answers = curr_raw
-        else:
-            result.raw_answers = {"environmental_context": env}
-        result.current_phase = 5
-        
+    result.current_phase = 4
     db.commit()
-    return {"status": "success", "next_phase": result.current_phase}
+    return {"status": "success", "next_phase": 4}
 
 @app.post("/assessment/api/scenarios")
 async def assessment_api_scenarios(request: Request, payload: dict, db: Session = Depends(get_db)):
@@ -1327,8 +1287,8 @@ async def assessment_api_scenarios(request: Request, payload: dict, db: Session 
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result or result.student_type != "10th":
-        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
+    if not result:
+        raise HTTPException(status_code=404, detail="Assessment not found")
         
     answers = payload.get("answers", [])
     result.scenario_answers = answers
@@ -1336,85 +1296,6 @@ async def assessment_api_scenarios(request: Request, payload: dict, db: Session 
     db.commit()
     
     return {"status": "success", "next_phase": 5}
-
-@app.post("/assessment/api/noise-cancel")
-async def assessment_api_noise_cancel(request: Request, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result or result.student_type != "12th":
-        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
-        
-    raw = dict(result.raw_answers) if result.raw_answers else {}
-    
-    p1 = {"computed_latent_vector": json.loads(result.personality) if result.personality else {}}
-    p2 = raw.get("reality_dissonance", {})
-    p3 = raw.get("identity_anchor", {})
-    p4 = raw.get("environmental_context", {})
-    
-    noise_metrics = assessment_engine.calculate_noise_cancellation_g12(p1, p2, p3, p4)
-    
-    raw["noise_cancellation"] = noise_metrics
-    result.raw_answers = raw
-    result.current_phase = 6
-    db.commit()
-    
-    return {"status": "success", "noise_metrics": noise_metrics, "next_phase": 6}
-
-@app.post("/assessment/api/worldview")
-async def assessment_api_worldview(request: Request, payload: dict, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result or result.student_type != "12th":
-        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
-        
-    iq_res = payload.get("iq", [])
-    eq_res = payload.get("eq", [])
-    
-    result.worldview_answers = {"iq": iq_res, "eq": eq_res}
-    
-    w_metrics = assessment_engine.calculate_worldview_metrics_g12(iq_res, eq_res)
-    
-    raw = dict(result.raw_answers) if result.raw_answers else {}
-    raw["worldview_metrics"] = w_metrics
-    result.raw_answers = raw
-    result.current_phase = 7
-    db.commit()
-    
-    return {"status": "success", "next_phase": 7}
-
-@app.post("/assessment/api/future-self")
-async def assessment_api_future_self(request: Request, payload: dict, db: Session = Depends(get_db)):
-    user = get_current_user(request, db)
-    if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
-    if not result or result.student_type != "12th":
-        raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
-        
-    ratings = payload.get("ratings", [])
-    result.future_self_answers = ratings
-    
-    raw = dict(result.raw_answers) if result.raw_answers else {}
-    p1 = json.loads(result.personality) if result.personality else {}
-    p3 = raw.get("identity_anchor", {})
-    p4 = raw.get("environmental_context", {})
-    p6 = raw.get("worldview_metrics", {})
-    
-    rec_metrics = assessment_engine.calculate_future_reconciliation_g12(ratings, p1, p3, p4, p6)
-    
-    raw["future_reconciliation"] = rec_metrics
-    result.raw_answers = raw
-    result.current_phase = 8
-    db.commit()
-    
-    return {"status": "success", "next_phase": 8}
 
 @app.post("/assessment/api/compile")
 async def assessment_api_compile(request: Request, db: Session = Depends(get_db)):
@@ -1429,77 +1310,138 @@ async def assessment_api_compile(request: Request, db: Session = Depends(get_db)
     student_type = result.student_type or "10th"
     
     try:
+        # Retrieve logs and calculate telemetry metrics
+        swipes = result.telemetry_logs or []
+        telemetry_metrics = assessment_engine.calculate_telemetry_metrics(swipes, student_type)
+        latent_profile = telemetry_metrics.get("latent_profile", {})
+        
+        # Retrieve messages to compute RIASEC vector
+        chat_history = result.chat_messages or []
+        riasec = assessment_engine.extract_riasec_vector(chat_history)
+        
+        # Retrieve proxies and build feasibility
+        proxies = result.proxy_answers or []
+        feasibility = {}
+        grade_data = assessment_engine.load_grade_data(student_type)
+        q_map = {q["id"]: q for q in grade_data.get("proxy_questions", [])}
+        
+        for p in proxies:
+            qid = p.get("question_id") or p.get("id")
+            if not qid: continue
+            
+            if "multiplier" in p:
+                mult = p["multiplier"]
+            else:
+                answer_text = p.get("answer")
+                mult = 1.0
+                if qid in q_map:
+                    for opt in q_map[qid].get("options", []):
+                        if opt.get("text") == answer_text or opt.get("option_text") == answer_text:
+                            mult = opt.get("multiplier", 1.0)
+                            break
+            
+            target = q_map.get(qid, {}).get("proxy_target", "Geographic_Mobility")
+            feasibility[target] = mult
+            
+        # Retrieve scenarios and compute identity
+        scenarios = result.scenario_answers or []
+        s_map = {s["id"]: s for s in grade_data.get("scenarios", [])}
+        x_scores = []
+        y_scores = []
+        for ans in scenarios:
+            sid = ans.get("scenario_id") or ans.get("id")
+            if not sid: continue
+            
+            if "x_score" in ans:
+                x_scores.append(ans["x_score"])
+                y_scores.append(ans["y_score"])
+            else:
+                selected_tag = ans.get("selected_tag") or ans.get("selected_label")
+                selected_idx = ans.get("selected_option_index")
+                if sid in s_map:
+                    opts = s_map[sid].get("options", [])
+                    chosen_opt = None
+                    if selected_idx is not None and 0 <= selected_idx < len(opts):
+                        chosen_opt = opts[selected_idx]
+                    elif selected_tag:
+                        for opt in opts:
+                            if opt.get("label") == selected_tag or opt.get("text") == selected_tag:
+                                chosen_opt = opt
+                                break
+                    if chosen_opt:
+                        mapping = chosen_opt.get("mapping", {})
+                        x_scores.append(mapping.get("x", 0.5))
+                        y_scores.append(mapping.get("y", 0.5))
+                        
+        identity = {
+            "x": sum(x_scores)/len(x_scores) if x_scores else 0.5,
+            "y": sum(y_scores)/len(y_scores) if y_scores else 0.5
+        }
+        
+        # Calculate career predictions (fallback)
+        top_10 = assessment_engine.generate_career_predictions(
+            latent_profile,
+            riasec,
+            identity,
+            feasibility
+        )
+        
+        # Reconcile predictions
+        final_matches = assessment_engine.reconcile_results(
+            top_10,
+            feasibility,
+            identity,
+            latent_profile=latent_profile,
+            riasec=riasec
+        )
+        
+        stream_rec = None
         if student_type == "10th":
-            riasec_data = json.loads(result.personality) if result.personality else {}
-            riasec_vec = riasec_data.get("riasec_vector", {"R": 5, "I": 5, "A": 5, "S": 5, "E": 5, "C": 5})
-            
-            swipes = result.telemetry_logs or []
-            telemetry_metrics = assessment_engine.calculate_telemetry_metrics(swipes, "10th")
-            latent_profile = telemetry_metrics.get("latent_profile", {})
-            
-            identity = {"x": 0.5} 
-            
-            rec = assessment_engine.recommend_10th_stream(latent_profile, riasec_data, identity)
-            
-            result.recommended_stream = rec.get("recommended_stream")
+            stream_rec = assessment_engine.recommend_10th_stream(latent_profile, riasec, identity)
+            result.recommended_stream = stream_rec.get("recommended_stream")
             result.stream_scores = {
-                "Science": round(latent_profile.get("LOG", 0.5)*40 + latent_profile.get("TEC", 0.5)*30 + riasec_vec.get("I", 5)*3),
-                "Commerce": round(latent_profile.get("FIN", 0.5)*40 + latent_profile.get("DET", 0.5)*30 + riasec_vec.get("C", 5)*3),
-                "Humanities": round(latent_profile.get("ALT", 0.5)*40 + latent_profile.get("AES", 0.5)*30 + riasec_vec.get("S", 5)*3)
+                "Science": round(latent_profile.get("LOG", 0.5)*40 + latent_profile.get("TEC", 0.5)*30 + riasec.get("riasec_vector", {}).get("I", 5)*3),
+                "Commerce": round(latent_profile.get("FIN", 0.5)*40 + latent_profile.get("DET", 0.5)*30 + riasec.get("riasec_vector", {}).get("C", 5)*3),
+                "Humanities": round(latent_profile.get("ALT", 0.5)*40 + latent_profile.get("AES", 0.5)*30 + riasec.get("riasec_vector", {}).get("S", 5)*3)
             }
             tot_score = sum(result.stream_scores.values()) or 1
             result.stream_scores = {k: min(99, max(10, int(v * 100 / tot_score))) for k, v in result.stream_scores.items()}
             
-            details = rec.get("stream_details", {})
+            details = stream_rec.get("stream_details", {})
             result.final_analysis = details.get("justification")
             result.stream_pros = details.get("subjects", [])
             result.stream_cons = details.get("skills", [])
-            result.assessment_report = rec
-            result.confidence = telemetry_metrics.get("consistency_index", 0.88)
-            
-            result.phase_2_category = result.recommended_stream
-            result.personality = riasec_data.get("dominant_trait", "Artistic")
-            result.goal_status = "Stream recommendation computed."
-            result.reasoning = details.get("justification")
             
         else:
-            raw = dict(result.raw_answers) if result.raw_answers else {}
-            
-            p1 = {"computed_latent_vector": json.loads(result.personality) if result.personality else {}}
-            p2 = raw.get("reality_dissonance", {})
-            p3 = raw.get("identity_anchor", {})
-            p4 = raw.get("environmental_context", {})
-            p5 = raw.get("noise_cancellation", {})
-            p6 = raw.get("worldview_metrics", {})
-            p7 = raw.get("future_reconciliation", {})
-            
-            career_db_path = os.path.join(assessment_engine.DATA_DIR, "grade_12", "career_database.json")
-            if os.path.exists(career_db_path):
-                with open(career_db_path, "r", encoding="utf-8") as f:
-                    career_db = json.load(f)
-            else:
-                career_db = {}
-                
-            report = assessment_engine.generate_final_report_g12(p1, p2, p3, p4, p5, p6, p7, career_db)
-            result.assessment_report = report
-            
-            paths = report.get("career_paths", {})
-            p1_det = paths.get("path_1_analytical_fit", {})
-            p2_det = paths.get("path_2_alternate_angle", {})
-            p3_det = paths.get("path_3_gut_passion_path", {})
-            
-            result.stream_pros = [
-                {"title": p1_det.get("career_cluster", "Analytical Match"), "reason": p1_det.get("honest_challenge"), "pros": p1_det.get("specializations", []), "cons": p1_det.get("required_entrance_exams", [])},
-                {"title": p2_det.get("career_cluster", "Alternate Path"), "reason": p2_det.get("honest_challenge"), "pros": p2_det.get("specializations", []), "cons": p2_det.get("required_entrance_exams", [])},
-                {"title": p3_det.get("career_cluster", "Passion Path"), "reason": p3_det.get("honest_challenge"), "pros": p3_det.get("specializations", []), "cons": p3_det.get("required_entrance_exams", [])}
-            ]
-            
             result.recommended_stream = None
-            result.phase_2_category = p1_det.get("career_cluster", "Strategic Builder")
-            result.personality = p3.get("intrinsic_vs_extrinsic_balance", {}).get("anonymized_preference_core_theme", "Autonomy Focus")
-            result.goal_status = "Optimal career trajectories computed."
-            result.confidence = report.get("system_diagnostics", {}).get("system_prediction_confidence_coefficient", 0.88)
-            result.reasoning = report.get("system_diagnostics", {}).get("noise_report_summary", "")
+            result.stream_scores = None
+            result.final_analysis = riasec.get("narrative_summary")
+            result.stream_pros = []
+            result.stream_cons = []
+            
+        # Standardize report structure
+        report = {
+            "student_type": student_type,
+            "phase_1_summary": telemetry_metrics,
+            "phase_4_coordinates": identity,
+            "riasec_analysis": riasec,
+            "stream_recommendation": stream_rec,
+            "final_recommendations": final_matches.get("refined_matches", [])
+        }
+        
+        result.assessment_report = report
+        result.confidence = telemetry_metrics.get("consistency_index", 0.88)
+        
+        # Populate key columns for dashboard/counselor integrations
+        result.personality = riasec.get("dominant_trait", "Realistic")
+        result.goal_status = "Assessment compiled."
+        result.reasoning = riasec.get("narrative_summary", "")
+        
+        if student_type == "12th":
+            result.stream_pros = [
+                {"title": r["career"], "reason": r["pivot_notes"], "status": r["feasibility_status"], "confidence": r["confidence_score"]}
+                for r in final_matches.get("refined_matches", [])
+            ]
             
         db.commit()
         return {"status": "success", "redirect": "/assessment/result"}

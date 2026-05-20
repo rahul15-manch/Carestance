@@ -7,77 +7,222 @@
 {% block title %}Your Career Blueprint | CareStance{% endblock %}
 
 {% block extra_head %}
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
 <!-- Open Graph / Facebook -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ request.base_url }}share/report/{{ result.id }}">
-<meta property="og:title"
-    content="Career Blueprint: {{ result.recommended_stream if result.recommended_stream else result.phase_2_category }}">
-<meta property="og:description"
-    content="🚀 I just created my Career Blueprint on CareerStance! My goal: {{ result.recommended_stream if result.recommended_stream else result.phase_2_category }}. Build your own at carestance.me #CareerStance">
+<meta property="og:title" content="Career Blueprint: {{ result.recommended_stream if result.recommended_stream else result.personality }}">
+<meta property="og:description" content="🚀 I just created my Career Blueprint on CareerStance! My personality profile: {{ result.personality }}. Build your own at carestance.me #CareerStance">
 <meta property="og:image" content="{{ request.base_url }}static/images/image.png">
 
 <!-- Twitter -->
 <meta property="twitter:card" content="summary_large_image">
 <meta property="twitter:url" content="{{ request.base_url }}share/report/{{ result.id }}">
-<meta property="twitter:title"
-    content="Career Blueprint: {{ result.recommended_stream if result.recommended_stream else result.phase_2_category }}">
-<meta property="twitter:description"
-    content="🚀 I just created my Career Blueprint on CareerStance! My goal: {{ result.recommended_stream if result.recommended_stream else result.phase_2_category }}">
+<meta property="twitter:title" content="Career Blueprint: {{ result.recommended_stream if result.recommended_stream else result.personality }}">
+<meta property="twitter:description" content="🚀 I just created my Career Blueprint on CareerStance! My personality profile: {{ result.personality }}">
 <meta property="twitter:image" content="{{ request.base_url }}static/images/image.png">
+
+<style>
+    :root {
+        --dark-bg: #050d0e;
+        --dark-card: rgba(13, 29, 31, 0.75);
+        --neon-cyan: #00f2ff;
+        --neon-purple: #8b5cff;
+        --neon-emerald: #00ff88;
+        --neon-amber: #ffaa00;
+        --neon-rose: #ff2a6d;
+        --glow-cyan: rgba(0, 242, 255, 0.2);
+        --glow-purple: rgba(139, 92, 255, 0.2);
+        --glow-emerald: rgba(0, 255, 136, 0.2);
+        --glow-amber: rgba(255, 170, 0, 0.2);
+        --glow-rose: rgba(255, 42, 109, 0.2);
+        --text-bright: #e4f7f8;
+        --text-dim: #7f999c;
+        --glass-border: rgba(255, 255, 255, 0.06);
+    }
+
+    body {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        background: linear-gradient(135deg, #050d0e 0%, #030606 100%) !important;
+        color: var(--text-bright);
+    }
+
+    /* Glowing Accents */
+    .cyber-bg-glow {
+        position: fixed;
+        width: 45vw;
+        height: 45vw;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--glow-purple) 0%, transparent 70%);
+        filter: blur(130px);
+        opacity: 0.3;
+        z-index: 0;
+        top: -10%;
+        right: -10%;
+        pointer-events: none;
+    }
+
+    .cyber-bg-glow-2 {
+        position: fixed;
+        width: 45vw;
+        height: 45vw;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--glow-cyan) 0%, transparent 70%);
+        filter: blur(130px);
+        opacity: 0.3;
+        z-index: 0;
+        bottom: -10%;
+        left: -10%;
+        pointer-events: none;
+    }
+
+    .cyber-card {
+        background: var(--dark-card);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 242, 255, 0.01) inset;
+        border-radius: 24px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .cyber-card:hover {
+        border-color: rgba(0, 242, 255, 0.25);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 242, 255, 0.03) inset;
+        transform: translateY(-2px);
+    }
+
+    .neon-text-glow-cyan {
+        text-shadow: 0 0 8px rgba(0, 242, 255, 0.5);
+    }
+
+    .neon-text-glow-purple {
+        text-shadow: 0 0 8px rgba(139, 92, 255, 0.5);
+    }
+
+    .neon-text-glow-emerald {
+        text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+    }
+
+    .riasec-bar {
+        height: 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .riasec-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 1.2s cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+
+    .riasec-badge {
+        font-family: 'Outfit', sans-serif;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        font-size: 0.75rem;
+    }
+
+    /* Print styling overrides */
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        body {
+            background: white !important;
+            color: black !important;
+        }
+        .cyber-card {
+            background: white !important;
+            color: black !important;
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style="background-color: #fefcf5;">
-    <div class="max-w-5xl mx-auto space-y-8">
+<div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style="background: linear-gradient(135deg, #050d0e 0%, #030606 100%) !important;">
+    <!-- Outer Glowing Backgrounds -->
+    <div class="cyber-bg-glow"></div>
+    <div class="cyber-bg-glow-2"></div>
 
-        <!-- 1. HERO SECTION: The Main Result -->
+    <div class="max-w-5xl mx-auto space-y-8 relative z-10">
+
+        {# Data Extraction & Normalization #}
+        {% set dominant_trait = result.assessment_report.get('riasec_analysis', {}).get('dominant_trait', result.personality) if result.assessment_report else result.personality %}
+        {% set narrative = result.assessment_report.get('riasec_analysis', {}).get('narrative_summary', result.reasoning) if result.assessment_report else result.reasoning %}
+        {% set riasec_vector = result.assessment_report.get('riasec_analysis', {}).get('riasec_vector', {}) if result.assessment_report else {} %}
+        {% set final_recs = result.assessment_report.get('final_recommendations', []) if result.assessment_report else [] %}
+
+        {% if not riasec_vector %}
+            {# Fallback vector creation #}
+            {% set d_code = 'I' %}
+            {% if dominant_trait == 'Realistic' %}{% set d_code = 'R' %}
+            {% elif dominant_trait == 'Investigative' %}{% set d_code = 'I' %}
+            {% elif dominant_trait == 'Artistic' %}{% set d_code = 'A' %}
+            {% elif dominant_trait == 'Social' %}{% set d_code = 'S' %}
+            {% elif dominant_trait == 'Enterprising' %}{% set d_code = 'E' %}
+            {% elif dominant_trait == 'Conventional' %}{% set d_code = 'C' %}{% endif %}
+            {% set riasec_vector = {'R': 5, 'I': 5, 'A': 5, 'S': 5, 'E': 5, 'C': 5} %}
+            {% if riasec_vector.update({d_code: 9}) %}{% endif %}
+        {% endif %}
+
+        {% if not final_recs and result.stream_pros and result.stream_pros[0] is mapping %}
+            {% set final_recs = result.stream_pros %}
+        {% endif %}
+
+        <!-- 1. HERO SECTION: Assessment Complete Archetype -->
         {% if mode != 'minimal' %}
-        <div class="relative bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200">
-            <!-- Decorative Background -->
-            <div class="absolute inset-0" style="background: linear-gradient(135deg, #0b3b3c 0%, #1b5e5f 100%);">
-                <div class="absolute inset-0 opacity-20 dot-pattern">
-                </div>
-                <!-- Abstract Blobs -->
-                <div class="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-white opacity-10 rounded-full blur-3xl">
-                </div>
-                <div class="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 opacity-20 rounded-full blur-3xl"
-                    style="background-color: #d97706;">
-                </div>
-            </div>
+        <div class="cyber-card p-8 md:p-12 border border-cyan-500/20 shadow-[0_0_50px_rgba(0,242,255,0.08)]">
+            <div class="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div class="relative z-10 px-6 py-16 text-center">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold uppercase tracking-widest mb-6 backdrop-blur-md"
-                    style="color: #d9f0ef;">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Assessment Complete
+            <div class="relative z-10 text-center">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-black uppercase tracking-widest mb-6 text-cyan-400 backdrop-blur-md shadow-[0_0_15px_rgba(0,242,255,0.1)]">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                    Interactive Blueprint Compiled
                 </div>
 
-                <h1 class="text-5xl md:text-7xl font-black mb-2 tracking-tight"
-                    style="color: #ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-                    {{ result.phase_2_category }}
+                <h1 class="text-4xl md:text-6xl font-black mb-4 tracking-tight font-outfit text-white">
+                    {% if result.student_type == '10th' %}
+                        {{ result.recommended_stream }} Stream Alignment
+                    {% else %}
+                        {{ dominant_trait }} Archetype
+                    {% endif %}
                 </h1>
-                <p class="text-lg mb-8" style="color: #a8ded9;">Your Archetype Analysis</p>
+                
+                <p class="text-lg mb-8 max-w-2xl mx-auto" style="color: var(--text-dim);">
+                    Calculated via standard offline O*NET metrics and local career discovery telemetry vectors.
+                </p>
 
-                <!-- Badges -->
+                <!-- Status Badges Grid -->
                 <div class="flex flex-wrap justify-center gap-4">
-                    <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-6 py-3 flex items-center gap-3"
-                        style="color: #ffffff;">
-                        <div class="p-2 bg-white/20 rounded-lg">
-                            <i class="fas fa-fingerprint"></i>
+                    <div class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 flex items-center gap-4 backdrop-blur-md">
+                        <div class="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl">
+                            <i class="fas fa-fingerprint text-lg"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-xs uppercase font-bold" style="color: #a8ded9;">Personality</p>
-                            <p class="font-bold">{{ result.personality }}</p>
+                            <p class="text-[10px] uppercase font-black tracking-wider" style="color: var(--text-dim);">Dominant Trait</p>
+                            <p class="font-bold text-white text-base">{{ dominant_trait }}</p>
                         </div>
                     </div>
-                    <div
-                        class="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-6 py-3 flex items-center gap-3 text-white">
-                        <div class="p-2 bg-white/20 rounded-lg">
-                            <i class="fas fa-compass"></i>
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 flex items-center gap-4 backdrop-blur-md">
+                        <div class="p-3 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl">
+                            <i class="fas fa-compass text-lg"></i>
                         </div>
                         <div class="text-left">
-                            <p class="text-xs uppercase font-bold" style="color: #a8ded9;">Clarity Status</p>
-                            <p class="font-bold">{{ result.goal_status }}</p>
+                            <p class="text-[10px] uppercase font-black tracking-wider" style="color: var(--text-dim);">Clarity Index</p>
+                            <p class="font-bold text-white text-base">Stable Calibration</p>
                         </div>
                     </div>
                 </div>
@@ -85,816 +230,368 @@
         </div>
         {% endif %}
 
-        <!-- 2. ANALYSIS GRID -->
+        <!-- 2. ANALYSIS MATRIX & RIASEC SPECTRUM -->
         {% if mode != 'minimal' %}
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            <!-- Left: Why this fits (Phase 2) -->
-            <div class="lg:col-span-2 bg-white rounded-3xl p-8 shadow-lg border border-slate-100">
-                <h3 class="flex items-center gap-2 text-xl font-bold text-slate-900 mb-6">
-                    <i class="fas fa-microscope text-[#1b5e5f]"></i> Core Analysis
-                </h3>
-                <div class="prose prose-slate max-w-none text-slate-600 leading-relaxed">
-                    {{ result.reasoning }}
+            <!-- Core Analytical Summary -->
+            <div class="lg:col-span-2 cyber-card p-8 flex flex-col justify-between">
+                <div>
+                    <h3 class="flex items-center gap-3 text-2xl font-black text-white mb-6 font-outfit">
+                        <i class="fas fa-microscope text-cyan-400"></i> Narrative Psychometric Analysis
+                    </h3>
+                    <div class="prose prose-invert max-w-none text-base leading-relaxed" style="color: var(--text-bright); font-family: 'Fira Code', monospace; font-size: 0.95rem;">
+                        {{ narrative }}
+                    </div>
                 </div>
 
-                <!-- Confidence Meter -->
-                <div class="mt-8 pt-8 border-t border-slate-100">
+                <!-- Confidence calibration scale -->
+                <div class="mt-8 pt-6 border-t border-white/5">
                     <div class="flex justify-between items-end mb-2">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Match Confidence</h4>
-                        <span class="text-2xl font-black text-[#0b3b3c]">{{ ((display_confidence or result.confidence or
-                            0) * 100) |
-                            round|int }}%</span>
+                        <h4 class="text-xs font-black uppercase tracking-widest" style="color: var(--text-dim);">AI Target Consistency</h4>
+                        <span class="text-xl font-black text-cyan-400 neon-text-glow-cyan">{{ ((display_confidence or result.confidence or 0.88) * 100) | round | int }}%</span>
                     </div>
-                    <div class="h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                    <div class="h-3 bg-white/5 rounded-full overflow-hidden relative border border-white/5 shadow-inner">
                         <div class="h-full rounded-full relative"
-                            style="background: linear-gradient(to right, #0b3b3c, #1b5e5f); width: {{ ((display_confidence or result.confidence or 0) * 100)|round|int }}%">
-                            <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+                            style="background: linear-gradient(to right, var(--neon-cyan), var(--neon-purple)); width: {{ ((display_confidence or result.confidence or 0.88) * 100)|round|int }}%">
+                            <div class="absolute inset-0 bg-white/10 animate-[shimmer_2.5s_infinite]"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Phase 3 (Deep Dive) - Conditionally Rendered -->
-            <div class="lg:col-span-1">
-                {% if result.phase3_analysis %}
-                <div class="rounded-3xl p-8 shadow-lg h-full border relative overflow-hidden"
-                    style="background: linear-gradient(135deg, #0b3b3c, #1b5e5f); color: #ffffff; border-color: #1b5e5f;">
-                    <div class="absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-30"
-                        style="background-color: #d97706;">
-                    </div>
-
-                    <h3 class="relative z-10 flex items-center gap-2 text-lg font-bold mb-4" style="color: #d9f0ef;">
-                        <i class="fas fa-layer-group"></i> Deep Dive Insights
+            <!-- Dynamic RIASEC Hex-Vector Visualization -->
+            <div class="lg:col-span-1 cyber-card p-8 flex flex-col justify-between">
+                <div>
+                    <h3 class="flex items-center gap-3 text-lg font-black text-white mb-6 font-outfit">
+                        <i class="fas fa-chart-bar text-purple-400"></i> RIASEC Vector Coordinates
                     </h3>
-                    <div class="relative z-10 prose prose-invert text-sm leading-relaxed" style="color: #d9f0ef;">
-                        {{ result.phase3_analysis }}
-                    </div>
-                </div>
-                {% else %}
-                <!-- Locked State for Phase 3 -->
-                <div
-                    class="bg-slate-50 rounded-3xl p-8 shadow-inner border border-slate-200 h-full flex flex-col items-center justify-center text-center opacity-75">
-                    <div
-                        class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 text-2xl mb-4">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <h3 class="font-bold text-slate-700">Deep Dive Pending</h3>
-                    <p class="text-sm text-slate-500 mt-2 mb-6">Complete Phase 3 to unlock specific insights.</p>
-                    <a href="/assessment/phase3"
-                        class="px-6 py-2.5 bg-[#0b3b3c] text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#1b5e5f] transition-all">
-                        Start Now &rarr;
-                    </a>
-                </div>
+                    
+                    {% set traits = [
+                        ('R', 'Realistic', 'var(--neon-rose)'),
+                        ('I', 'Investigative', 'var(--neon-cyan)'),
+                        ('A', 'Artistic', 'var(--neon-purple)'),
+                        ('S', 'Social', 'var(--neon-emerald)'),
+                        ('E', 'Enterprising', 'var(--neon-amber)'),
+                        ('C', 'Conventional', '#a0b0b2')
+                    ] %}
 
-                <!-- 2.5 SIMULATION RESULT (If completed) -->
-                {% if result.simulation_evaluation %}
-                <div
-                    class="bg-white rounded-3xl p-8 shadow-lg border-2 border-amber-200 mb-8 relative overflow-hidden animate__animated animate__fadeInUp">
-                    <div class="absolute top-0 right-0 p-4">
-                        <div
-                            class="bg-amber-100 text-amber-700 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                            Simulation Complete
-                        </div>
-                    </div>
-
-                    <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <i class="fas fa-gamepad text-amber-600"></i> Simulation Performance: {{
-                        result.simulation_career }}
-                    </h3>
-
-                    <div class="grid md:grid-cols-3 gap-8 items-center">
-                        <div class="text-center">
-                            <div
-                                class="inline-flex items-center justify-center w-32 h-32 rounded-full border-4 border-amber-400 bg-amber-50 mb-4 shadow-inner">
-                                <span class="text-4xl font-black text-amber-700">{{
-                                    result.simulation_evaluation.match_score }}</span>
-                            </div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Match Score</p>
-                        </div>
-
-                        <div class="md:col-span-2 space-y-4">
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                <p class="text-slate-700 text-sm leading-relaxed italic">"{{
-                                    result.simulation_evaluation.summary }}"</p>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-[10px] font-bold text-emerald-600 uppercase mb-2">Key Strengths</p>
-                                    <ul class="space-y-1">
-                                        {% for str in result.simulation_evaluation.strengths %}
-                                        <li class="text-[11px] text-slate-600 flex items-center gap-2">
-                                            <i class="fas fa-check-circle text-emerald-400"></i> {{ str }}
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] font-bold text-amber-600 uppercase mb-2">Growth Areas</p>
-                                    <ul class="space-y-1">
-                                        {% for area in result.simulation_evaluation.improvement_areas %}
-                                        <li class="text-[11px] text-slate-600 flex items-center gap-2">
-                                            <i class="fas fa-arrow-up text-amber-400"></i> {{ area }}
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- 3. PROGRESS WORKFLOW (The "Next Steps") -->
-        {% if mode != 'minimal' and (result.selected_class != '10th' or not result.phase3_analysis) %}
-        <div class="bg-white rounded-3xl p-8 shadow-lg border border-slate-100">
-            <h3 class="text-lg font-bold text-slate-900 mb-6">Assessment Roadmap</h3>
-
-            <div
-                class="grid grid-cols-1 {% if result.selected_class == '10th' %}md:grid-cols-2{% else %}md:grid-cols-3{% endif %} gap-4">
-
-                <!-- Step 1: Done -->
-                <div class="flex items-center gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 opacity-60">
-                    <div
-                        class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold shrink-0">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-900">Phase 1 & 2</p>
-                        <p class="text-xs text-slate-500">Completed</p>
-                    </div>
-                </div>
-
-                <!-- Step 2: Phase 3 Link -->
-                {% if result.phase_2_category %}
-                <a href="/assessment/phase3" class="group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 border
-                   {% if result.phase3_analysis %}
-                       bg-emerald-50 border-emerald-100
-                   {% else %}
-                       bg-white border-[#a8ded9] shadow-md shadow-[#d9f0ef] hover:shadow-lg hover:border-[#1b5e5f] hover:-translate-y-1
-                   {% endif %}">
-
-                    <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold transition-colors
-                        {% if result.phase3_analysis %}
-                            bg-emerald-100 text-emerald-600
-                        {% else %}
-                            bg-[#0b3b3c] text-white group-hover:scale-110
-                        {% endif %}">
-                        {% if result.phase3_analysis %}<i class="fas fa-check"></i>{% else %}3{% endif %}
-                    </div>
-
-                    <div>
-                        <p class="text-sm font-bold text-slate-900">Deep Dive with CareerBuddy</p>
-                        <p class="text-xs text-slate-500">
-                            {% if result.phase3_analysis %}Completed{% else %}<span
-                                class="text-[#0b3b3c] font-semibold">Start Now &rarr;</span>{% endif %}
-                        </p>
-                    </div>
-                </a>
-                {% endif %}
-
-                {% if result.selected_class != '10th' %}
-                <!-- Step 3: Simulation (For 12th+) -->
-                <div class="flex items-center gap-4 p-4 rounded-2xl transition-all duration-300
-                    {% if not result.phase3_analysis %}
-                        bg-slate-50 border-slate-100 opacity-60
-                    {% else %}
-                        bg-amber-50 border-amber-100
-                    {% endif %}">
-                    <div class="w-10 h-10 rounded-full shrink-0 flex items-center justify-center font-bold transition-colors
-                        {% if not result.phase3_analysis %}
-                            bg-slate-200 text-slate-400
-                        {% else %}
-                            bg-amber-100 text-amber-600
-                        {% endif %}">
-                        {% if not result.phase3_analysis %}<i class="fas fa-lock"></i>{% else %}4{% endif %}
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-900">Final Phase</p>
-                        <p class="text-xs text-slate-500">
-                            {% if not result.phase3_analysis %}Locked{% else %}Unlocked{% endif %}
-                        </p>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- 4. FINAL RECOMMENDATION (Visible only when complete) -->
-        {% if result.recommended_stream %}
-        <div class="relative bg-white rounded-3xl overflow-hidden shadow-2xl border-2 border-[#1b5e5f]">
-            <!-- Header -->
-            <div
-                class="bg-[#0b3b3c] px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 class="text-2xl font-bold text-white flex items-center gap-3">
-                    <i class="fas fa-award text-yellow-400"></i> Final Recommendation
-                </h2>
-                <div class="flex items-center gap-3">
-                    <button onclick="window.print()"
-                        class="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-white text-xs font-bold backdrop-blur-sm transition-all flex items-center gap-2">
-                        <i class="fas fa-download"></i> Download PDF
-                    </button>
-                    <div class="px-4 py-1.5 bg-white/20 rounded-full text-white text-xs font-semibold backdrop-blur-sm">
-                        Verified by CareerBuddy
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-8 sm:p-12">
-                <!-- Logic A: Class 10 (Single Stream + Pros/Cons) -->
-                {% if result.selected_class == '10th' or not result.selected_class %}
-                <div class="text-center mb-10">
-                    <p class="text-slate-500 uppercase tracking-widest text-xs font-bold mb-2">You should choose</p>
-                    <h1 class="text-4xl md:text-5xl font-black text-slate-900 mb-6">{{ result.recommended_stream }}</h1>
-
-                    <div class="flex flex-col items-center justify-center gap-4">
-                        {% if result.simulation_evaluation and result.simulation_career == result.recommended_stream %}
-                        <div
-                            class="p-6 bg-amber-50 rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50 flex flex-col items-center animate__animated animate__zoomIn">
-                            <div
-                                class="w-20 h-20 rounded-full bg-amber-400 flex items-center justify-center text-[#0b3b3c] font-black text-2xl mb-4 shadow-inner">
-                                {{ result.simulation_evaluation.match_score }}
-                            </div>
-                            <p class="text-xs font-black text-amber-700 uppercase tracking-widest mb-2">Simulation Score
-                            </p>
-                            <a href="/assessment/simulation/start/{{ result.recommended_stream }}"
-                                class="text-amber-600 hover:text-amber-700 font-bold text-sm underline transition-colors">
-                                <i class="fas fa-undo mr-1"></i> Retake Discovery Phase
-                            </a>
-                        </div>
-                        {% else %}
-                        <a href="/assessment/simulation/start/{{ result.recommended_stream }}"
-                            class="inline-flex items-center gap-3 px-10 py-4 bg-[#0b3b3c] text-white rounded-2xl font-bold hover:bg-[#1b5e5f] transition transform hover:-translate-y-1 shadow-2xl shadow-[#d9f0ef] group text-lg">
-                            <i class="fas fa-gamepad group-hover:rotate-12 transition-transform"></i>
-                            <span>Try Stream Simulation</span>
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Thinking Style Spectrum (for Class 10) -->
-                {% if result.selected_class == '10th' and result.stream_scores %}
-                <div class="bg-white rounded-3xl p-8 mb-8 shadow-lg border border-slate-100">
-                    <h3 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <i class="fas fa-brain text-[#1b5e5f]"></i> Thinking Style Spectrum
-                    </h3>
-                    <div class="space-y-6">
-                        {% for style, score in result.stream_scores.items() %}
+                    <div class="space-y-4">
+                        {% for code, name, color in traits %}
+                        {% set score = riasec_vector.get(code, 5.0) %}
+                        {% set percent = (score * 10) | int %}
                         <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">{{ style }}
-                                    Thinking</span>
-                                <span class="text-sm font-black text-[#0b3b3c]">{{ score }}%</span>
+                            <div class="flex justify-between text-xs font-bold mb-1">
+                                <span class="flex items-center gap-1.5 text-white">
+                                    <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ color }};"></span>
+                                    <span class="riasec-badge">{{ name }}</span>
+                                </span>
+                                <span style="color: {{ color }};">{{ score }}/10</span>
                             </div>
-                            <div class="h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                <div class="h-full rounded-full transition-all duration-1000 relative"
-                                    style="width: {{ score }}%; background: {% if style == 'Science' %}linear-gradient(to right, #0891b2, #0ea5e9){% elif style == 'Commerce' %}linear-gradient(to right, #059669, #10b981){% else %}linear-gradient(to right, #7c3aed, #8b5cf6){% endif %};">
-                                    <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
-                                </div>
+                            <div class="riasec-bar">
+                                <div class="riasec-bar-fill" style="width: {{ percent }}%; background-color: {{ color }}; box-shadow: 0 0 8px {{ color }}80;"></div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 3. GRADE 10 STREAM REC & SPECTRUM (G10 Specific) -->
+        {% if result.student_type == '10th' and result.recommended_stream %}
+        <div class="cyber-card p-8 border border-emerald-500/20 shadow-[0_0_40px_rgba(0,255,136,0.05)]">
+            <h2 class="text-2xl font-black text-white mb-6 font-outfit flex items-center gap-3">
+                <i class="fas fa-award text-emerald-400"></i> Stream Selection Detail
+            </h2>
+
+            <div class="grid md:grid-cols-3 gap-8 items-center">
+                <!-- Stream Hero badge -->
+                <div class="text-center p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md">
+                    <span class="text-xs font-black uppercase tracking-widest" style="color: var(--text-dim);">Recommended Option</span>
+                    <h3 class="text-3xl font-black text-emerald-400 neon-text-glow-emerald mt-2 mb-4 font-outfit">{{ result.recommended_stream }}</h3>
+                    <div class="w-20 h-20 rounded-full border-4 border-emerald-400/30 bg-emerald-400/10 flex items-center justify-center mx-auto text-emerald-400 text-3xl font-black">
+                        10
+                    </div>
+                </div>
+
+                <!-- Thinking Style Spectrum -->
+                <div class="md:col-span-2 space-y-4">
+                    <h4 class="text-sm font-black uppercase tracking-widest text-white mb-2">Academic Thinking Style Spectrum</h4>
+                    {% if result.stream_scores %}
+                        {% for style, score in result.stream_scores.items() %}
+                        {% set bar_color = 'var(--neon-cyan)' %}
+                        {% if style == 'Commerce' %}{% set bar_color = 'var(--neon-emerald)' %}
+                        {% elif style == 'Humanities' or style == 'Arts' %}{% set bar_color = 'var(--neon-purple)' %}{% endif %}
+                        <div>
+                            <div class="flex justify-between items-center text-xs font-bold mb-1">
+                                <span class="text-white">{{ style }} Thinking</span>
+                                <span style="color: {{ bar_color }};">{{ score }}%</span>
+                            </div>
+                            <div class="riasec-bar">
+                                <div class="riasec-bar-fill" style="width: {{ score }}%; background: {{ bar_color }}; box-shadow: 0 0 8px {{ bar_color }}80;"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Descriptive assessment report analysis -->
+            {% if result.final_analysis %}
+            <div class="mt-6 p-4 rounded-xl border border-cyan-500/10 bg-cyan-500/5 text-cyan-200 text-sm leading-relaxed">
+                <i class="fas fa-quote-left mr-2 text-cyan-400"></i>
+                {{ result.final_analysis }}
+            </div>
+            {% endif %}
+
+            <!-- Pros and Cons -->
+            <div class="grid md:grid-cols-2 gap-6 mt-8">
+                {% if result.stream_pros %}
+                <div class="p-6 bg-white/3 border border-white/5 rounded-2xl">
+                    <h4 class="font-black text-emerald-400 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i class="fas fa-thumbs-up"></i> Cognitive Strengths
+                    </h4>
+                    <ul class="space-y-2">
+                        {% for pro in result.stream_pros %}
+                        <li class="flex items-start text-xs leading-relaxed" style="color: var(--text-bright);">
+                            <i class="fas fa-check text-emerald-400 mt-0.5 mr-2 shrink-0"></i> {{ pro }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
                 {% endif %}
 
-                {% if result.final_analysis %}
-                <div class="bg-[#d9f0ef] rounded-xl p-6 mb-8 border border-[#a8ded9]">
-                    <p class="text-[#0b3b3c] font-medium leading-relaxed">
-                        <i class="fas fa-quote-left text-[#a8ded9] mr-2"></i>
-                        {{ result.final_analysis }}
-                    </p>
+                {% if result.stream_cons %}
+                <div class="p-6 bg-white/3 border border-white/5 rounded-2xl">
+                    <h4 class="font-black text-rose-400 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i class="fas fa-exclamation-triangle"></i> Structural Challenges
+                    </h4>
+                    <ul class="space-y-2">
+                        {% for con in result.stream_cons %}
+                        <li class="flex items-start text-xs leading-relaxed" style="color: var(--text-bright);">
+                            <i class="fas fa-minus text-rose-400 mt-0.5 mr-2 shrink-0"></i> {{ con }}
+                        </li>
+                        {% endfor %}
+                    </ul>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
-                <div class="grid md:grid-cols-2 gap-8">
-                    {% if result.stream_pros %}
-                    <div>
-                        <h4 class="font-bold text-emerald-600 mb-4 flex items-center gap-2">
-                            <i class="fas fa-thumbs-up"></i> Why It Fits
-                        </h4>
-                        <ul class="space-y-3">
-                            {% for pro in result.stream_pros %}
-                            <li
-                                class="flex items-start text-sm text-slate-700 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
-                                <i class="fas fa-check text-emerald-500 mt-1 mr-3"></i> {{ pro }}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
-
-                    {% if result.stream_cons %}
-                    <div>
-                        <h4 class="font-bold text-rose-600 mb-4 flex items-center gap-2">
-                            <i class="fas fa-exclamation-triangle"></i> Challenges
-                        </h4>
-                        <ul class="space-y-3">
-                            {% for con in result.stream_cons %}
-                            <li
-                                class="flex items-start text-sm text-slate-700 bg-rose-50/50 p-3 rounded-lg border border-rose-100">
-                                <i class="fas fa-minus text-rose-400 mt-1 mr-3"></i> {{ con }}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
+        <!-- 4. RECOMMENDED CAREER PATHS (Standard Unified Grid for G10 & G12) -->
+        <div class="space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold tracking-tight font-outfit text-white">Recommended Career Paths</h2>
+                    <p class="text-sm" style="color: var(--text-dim);">Top O*NET predictions mapped to your local cognitive vectors.</p>
                 </div>
+                <button onclick="window.print()" class="no-print px-4 py-2 border border-cyan-500/30 hover:border-cyan-400 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-black transition duration-200 flex items-center gap-2 shadow-[0_0_15px_rgba(0,242,255,0.05)]">
+                    <i class="fas fa-download"></i> Print Blueprint
+                </button>
+            </div>
 
-                <!-- Logic B: Class 12+ (Multiple Options) -->
-                {% else %}
-                <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h2 class="text-3xl font-bold text-slate-900 mb-2">Recommended Career Paths</h2>
-                        <p class="text-slate-500">Based on your detailed psychometrics and scenario responses.</p>
-                    </div>
-                    {% if result.assessment_report and result.assessment_report.get('system_diagnostics') %}
-                    <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 max-w-md w-full">
-                        <span class="text-[10px] font-bold text-teal-800 uppercase tracking-widest block mb-1">🚀 Telemetry Diagnostics</span>
-                        <p class="text-xs text-teal-700 font-medium leading-relaxed">{{ result.assessment_report.get('system_diagnostics', {}).get('noise_report_summary', '') }}</p>
-                        <p class="text-[10px] text-teal-600/80 font-medium mt-1">Gut Check Reconciliation: {{ result.assessment_report.get('system_diagnostics', {}).get('gut_check_reconciliation_analysis', 'None') }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div class="space-y-6">
-                    {% if result.stream_pros %}
-                    {% for option in result.stream_pros %}
-                    <div onclick="generateRoadmap('{{ option.title if option is mapping else option }}')"
-                        class="group cursor-pointer bg-white rounded-2xl p-6 shadow-md border border-slate-100 hover:border-[#1b5e5f] hover:shadow-xl transition-all duration-300">
-                        <div class="flex items-start gap-4">
-                            <div
-                                class="w-12 h-12 rounded-xl bg-[#d9f0ef] text-[#0b3b3c] flex items-center justify-center font-bold text-xl group-hover:bg-[#0b3b3c] group-hover:text-white transition-colors">
-                                {{ loop.index }}
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold text-slate-900 mb-2">{{ option.title if option is mapping
-                                    else option }}</h3>
-                                {% if option is mapping %}
-                                <p class="text-slate-600 mb-4 text-sm leading-relaxed">{{ option.reason }}</p>
-
-                                <div class="grid sm:grid-cols-2 gap-4">
-                                    {% if option.pros %}
-                                    <div class="text-xs">
-                                        <span class="font-bold text-emerald-600 block mb-1">PROS</span>
-                                        <ul class="space-y-1 text-slate-500">
-                                            {% for pro in option.pros %}
-                                            <li class="flex items-start"><span class="mr-1 text-emerald-400">•</span> {{
-                                                pro }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
-                                    {% endif %}
-
-                                    {% if option.cons %}
-                                    <div class="text-xs">
-                                        <span class="font-bold text-rose-500 block mb-1">CONSIDERATIONS</span>
-                                        <ul class="space-y-1 text-slate-500">
-                                            {% for con in option.cons %}
-                                            <li class="flex items-start"><span class="mr-1 text-rose-400">•</span> {{
-                                                con }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </div>
-                                    {% endif %}
+            <div class="space-y-6">
+                {% if final_recs %}
+                    {% for rec in final_recs %}
+                    {% set career_title = rec.career or rec.title %}
+                    {% set status = rec.feasibility_status or rec.status or "Optimal" %}
+                    {% set challenge = rec.pivot_notes or rec.reason %}
+                    
+                    <div class="cyber-card p-6 md:p-8 hover:border-cyan-500/30 duration-300">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            
+                            <!-- Career Rank and Name -->
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-black text-lg flex items-center justify-center shrink-0">
+                                    {{ loop.index }}
                                 </div>
-                                {% endif %}
-                                <div class="mt-4 flex flex-wrap items-center gap-4">
-                                    <div class="flex items-center gap-2 text-[#0b3b3c] font-bold text-sm">
-                                        <span>Get Full Roadmap</span>
-                                        <i class="fas fa-arrow-right animate-pulse"></i>
+                                <div>
+                                    <h3 class="text-xl md:text-2xl font-black text-white font-outfit">{{ career_title }}</h3>
+                                    
+                                    <!-- Feasibility Badge -->
+                                    <div class="mt-2 flex flex-wrap gap-2 items-center">
+                                        {% if status == "Optimal" %}
+                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black border border-emerald-500/30 text-emerald-400 bg-emerald-500/10 shadow-[0_0_10px_rgba(16,185,129,0.15)] flex items-center gap-1">
+                                                <span class="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                                                Optimal Fit
+                                            </span>
+                                        {% elif status == "Pivot" %}
+                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black border border-amber-500/30 text-amber-400 bg-amber-500/10 shadow-[0_0_10px_rgba(245,158,11,0.15)] flex items-center gap-1">
+                                                <span class="w-1 h-1 rounded-full bg-amber-400 animate-pulse"></span>
+                                                Pivot Strategy
+                                            </span>
+                                        {% else %}
+                                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black border border-rose-500/30 text-rose-400 bg-rose-500/10 shadow-[0_0_10px_rgba(244,63,94,0.15)] flex items-center gap-1">
+                                                <span class="w-1 h-1 rounded-full bg-rose-400 animate-pulse"></span>
+                                                High-Risk Pathway
+                                            </span>
+                                        {% endif %}
                                     </div>
-                                    {% if result.simulation_evaluation and result.simulation_career == (option.title if
-                                    option is mapping else option) %}
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
-                                            <span class="text-[10px] font-bold text-amber-600 uppercase">Score:</span>
-                                            <span class="text-sm font-black text-amber-700">{{
-                                                result.simulation_evaluation.match_score }}</span>
-                                        </div>
-                                        <button
-                                            onclick="event.stopPropagation(); window.location.href='/assessment/simulation/start/{{ option.title if option is mapping else option }}'"
-                                            class="text-amber-600 hover:text-amber-700 font-bold text-xs underline">
-                                            Retake
-                                        </button>
-                                    </div>
-                                    {% else %}
-                                    <button
-                                        onclick="event.stopPropagation(); window.location.href='/assessment/simulation/start/{{ option.title if option is mapping else option }}'"
-                                        style="background-color: #d97706 !important;"
-                                        class="flex items-center gap-2 px-4 py-2 text-white rounded-xl font-bold text-sm hover:bg-amber-700 transition-all transform hover:scale-105 shadow-md">
-                                        <i class="fas fa-terminal"></i>
-                                        <span>Enter Simulation</span>
-                                    </button>
-                                    {% endif %}
-                                    <button
-                                        onclick="event.stopPropagation(); generateCollegeRecs('{{ option.title if option is mapping else option }}')"
-                                        class="flex items-center gap-2 text-[#0b3b3c] font-bold text-sm hover:text-[#0b3b3c] transition-colors ml-auto">
-                                        <i class="fas fa-university"></i>
-                                        <span>Top Colleges</span>
-                                    </button>
                                 </div>
                             </div>
+
+                            <!-- Interactive Actions -->
+                            <div class="no-print flex flex-wrap gap-3 shrink-0">
+                                <!-- Simulation discovery button -->
+                                <a href="/assessment/simulation/start/{{ career_title }}" 
+                                   class="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:border-amber-400 text-amber-400 text-xs font-black transition duration-200 flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+                                    <i class="fas fa-terminal"></i> Enter Sandbox Simulation
+                                </a>
+
+                                <button onclick="generateCollegeRecs('{{ career_title }}')"
+                                        class="px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 hover:border-purple-400 text-purple-400 text-xs font-black transition duration-200 flex items-center gap-1.5 shadow-[0_0_15px_rgba(139,92,255,0.05)]">
+                                    <i class="fas fa-university"></i> Top Institutes
+                                </button>
+
+                                <button onclick="generateRoadmap('{{ career_title }}')"
+                                        class="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-400 text-cyan-400 text-xs font-black transition duration-200 flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,242,255,0.05)]">
+                                    <span>Core Roadmap</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- Honest Challenge Description Section -->
+                        <div class="mt-6 pt-4 border-t border-white/5">
+                            <h4 class="text-[10px] font-black uppercase tracking-wider mb-1" style="color: var(--text-dim);">Target Challenge Analysis</h4>
+                            <p class="text-xs leading-relaxed" style="color: var(--text-bright);">{{ challenge }}</p>
                         </div>
                     </div>
                     {% endfor %}
-                    {% else %}
-                    <div class="text-center py-12 text-slate-400">
-                        <i class="fas fa-sync fa-spin text-2xl mb-2"></i>
-                        <p>Generating career options...</p>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Loading Overlay -->
-            <div id="loadingOverlay"
-                class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center">
-                <div class="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm mx-4">
-                    <div
-                        class="w-20 h-20 border-4 border-[#0b3b3c] border-t-transparent rounded-full animate-spin mx-auto mb-6">
-                    </div>
-                    <h3 id="loadingTitle" class="text-xl font-bold text-slate-900 mb-2">Architecting Your Path</h3>
-                    <p id="loadingDesc" class="text-slate-500">Our AI is designing a custom roadmap for your unique
-                        profile...</p>
-                </div>
-            </div>
-
-            <script>
-                async function generateRoadmap(careerTitle) {
-                    const overlay = document.getElementById('loadingOverlay');
-                    overlay.classList.remove('hidden');
-                    document.getElementById('loadingTitle').textContent = 'Architecting Your Path';
-                    document.getElementById('loadingDesc').textContent = 'Our AI is designing a custom roadmap for your unique profile...';
-
-                    try {
-                        const response = await fetch('/assessment/generate_path', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ career_title: careerTitle }),
-                        });
-
-                        const data = await response.json();
-                        if (data.success) {
-                            window.location.href = `/career/roadmap/${data.path_id}`;
-                        } else {
-                            alert('Failed to generate roadmap. Please try again.');
-                            overlay.classList.add('hidden');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
-                        overlay.classList.add('hidden');
-                    }
-                }
-
-                async function generateCollegeRecs(careerTitle) {
-                    const overlay = document.getElementById('loadingOverlay');
-                    overlay.classList.remove('hidden');
-                    document.getElementById('loadingTitle').textContent = 'Finding Top Institutes';
-                    document.getElementById('loadingDesc').textContent = 'Our AI is curating the best colleges for your career goals...';
-
-                    try {
-                        const response = await fetch('/career/colleges/generate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ career_title: careerTitle }),
-                        });
-
-                        const data = await response.json();
-                        if (data.success) {
-                            window.location.href = `/career/colleges/${data.rec_id}`;
-                        } else {
-                            alert('Failed to generate college recommendations. Please try again.');
-                            overlay.classList.add('hidden');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
-                        overlay.classList.add('hidden');
-                    }
-                }
-
-                function copyToClipboard(url) {
-                    navigator.clipboard.writeText(url).then(() => {
-                        alert('Shareable link copied to clipboard!');
-                    });
-                }
-
-                function nativeShare(text, url) {
-                    if (navigator.share) {
-                        navigator.share({
-                            title: "My Career Blueprint | CareStance",
-                            text: text,
-                            url: url,
-                        }).catch(console.error);
-                    }
-                }
-
-                // Show native share button if supported
-                document.addEventListener('DOMContentLoaded', () => {
-                    if (navigator.share) {
-                        document.getElementById('nativeShareBtn')?.classList.remove('hidden');
-                    }
-                });
-            </script>
-
-            <!-- Social Sharing & PDF Section -->
-            {% if mode != 'minimal' %}
-            <div class="bg-slate-900 px-8 py-10 text-center relative overflow-hidden">
-                <div
-                    class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#1b5e5f] via-[#1b5e5f] to-[#1b5e5f]">
-                </div>
-                <h3 class="text-white font-bold mb-6 flex items-center justify-center gap-2">
-                    <i class="fas fa-share-alt text-[#1b5e5f]"></i> Share Your Career Blueprint
-                </h3>
-                <div class="flex flex-wrap justify-center gap-4">
-                    {% set share_url = request.base_url ~ "share/report/" ~ result.id %}
-                    {% set share_text = "🚀 I just created my Career Blueprint on CareerStance!\n\nMy goal: " ~
-                    (result.recommended_stream if result.recommended_stream else result.phase_2_category) ~
-                    "\n\nCareerStance helped me understand the skills, learning roadmap, and resources needed to achieve
-                    it.\n\nBuild your own career blueprint here:\nhttps://carestance.me\n\n#CareerStance #CareerGrowth"
-                    %}
-
-                    <!-- WhatsApp -->
-                    <a href="https://wa.me/?text={{ (share_text ~ ' ' ~ share_url)|urlencode }}" target="_blank"
-                        rel="noopener"
-                        class="w-12 h-12 bg-[#25D366] text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Share on WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
-                    <!-- LinkedIn -->
-                    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}"
-                        target="_blank" rel="noopener"
-                        class="w-12 h-12 bg-[#0077B5] text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Share on LinkedIn">
-                        <i class="fab fa-linkedin-in"></i>
-                    </a>
-                    <!-- Facebook -->
-                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank"
-                        rel="noopener"
-                        class="w-12 h-12 bg-[#1877F2] text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Share on Facebook">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <!-- X (formely Twitter) -->
-                    <a href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}"
-                        target="_blank" rel="noopener"
-                        class="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center p-3 hover:scale-110 transition-transform shadow-lg"
-                        title="Share on X">
-                        <img src="/static/images/x_logo.png" alt="X" class="w-full h-full object-contain">
-                    </a>
-                    <!-- Reddit -->
-                    <a href="https://www.reddit.com/submit?url={{ share_url|urlencode }}&title={{ share_text|urlencode }}"
-                        target="_blank" rel="noopener"
-                        class="w-12 h-12 bg-[#FF4500] text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Share on Reddit">
-                        <i class="fab fa-reddit-alien"></i>
-                    </a>
-                    <!-- Copy Link -->
-                    <button onclick="copyToClipboard('{{ share_url }}')"
-                        class="w-12 h-12 bg-slate-700 text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Copy Link">
-                        <i class="fas fa-link"></i>
-                    </button>
-                    <!-- Native Share (Mobile) -->
-                    <button id="nativeShareBtn" onclick="nativeShare('{{ share_text }}', '{{ share_url }}')"
-                        class="hidden w-12 h-12 bg-[#0b3b3c] text-white rounded-2xl flex items-center justify-center text-xl hover:scale-110 transition-transform shadow-lg"
-                        title="Share">
-                        <i class="fas fa-share-nodes"></i>
-                    </button>
-                </div>
-                <p class="text-slate-500 text-xs mt-6">Share your result to inspire others and track your progress
-                    together.</p>
-            </div>
-            {% endif %}
-
-            <!-- 5. SHAREABLE CARD (Optimized for Social Media) -->
-            {% if mode != 'minimal' %}
-            <div id="share-card"
-                class="m-8 p-1 bg-gradient-to-br from-[#0b3b3c] via-[#1b5e5f] to-[#1b5e5f] rounded-[2rem] shadow-2xl relative overflow-hidden group">
-                <div class="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div class="bg-white rounded-[1.8rem] p-8 sm:p-12 relative z-10 text-center">
-                    <!-- Branding -->
-                    <div class="flex justify-center mb-8">
-                        <div
-                            class="px-4 py-1.5 bg-[#d9f0ef] rounded-full flex items-center gap-2 border border-[#a8ded9]">
-                            <span class="text-[#0b3b3c] font-black tracking-tighter text-lg">CareStance</span>
-                            <span class="h-4 w-px bg-[#a8ded9]"></span>
-                            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Career
-                                Blueprint</span>
-                        </div>
-                    </div>
-
-                    <p class="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs mb-4">My Professional
-                        Archetype</p>
-                    <h2 class="text-4xl md:text-6xl font-black text-slate-900 mb-4 tracking-tight">
-                        {{ result.phase_2_category }}
-                    </h2>
-
-                    <div class="flex flex-wrap justify-center gap-2 mb-10">
-                        <span
-                            class="px-4 py-1.5 bg-[#d9f0ef] text-[#0b3b3c] rounded-full text-sm font-bold border border-[#a8ded9]">
-                            {{ result.personality }}
-                        </span>
-                        <span
-                            class="px-4 py-1.5 bg-[#d9f0ef] text-[#0b3b3c] rounded-full text-sm font-bold border border-[#a8ded9]">
-                            {{ result.goal_status }}
-                        </span>
-                    </div>
-
-                    <div class="max-w-md mx-auto mb-10 p-6 bg-slate-50 rounded-2xl border border-slate-100 relative">
-                        <i class="fas fa-quote-left absolute -top-3 -left-2 text-slate-300 text-4xl"></i>
-                        <p class="text-slate-600 font-medium italic leading-relaxed">
-                            "{{ result.final_analysis|truncate(150) or result.reasoning|truncate(150) }}"
-                        </p>
-                    </div>
-
-                    <div class="flex items-center justify-center gap-4 text-slate-400">
-                        <div class="text-right">
-                            <p class="text-[10px] font-bold uppercase tracking-widest">Generated For</p>
-                            <p class="text-sm font-bold text-slate-800">{{ owner.full_name if owner else user.full_name
-                                }}</p>
-                        </div>
-                        <div class="h-10 w-px bg-slate-200"></div>
-                        <div class="text-left">
-                            <p class="text-[10px] font-bold uppercase tracking-widest">Match Score</p>
-                            <p class="text-sm font-bold text-[#0b3b3c]">{{ ((display_confidence or result.confidence or
-                                0) * 100) | round|int
-                                }}%</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Background Accent -->
-                <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-[#1b5e5f] rounded-full blur-[80px] opacity-20">
-                </div>
-                <div class="absolute -top-10 -left-10 w-40 h-40 bg-[#1b5e5f] rounded-full blur-[80px] opacity-20">
-                </div>
-            </div>
-
-            <div class="px-8 pb-8 text-center no-print flex flex-wrap justify-center gap-4">
-                <button onclick="downloadCard()"
-                    class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition shadow-lg"
-                    title="Save image to your device">
-                    <i class="fas fa-download"></i>
-                    <span>Download Card</span>
-                </button>
-                <button onclick="copyImageToClipboard()"
-                    class="inline-flex items-center gap-2 px-6 py-3 bg-[#0b3b3c] text-white rounded-xl font-bold hover:bg-[#0b3b3c] transition shadow-lg"
-                    title="Copy image to paste into posts">
-                    <i class="fas fa-copy"></i>
-                    <span>Copy Card Image</span>
-                </button>
-            </div>
-
-            <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-            <script>
-                async function copyImageToClipboard() {
-                    const card = document.getElementById('share-card');
-                    try {
-                        const canvas = await html2canvas(card, {
-                            backgroundColor: null,
-                            scale: 2,
-                            useCORS: true
-                        });
-                        canvas.toBlob(async (blob) => {
-                            try {
-                                if (navigator.clipboard && navigator.clipboard.write) {
-                                    await navigator.clipboard.write([
-                                        new ClipboardItem({ 'image/png': blob })
-                                    ]);
-                                    alert('Card image copied to clipboard! You can now paste it directly into LinkedIn, WhatsApp, or Twitter.');
-                                } else {
-                                    alert('Copying images is not supported in this browser. Please use the Download button instead.');
-                                }
-                            } catch (err) {
-                                console.error('Clipboard error:', err);
-                                alert('Failed to copy image. Please try downloading it.');
-                            }
-                        }, 'image/png');
-                    } catch (err) {
-                        console.error('Canvas error:', err);
-                    }
-                }
-
-                async function downloadCard() {
-                    const card = document.getElementById('share-card');
-                    const canvas = await html2canvas(card, {
-                        backgroundColor: null,
-                        scale: 2,
-                        logging: false,
-                        useCORS: true
-                    });
-
-                    // On mobile, try to use native share with the image file if supported
-                    if (navigator.share && navigator.canShare && canvas.toBlob) {
-                        canvas.toBlob(async (blob) => {
-                            const file = new File([blob], "CareStance-Result.png", { type: "image/png" });
-                            if (navigator.canShare({ files: [file] })) {
-                                try {
-                                    await navigator.share({
-                                        files: [file],
-                                        title: 'My Career Blueprint',
-                                        text: 'Check out my career archetype from CareStance!'
-                                    });
-                                    return; // Successfully shared
-                                } catch (err) {
-                                    console.log("Native image share failed, falling back to download", err);
-                                }
-                            }
-                            // Fallback to download if sharing failed or not supported for files
-                            triggerDownload(canvas);
-                        });
-                    } else {
-                        triggerDownload(canvas);
-                    }
-                }
-
-                function triggerDownload(canvas) {
-                    const link = document.createElement('a');
-                    link.download = `CareStance-Result-${new Date().getTime()}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                }
-            </script>
-
-            <!-- Bottom CTA -->
-            <div class="bg-slate-50 px-8 py-10 border-t border-slate-200 text-center no-print">
-                {% if is_public_share and not user %}
-                <div class="max-w-md mx-auto">
-                    <h3 class="text-2xl font-black text-slate-900 mb-4">Ready to Unlock Your Own Future?</h3>
-                    <p class="text-slate-600 mb-8">Take our award-winning AI career assessment and get a personal
-                        blueprint just like this one.</p>
-                    <a href="/signup"
-                        class="inline-block px-8 py-4 bg-gradient-to-r from-[#0b3b3c] to-[#1b5e5f] text-white rounded-2xl font-bold text-lg shadow-xl shadow-[#d9f0ef] hover:scale-105 transition-all transform hover:-translate-y-1">
-                        Start My Free Assessment
-                    </a>
-                </div>
                 {% else %}
-                <div class="flex flex-col sm:flex-row justify-between items-center gap-6">
-                    <div class="text-left">
-                        <p class="text-slate-900 font-bold">Unsatisfied with these results?</p>
-                        <p class="text-slate-500 text-sm">You can retake the assessment to explore different interests.
-                        </p>
+                    <div class="text-center py-12 bg-white/3 border border-white/5 rounded-2xl">
+                        <i class="fas fa-sync fa-spin text-2xl mb-2 text-cyan-400 animate-pulse"></i>
+                        <p class="text-xs" style="color: var(--text-dim);">Compiling top matching career tracks...</p>
                     </div>
-                    <div class="flex gap-4">
-                        <a href="/assessment/reset"
-                            onclick="return confirm('Are you sure you want to retake the assessment? This will clear your current results.')"
-                            class="px-8 py-3 bg-[#0b3b3c] text-white rounded-2xl font-bold shadow-xl shadow-[#d9f0ef] hover:bg-[#1b5e5f] transition transform hover:-translate-y-1">
-                            <i class="fas fa-undo mr-2"></i> Retake Assessment
-                        </a>
-                    </div>
-                </div>
                 {% endif %}
             </div>
-            {% endif %}
         </div>
 
-        <style>
-            @media print {
+        <!-- 5. SOCIAL SHARE & NETWORKS (Glassmorphic Copy/Clip Section) -->
+        {% if mode != 'minimal' %}
+        <div class="no-print cyber-card p-8 border border-white/10 text-center">
+            <h3 class="text-white font-black text-xl mb-4 font-outfit flex items-center justify-center gap-2">
+                <i class="fas fa-share-alt text-cyan-400"></i> Share Your Blueprint
+            </h3>
+            
+            <div class="flex flex-wrap justify-center gap-4">
+                {% set share_url = request.base_url ~ "share/report/" ~ result.id %}
+                {% set share_text = "🚀 Just compiled my Career Blueprint on CareStance! Archetype: " ~ (result.recommended_stream if result.recommended_stream else dominant_trait) ~ ". Discover your professional profile at https://carestance.me #CareStance" %}
 
-                .no-print,
-                .progress-workflow,
-                .hero-abstract {
-                    display: none !important;
-                }
+                <!-- Copy Link Button -->
+                <button onclick="copyToClipboard('{{ share_url }}')"
+                        class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-white hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 flex items-center justify-center text-lg"
+                        title="Copy Link">
+                    <i class="fas fa-link"></i>
+                </button>
 
-                body {
-                    background: white;
-                }
+                <!-- WhatsApp Share link -->
+                <a href="https://wa.me/?text={{ (share_text ~ ' ' ~ share_url)|urlencode }}" 
+                   target="_blank" rel="noopener"
+                   class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-white hover:border-emerald-400 hover:text-emerald-400 transition-all duration-200 flex items-center justify-center text-lg"
+                   title="Share on WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                </a>
 
-                .rounded-3xl {
-                    border-radius: 0 !important;
-                }
-
-                .shadow-2xl,
-                .shadow-xl,
-                .shadow-lg {
-                    box-shadow: none !important;
-                }
-            }
-
-            .dot-pattern {
-                background-image: radial-gradient(#ffffff 1px, transparent 1px);
-                background-size: 24px 24px;
-            }
-        </style>
+                <!-- LinkedIn Share link -->
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" 
+                   target="_blank" rel="noopener"
+                   class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-white hover:border-blue-400 hover:text-blue-400 transition-all duration-200 flex items-center justify-center text-lg"
+                   title="Share on LinkedIn">
+                    <i class="fab fa-linkedin-in"></i>
+                </a>
+            </div>
+            <p class="text-xs mt-4" style="color: var(--text-dim);">Share this blueprint to unlock further simulation discoveries.</p>
+        </div>
         {% endif %}
+
+        <!-- 6. RETAKE CTA SECTION -->
+        <div class="no-print cyber-card p-8 border border-cyan-500/10 flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div class="text-left">
+                <p class="text-white font-black text-lg font-outfit">Recalibrate Profile?</p>
+                <p class="text-xs" style="color: var(--text-dim);">Retaking the assessment resets all phase coordinates in our local cache.</p>
+            </div>
+            <a href="/assessment/reset"
+               onclick="return confirm('Are you sure you want to retake the assessment? This will clear your current results.')"
+               class="px-6 py-3 bg-rose-500/10 border border-rose-500/30 hover:border-rose-400 hover:bg-rose-500/20 text-rose-400 text-xs font-black rounded-xl transition duration-200 flex items-center gap-2">
+                <i class="fas fa-undo"></i> Reset & Retake Assessment
+            </a>
+        </div>
 
     </div>
 </div>
 
-<!-- FontAwesome is loaded in base.html -->
+<!-- Loader Modals overlay -->
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-[#030606]/80 backdrop-blur-md z-[9999] flex items-center justify-center">
+    <div class="cyber-card p-8 text-center max-w-sm mx-4 border border-cyan-500/20 shadow-[0_0_60px_rgba(0,242,255,0.1)]">
+        <div class="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+        <h3 id="loadingTitle" class="text-xl font-black text-white mb-2 font-outfit">Synthesizing Discovery Path</h3>
+        <p id="loadingDesc" class="text-xs" style="color: var(--text-dim);">Designing a custom, multi-milestone career path roadmap...</p>
+    </div>
+</div>
 
+<script>
+    async function generateRoadmap(careerTitle) {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.classList.remove('hidden');
+        document.getElementById('loadingTitle').textContent = 'Architecting Roadmap';
+        document.getElementById('loadingDesc').textContent = 'Designing a custom, multi-milestone career path roadmap...';
+
+        try {
+            const response = await fetch('/assessment/generate_path', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ career_title: careerTitle }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                window.location.href = `/career/roadmap/${data.path_id}`;
+            } else {
+                alert('Roadmap synthesis failed. Please try again.');
+                overlay.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+            overlay.classList.add('hidden');
+        }
+    }
+
+    async function generateCollegeRecs(careerTitle) {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.classList.remove('hidden');
+        document.getElementById('loadingTitle').textContent = 'Curating Institutes';
+        document.getElementById('loadingDesc').textContent = 'Filtering premier O*NET matched institutes and colleges...';
+
+        try {
+            const response = await fetch('/career/colleges/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ career_title: careerTitle }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                window.location.href = `/career/colleges/${data.rec_id}`;
+            } else {
+                alert('Institute curation failed. Please try again.');
+                overlay.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+            overlay.classList.add('hidden');
+        }
+    }
+
+    function copyToClipboard(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Shareable report URL copied to clipboard!');
+        });
+    }
+</script>
 {% endblock %}

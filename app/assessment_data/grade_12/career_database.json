@@ -16,6 +16,5 @@
       "salary_trajectory": { "entry": 1200000, "year_5": 3000000 },
       "honest_challenge": "Rapid skill obsolescence requires continuous learning."
     }
-    // ... entries will be programmatically expanded to 1000 placeholders ...
   }
 }
