@@ -5,10 +5,20 @@ import sqlite3
 import re
 from typing import List, Dict
 import numpy as np
+import copy
 
 # --- PATH CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app/
 DATA_DIR = os.path.join(BASE_DIR, "assessment_data")
+
+# --- IN-MEMORY CACHE FOR PERFORMANCE OPTIMIZATION ---
+_JSON_CACHE = {}
+
+def get_cached_json(path: str):
+    if path not in _JSON_CACHE:
+        with open(path, "r", encoding="utf-8") as f:
+            _JSON_CACHE[path] = json.load(f)
+    return copy.deepcopy(_JSON_CACHE[path])
 
 def load_grade_data(student_type: str) -> Dict:
     """
@@ -18,50 +28,39 @@ def load_grade_data(student_type: str) -> Dict:
     path = os.path.join(DATA_DIR, folder)
     data = {}
     try:
-        with open(os.path.join(path, "cards.json"), "r", encoding="utf-8") as f:
-            data["cards"] = json.load(f)
-        with open(os.path.join(path, "proxy_questions.json"), "r", encoding="utf-8") as f:
-            data["proxy_questions"] = json.load(f)
-        with open(os.path.join(path, "scenarios.json"), "r", encoding="utf-8") as f:
-            data["scenarios"] = json.load(f)
+        data["cards"] = get_cached_json(os.path.join(path, "cards.json"))
+        data["proxy_questions"] = get_cached_json(os.path.join(path, "proxy_questions.json"))
+        data["scenarios"] = get_cached_json(os.path.join(path, "scenarios.json"))
     except FileNotFoundError:
         if student_type in ("12th", "12th_above"):
             # Load cards from grade_12 if possible, otherwise grade_10
             try:
-                with open(os.path.join(os.path.join(DATA_DIR, "grade_12"), "cards.json"), "r", encoding="utf-8") as f:
-                    data["cards"] = json.load(f)
+                data["cards"] = get_cached_json(os.path.join(os.path.join(DATA_DIR, "grade_12"), "cards.json"))
             except FileNotFoundError:
-                with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "cards.json"), "r", encoding="utf-8") as f:
-                    data["cards"] = json.load(f)
+                data["cards"] = get_cached_json(os.path.join(os.path.join(DATA_DIR, "grade_10"), "cards.json"))
             
             # Fall back to grade_10 for proxy questions and scenarios
-            with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "proxy_questions.json"), "r", encoding="utf-8") as f:
-                data["proxy_questions"] = json.load(f)
-            with open(os.path.join(os.path.join(DATA_DIR, "grade_10"), "scenarios.json"), "r", encoding="utf-8") as f:
-                data["scenarios"] = json.load(f)
+            data["proxy_questions"] = get_cached_json(os.path.join(os.path.join(DATA_DIR, "grade_10"), "proxy_questions.json"))
+            data["scenarios"] = get_cached_json(os.path.join(os.path.join(DATA_DIR, "grade_10"), "scenarios.json"))
             return data
         raise
     return data
 
 def load_g12_interview_questions() -> Dict:
     path = os.path.join(DATA_DIR, "grade_12", "interview_questions.json")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return get_cached_json(path)
 
 def load_g12_reality_cards() -> List[Dict]:
     path = os.path.join(DATA_DIR, "grade_12", "reality_cards.json")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return get_cached_json(path)
 
 def load_g12_worldview_metrics() -> Dict:
     path = os.path.join(DATA_DIR, "grade_12", "worldview_metrics.json")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return get_cached_json(path)
 
 def load_g12_future_simulations() -> Dict:
     path = os.path.join(DATA_DIR, "grade_12", "future_simulations.json")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return get_cached_json(path)
 
 
 # --- PROMPTS ---
@@ -190,8 +189,7 @@ def calculate_telemetry_metrics(logs: List[Dict], student_type: str = "10th") ->
     try:
         folder = "grade_10" if student_type == "10th" else "grade_12"
         path = os.path.join(DATA_DIR, folder, "cards.json")
-        with open(path, "r", encoding="utf-8") as f:
-            cards_data = {card["id"]: card for card in json.load(f)}
+        cards_data = {card["id"]: card for card in get_cached_json(path)}
     except Exception:
         cards_data = {}
 
