@@ -1,1229 +1,387 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
-
+<html lang="en">
 <head>
-    <meta name="google-adsense-account" content="ca-pub-6546135271987768">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>CareStance | AI Career Counselling Platform</title>
-    <link rel="icon" type="image/webp" href="/static/images/image.webp">
-    <meta name="description"
-        content="AI-powered career clarity for students and a management platform for top counsellors.">
-
-    <!-- CRITICAL: Preload LCP hero image so browser fetches it immediately -->
-    <link rel="preload" as="image" href="/static/images/hero.webp" type="image/webp" fetchpriority="high">
-
-    <!-- DNS Prefetch for third-party resources -->
-    <link rel="dns-prefetch" href="//fonts.googleapis.com">
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <link rel="dns-prefetch" href="//unpkg.com">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-            rel="stylesheet">
-    </noscript>
-
-    <!-- Font Awesome: non-blocking -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style"
-        onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    </noscript>
-
-    <!-- AOS CSS: non-blocking -->
-    <link rel="preload" href="https://unpkg.com/aos@2.3.1/dist/aos.css" as="style"
-        onload="this.onload=null;this.rel='stylesheet'">
-    <noscript>
-        <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
-    </noscript>
-
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-    <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg-deep: #fefcf5;
-            --bg-soft: #fffaf2;
-            --bg-card: #ffffff;
-            --surface-muted: #f7f3eb;
-            --primary: #0b3b3c;
-            --primary-light: #1b5e5f;
-            --primary-soft: #d9f0ef;
-            --secondary: #d97706;
-            --accent-amber: #f59e0b;
-            --text-main: #1f2c2e;
-            --text-muted: #5c6e6b;
-            --text-light: #8fa3a0;
-            --border-light: #e9e2d4;
-            --border-soft: #f0e9de;
-            --shadow-sm: 0 12px 30px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.02);
-            --shadow-md: 0 20px 35px -12px rgba(0, 0, 0, 0.05);
-            --shadow-lg: 0 30px 50px -18px rgba(0, 0, 0, 0.08);
-            --gradient-primary: linear-gradient(135deg, #0b3b3c 0%, #1b5e5f 100%);
-            --gradient-warm: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-        }
-
-        body {
-            background: var(--bg-deep);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            font-size: 16px;
-            line-height: 1.5;
-            overflow-x: hidden;
-        }
-
-        .font-display {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .text-gradient {
-            background: linear-gradient(120deg, #0b3b3c 0%, #2b7a6e 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* enhanced glass + responsive helpers */
-        .glass {
-            background: rgba(255, 255, 245, 0.92);
-            -webkit-backdrop-filter: blur(12px);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-light);
-        }
-
-        .glass-strong {
-            background: rgba(254, 252, 245, 0.96);
-            -webkit-backdrop-filter: blur(18px);
-            backdrop-filter: blur(18px);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-soft);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5c3;
-            border-radius: 10px;
-        }
-
-        /* buttons */
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.6rem;
-            background: var(--gradient-primary);
-            color: white;
-            padding: 0.85rem 2rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            font-size: 0.95rem;
-            text-decoration: none;
-            box-shadow: 0 6px 14px rgba(11, 59, 60, 0.2);
-            transition: all 0.25s ease;
-            border: none;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(11, 59, 60, 0.25);
-        }
-
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.6rem;
-            background: white;
-            color: var(--primary);
-            padding: 0.85rem 2rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            font-size: 0.95rem;
-            text-decoration: none;
-            border: 1px solid var(--border-light);
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-            background: var(--primary-soft);
-            border-color: var(--primary-light);
-        }
-
-        .btn-outline {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.6rem;
-            background: transparent;
-            color: var(--primary);
-            padding: 0.8rem 1.8rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            border: 1px solid var(--primary-light);
-            transition: all 0.2s;
-        }
-
-        .btn-outline:hover {
-            background: var(--primary-soft);
-            border-color: var(--primary);
-        }
-
-        /* navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            transition: all 0.3s;
-            padding: 1.2rem 0;
-        }
-
-        nav.scrolled {
-            padding: 0.7rem 0;
-        }
-
-        .nav-inner {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            text-decoration: none;
-        }
-
-        .nav-logo img {
-            width: auto;
-            height: 38px;
-            object-fit: contain;
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.05));
-        }
-
-        .nav-logo-text {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: var(--primary);
-            letter-spacing: -0.02em;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .nav-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .btn-nav-cta {
-            background: var(--gradient-primary);
-            color: white !important;
-            padding: 0.5rem 1.4rem;
-            border-radius: 2rem;
-            font-weight: 600 !important;
-        }
-
-        .nav-logout {
-            color: var(--text-muted);
-            opacity: 0.8;
-            font-size: 0.9rem;
-        }
-
-        .mobile-toggle {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--primary);
-            cursor: pointer;
-            width: 44px;
-            height: 44px;
-            align-items: center;
-            justify-content: center;
-            border-radius: 2rem;
-        }
-
-        .mobile-menu {
-            display: none;
-            flex-direction: column;
-            background: white;
-            padding: 1.5rem;
-            border-top: 1px solid var(--border-light);
-        }
-
-        .mobile-menu.open {
-            display: flex;
-        }
-
-        .mobile-menu a {
-            padding: 0.8rem 0;
-            color: var(--text-main);
-            text-decoration: none;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .btn-mobile-cta {
-            background: var(--gradient-primary);
-            color: white !important;
-            text-align: center;
-            border-radius: 2rem;
-            margin-top: 1rem;
-            padding: 0.8rem !important;
-        }
-
-        /* container */
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 1.5rem;
-        }
-
-        section {
-            position: relative;
-        }
-
-        /* hero */
-        .hero {
-            min-height: 100svh;
-            display: flex;
-            align-items: center;
-            padding: 7rem 0 5rem;
-            background: radial-gradient(circle at 10% 20%, rgba(11, 59, 60, 0.02) 0%, rgba(255, 250, 240, 0) 80%);
-        }
-
-        .hero-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            align-items: center;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--primary-soft);
-            padding: 0.3rem 1rem;
-            border-radius: 40px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 1.5rem;
-        }
-
-        .hero-title {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: clamp(2.2rem, 5vw, 4.2rem);
-            font-weight: 800;
-            line-height: 1.1;
-            letter-spacing: -0.02em;
-            color: var(--text-main);
-            margin-bottom: 1.5rem;
-        }
-
-        .hero-desc {
-            font-size: 1rem;
-            color: var(--text-muted);
-            max-width: 480px;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .hero-card {
-            border-radius: 2rem;
-            overflow: hidden;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-light);
-            transition: transform 0.3s;
-        }
-
-        .hero-card img {
-            width: 100%;
-            height: auto;
-            min-height: 300px;
-            object-fit: cover;
-            display: block;
-        }
-
-        .hero-visual {
-            position: relative;
-        }
-
-        .float-chip {
-            position: absolute;
-            background: white;
-            border-radius: 1.2rem;
-            padding: 0.7rem 1.2rem;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            backdrop-filter: blur(4px);
-        }
-
-        .float-chip-1 {
-            left: -1rem;
-            top: 1.5rem;
-        }
-
-        .float-chip-2 {
-            right: -1rem;
-            bottom: 1.5rem;
-        }
-
-        /* hero entry animation (replacing AOS to avoid FOUC/LCP delay) */
-        @keyframes hero-fade-up {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-text-col {
-            animation: hero-fade-up 0.8s ease-out forwards;
-        }
-
-        .hero-visual {
-            animation: hero-fade-up 0.8s ease-out 0.2s forwards;
-            opacity: 0;
-            /* Wait for animation */
-        }
-
-        /* marquee */
-        .marquee-section {
-            padding: 2rem 0;
-            border-top: 1px solid var(--border-light);
-            border-bottom: 1px solid var(--border-light);
-            background: var(--bg-soft);
-            overflow: hidden;
-        }
-
-        .marquee-track {
-            display: flex;
-            animation: scroll-x 22s linear infinite;
-            width: max-content;
-        }
-
-        @keyframes scroll-x {
-            from {
-                transform: translateX(0);
-            }
-
-            to {
-                transform: translateX(-50%);
-            }
-        }
-
-        .marquee-item {
-            padding: 0 2rem;
-            font-weight: 600;
-            color: var(--text-light);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            white-space: nowrap;
-        }
-
-        /* bento grid - fully responsive */
-        .bento-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1.5rem;
-            margin-top: 3rem;
-        }
-
-        .bento-card {
-            background: white;
-            border-radius: 1.75rem;
-            padding: 1.8rem;
-            border: 1px solid var(--border-light);
-            transition: all 0.25s;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .bento-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--primary-soft);
-        }
-
-        .bento-1 {
-            grid-column: span 2;
-            grid-row: span 2;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .bento-2 {
-            grid-column: span 2;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .bento-icon {
-            width: 52px;
-            height: 52px;
-            background: var(--primary-soft);
-            border-radius: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary);
-            font-size: 1.4rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .stat-number {
-            font-size: 2.6rem;
-            font-weight: 800;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: var(--primary);
-        }
-
-        .progress-bar {
-            background: #e2e0d6;
-            border-radius: 40px;
-            height: 6px;
-            margin: 0.75rem 0;
-        }
-
-        .progress-fill {
-            background: var(--secondary);
-            border-radius: 40px;
-            height: 100%;
-            width: 98%;
-        }
-
-        .free-badge {
-            background: var(--accent-amber);
-            color: white;
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 0.2rem 0.7rem;
-            border-radius: 40px;
-            display: inline-block;
-            margin-top: 0.8rem;
-        }
-
-        /* counsellors section */
-        .counsellors-section {
-            background: var(--bg-soft);
-            padding: 5rem 0;
-        }
-
-        .counsellors-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            align-items: center;
-        }
-
-        .dashboard-inner {
-            background: white;
-            border-radius: 1.75rem;
-            padding: 1.8rem;
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-light);
-        }
-
-        .session-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: var(--bg-soft);
-            border-radius: 1.2rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .feature-list {
-            list-style: none;
-            margin: 1.5rem 0;
-        }
-
-        .feature-list li {
-            display: flex;
-            gap: 0.8rem;
-            align-items: center;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid var(--border-light);
-            color: var(--text-muted);
-        }
-
-        /* steps grid */
-        .steps-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-
-        .step-card {
-            background: white;
-            border-radius: 1.75rem;
-            padding: 2rem;
-            border: 1px solid var(--border-light);
-            transition: all 0.25s;
-        }
-
-        .step-number {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--primary-soft);
-            font-family: monospace;
-        }
-
-        /* FAQ */
-        .faq-section {
-            background: var(--bg-deep);
-            padding: 5rem 0;
-        }
-
-        .faq-item {
-            background: white;
-            border-radius: 1.25rem;
-            border: 1px solid var(--border-light);
-            margin-bottom: 1rem;
-            overflow: hidden;
-        }
-
-        .faq-trigger {
-            width: 100%;
-            padding: 1.2rem 1.5rem;
-            background: none;
-            border: none;
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 1rem;
-            color: var(--text-main);
-            text-align: left;
-        }
-
-        .faq-body {
-            max-height: 0;
-            overflow: hidden;
-            transition: 0.3s ease;
-        }
-
-        .faq-body.open {
-            max-height: 220px;
-        }
-
-        .faq-body-inner {
-            padding: 0 1.5rem 1.5rem;
-            color: var(--text-muted);
-        }
-
-        /* cta */
-        .cta-card {
-            background: var(--gradient-primary);
-            border-radius: 2.5rem;
-            padding: 3.5rem 2rem;
-            text-align: center;
-            color: white;
-        }
-
-        /* footer */
-        footer {
-            background: #1f2c2e;
-            color: #ccc;
-            padding: 4rem 0 2rem;
-        }
-
-        .footer-grid {
-            display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .footer-logo-text {
-            font-weight: 800;
-            color: white;
-        }
-
-        .social-btn {
-            background: rgba(255, 255, 255, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            transition: 0.2s;
-        }
-
-        /* responsive overhauls: padding, text boxes, spacing */
-        @media (max-width: 1024px) {
-            .bento-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.25rem;
-            }
-
-            .bento-1 {
-                grid-column: span 2;
-            }
-
-            .bento-2 {
-                grid-column: span 2;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .mobile-toggle {
-                display: flex;
-            }
-
-            .hero {
-                padding: 6rem 0 3rem;
-            }
-
-            .hero-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-                text-align: center;
-            }
-
-            .hero-desc {
-                margin-left: auto;
-                margin-right: auto;
-            }
-
-            .hero-actions {
-                justify-content: center;
-            }
-
-            .hero-social-proof {
-                justify-content: center;
-            }
-
-            .float-chip-1,
-            .float-chip-2 {
-                transform: scale(0.85);
-            }
-
-            .float-chip-1 {
-                left: -0.5rem;
-                top: 0rem;
-            }
-
-            .float-chip-2 {
-                right: -0.5rem;
-                bottom: 0rem;
-            }
-
-            .bento-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .bento-1,
-            .bento-2 {
-                grid-column: span 1;
-            }
-
-            .bento-2 {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .steps-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .counsellors-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-
-            .footer-grid {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-
-            .container {
-                padding: 0 1.25rem;
-            }
-
-            .btn-primary,
-            .btn-secondary {
-                white-space: normal;
-                padding: 0.7rem 1.5rem;
-            }
-
-            .cta-card {
-                padding: 2.5rem 1.5rem;
-            }
-
-            .section-title {
-                font-size: 1.8rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero-title {
-                font-size: 1.9rem;
-            }
-
-            .hero-actions {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .btn-primary,
-            .btn-secondary,
-            .btn-outline {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .float-chip {
-                padding: 0.4rem 0.9rem;
-            }
-
-            .float-chip-1 {
-                left: -0.2rem;
-                top: -0.5rem;
-            }
-
-            .float-chip-2 {
-                right: -0.2rem;
-                bottom: 0rem;
-            }
-
-            .bento-card {
-                padding: 1.3rem;
-            }
-
-            .faq-trigger {
-                padding: 1rem;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CareStance AI | Discover the Career You Were Meant For</title>
+<link rel="icon" type="image/webp" href="/static/images/image.webp">
+<meta name="description" content="AI-powered personality analysis, immersive career simulations, and personalized guidance designed for students.">
+<meta name="google-adsense-account" content="ca-pub-6546135271987768">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/landing-futuristic.css">
 </head>
-
 <body>
 
-    <nav id="main-nav" class="glass-strong">
-        <div class="nav-inner">
-            <a href="#" class="nav-logo">
-                <picture>
-                    <source srcset="/static/images/image.webp" type="image/webp">
-                    <img src="/static/images/image.png" alt="CareStance Logo" width="38" height="38">
-                </picture>
-                <span class="nav-logo-text">CareStance</span>
-            </a>
-            <div class="nav-links">
-                <a href="#students">For Students</a>
-                <a href="#counsellors">For Counsellors</a>
-                <a href="#how-it-works">How it Works</a>
-                <a href="/static/manuals/CareStance_User_Manual.pdf" target="_blank">User Manual</a>
-                <a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener">Internships</a>
-                {% if user %}
-                <a href="/dashboard">Dashboard</a>
-                <a href="/logout" class="nav-logout">Log In</a>
-                {% else %}
-                <a href="/login">Log In</a>
-                <a href="/signup" class="btn-nav-cta">Get Started</a>
-                {% endif %}
-            </div>
-            <button class="mobile-toggle" id="menu-toggle" aria-label="Menu"><i class="fa-solid fa-bars"
-                    id="menu-icon"></i></button>
-        </div>
-        <div class="mobile-menu" id="mobile-menu">
-            <a href="#students" onclick="closeMobile()">For Students</a>
-            <a href="#counsellors" onclick="closeMobile()">For Counsellors</a>
-            <a href="#how-it-works" onclick="closeMobile()">How it Works</a>
-            <a href="/static/manuals/CareStance_User_Manual.pdf" target="_blank">User Manual</a>
-            <a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener" onclick="closeMobile()">Internships</a>
-            {% if user %}
-            <a href="/dashboard" onclick="closeMobile()">Dashboard</a>
-            <a href="/logout" onclick="closeMobile()">Log In</a>
-            {% else %}
-            <a href="/login" onclick="closeMobile()">Log In</a>
-            <a href="/signup" class="btn-mobile-cta" onclick="closeMobile()">Get Started Free →</a>
-            {% endif %}
-        </div>
-    </nav>
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <div class="hero-grid">
-                <!-- NO data-aos here: AOS sets opacity:0 until JS loads → delays LCP -->
-                <div class="hero-text-col">
-                    <div class="hero-badge"><i class="fa-regular fa-compass"></i> AI-Powered Clarity</div>
-                    <h1 class="hero-title">Shape a career <span class="text-gradient">you'll love</span> for life.</h1>
-                    <p class="hero-desc">CareStance blends intelligent psychometrics and real human guidance to unlock
-                        your potential. No more guesswork.</p>
-                    <div class="hero-actions" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <a href="#students" class="btn-primary">I'm a Student <i
-                                class="fa-solid fa-arrow-right"></i></a>
-                        <a href="#counsellors" class="btn-secondary">I'm a Counsellor</a>
-                    </div>
-                    <div class="hero-social-proof"
-                        style="margin-top: 2rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                        <div style="display: flex; gap: 0.3rem;">👩‍🎓👨‍🎓👩‍💻👨‍💻</div>
-                        <span style="color: var(--text-muted);">Trusted by 12,000+ students</span>
-                    </div>
-                </div>
-                <!-- NO data-aos on hero-visual: same reason -->
-                <div class="hero-visual">
-                    <div class="hero-card">
-                        <!-- LCP IMAGE: eager + high priority + local WebP = fast paint -->
-                        <picture>
-                            <source srcset="/static/images/hero.webp" type="image/webp">
-                            <img src="/static/images/hero.webp" alt="Career clarity at a glance" width="800"
-                                height="534" loading="eager" fetchpriority="high" decoding="sync">
-                        </picture>
-                    </div>
-                    <div class="float-chip float-chip-1 glass"><i class="fa-regular fa-lightbulb"
-                            style="color: #d97706;"></i><span><strong>Match score 96%</strong><br>UX Designer</span>
-                    </div>
-                    <div class="float-chip float-chip-2 glass"><i
-                            class="fa-regular fa-calendar"></i><span><strong>Session today</strong><br>with Priya
-                            Sharma</span></div>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- ── NAV ── -->
+<nav id="f-main-nav" class="f-nav glass-strong">
+<div class="nav-inner">
+  <a href="#" class="nav-logo">
+    <img src="/static/images/image.webp" alt="CareStance" width="36" height="36">
+    <span class="nav-logo-text">CareStance</span>
+  </a>
+  <div class="nav-links">
+    <a href="#career-discovery">Discovery</a>
+    <a href="#archetypes">Archetypes</a>
+    <a href="#simulations">Simulations</a>
+    <a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener">Internships</a>
+    {% if user %}
+    <a href="/dashboard">Dashboard</a>
+    <a href="/logout" class="nav-logout">Logout</a>
+    {% else %}
+    <a href="/login">Log In</a>
+    <a href="/signup" class="btn-nav-cta">Get Started</a>
+    {% endif %}
+  </div>
+  <button class="mobile-toggle" id="f-menu-toggle" aria-label="Menu"><i class="fa-solid fa-bars" id="f-menu-icon"></i></button>
+</div>
+<div class="mobile-menu glass-strong" id="f-mobile-menu">
+  <a href="#career-discovery" onclick="closeMobileF()">Discovery</a>
+  <a href="#archetypes" onclick="closeMobileF()">Archetypes</a>
+  <a href="#simulations" onclick="closeMobileF()">Simulations</a>
+  <a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener">Internships</a>
+  {% if user %}
+  <a href="/dashboard" onclick="closeMobileF()">Dashboard</a>
+  <a href="/logout">Logout</a>
+  {% else %}
+  <a href="/login">Log In</a>
+  <a href="/signup" style="background:linear-gradient(135deg,#00d4ff,#7b61ff);color:#fff;text-align:center;border-radius:2rem;padding:.75rem;margin-top:.5rem;">Get Started →</a>
+  {% endif %}
+</div>
+</nav>
 
-    <!-- Marquee -->
-    <section class="marquee-section">
-        <div style="overflow:hidden;">
-            <div class="marquee-track">
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> HARVARD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> STANFORD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> MIT</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> OXFORD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> IIT DELHI</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> NUS</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> HARVARD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> STANFORD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> MIT</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> OXFORD</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> IIT DELHI</span>
-                <span class="marquee-item"><i class="fa-regular fa-building"></i> NUS</span>
-            </div>
-        </div>
-    </section>
+<!-- ── HERO ── -->
+<section class="hero">
+<canvas id="hero-canvas"></canvas>
+<div class="container">
+<div class="hero-grid">
+  <div>
+    <div class="hero-badge"><span class="pulse-dot"></span> AI-Powered Career Intelligence</div>
+    <h1 class="hero-title">Discover the Career<br><span class="text-gradient">You Were Meant For</span></h1>
+    <p class="hero-desc" id="hero-typed" data-text="AI-powered personality analysis, immersive career simulations, and personalized guidance designed for students.">AI-powered personality analysis, immersive career simulations, and personalized guidance designed for students.</p>
+    <div class="hero-actions">
+      <a href="/signup" class="btn-primary"><i class="fa-solid fa-rocket"></i> Start Assessment</a>
+      <a href="#career-discovery" class="btn-secondary"><i class="fa-regular fa-compass"></i> Explore Paths</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-chip glass"><div class="stat-num">50K+</div><div class="stat-label">Assessments</div></div>
+      <div class="stat-chip glass"><div class="stat-num">6</div><div class="stat-label">Archetypes</div></div>
+      <div class="stat-chip glass"><div class="stat-num">AI</div><div class="stat-label">Powered</div></div>
+      <div class="stat-chip glass"><div class="stat-num">Live</div><div class="stat-label">Counsellors</div></div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="dashboard-preview glass">
+      <div class="dash-header"><span class="dash-title font-display">Career Intelligence</span><span class="dash-badge">● Live</span></div>
+      <div class="dash-metrics">
+        <div class="metric-card glass metric-cyan"><div class="metric-val">96%</div><div class="metric-label">Match Score</div></div>
+        <div class="metric-card glass metric-purple"><div class="metric-val">A+</div><div class="metric-label">Archetype</div></div>
+        <div class="metric-card glass metric-pink"><div class="metric-val">12</div><div class="metric-label">Career Paths</div></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.35rem">Career Compatibility</div>
+      <div class="dash-bar"><div class="dash-bar-fill bar-cyan" style="--w:92%"></div></div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin:.5rem 0 .35rem">Personality Alignment</div>
+      <div class="dash-bar"><div class="dash-bar-fill bar-purple" style="--w:87%"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+</section>
 
-    <!-- Students Section with START FOR FREE -->
-    <section id="students" style="padding: 5rem 0;">
-        <div class="container">
-            <div class="text-center" data-aos="fade-up">
-                <div class="hero-badge" style="display: inline-flex;">🎓 For Students</div>
-                <h2 class="hero-title" style="font-size: clamp(1.8rem, 5vw, 2.8rem);">Navigate your future with <span
-                        class="text-gradient">confidence</span></h2>
-                <p class="hero-desc" style="max-width: 600px; margin: 0 auto 1rem;">AI-driven insights + human coaching
-                    = the career you deserve.</p>
-            </div>
-            <div class="bento-grid">
-                <div class="bento-card bento-1" data-aos="fade-up">
-                    <div>
-                        <div class="bento-icon"><i class="fa-regular fa-message"></i></div>
-                        <h3>Psychometric AI Engine</h3>
-                        <p>Deep analysis across 50+ cognitive and emotional dimensions — reveals your natural strengths.
-                        </p>
-                        <div class="free-badge">✨ Free assessment included</div>
-                    </div>
-                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400"
-                        style="border-radius: 1rem; margin-top: 1.5rem; width: 100%; height: auto; max-height: 140px; object-fit: cover;"
-                        alt="Psychometric Analysis" loading="lazy" width="400" height="140">
-                </div>
-                <div class="bento-card bento-2" data-aos="fade-up" data-aos-delay="50">
-                    <div>
-                        <h3>🎥 Video Counselling</h3>
-                        <p>Book 1-on-1 with top experts, HD sessions, instant booking.</p>
-                    </div>
-                    <div
-                        style="background: var(--primary-soft); width: 54px; height: 54px; border-radius: 2rem; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-video" style="color: var(--primary);"></i></div>
-                </div>
-                <div class="bento-card" data-aos="fade-up" data-aos-delay="100">
-                    <div class="stat-number">98%</div>
-                    <div>Accuracy rate</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill"></div>
-                    </div>
-                    <p class="free-badge" style="background: var(--primary);">Verified by 10k+ students</p>
-                </div>
-                <div class="bento-card" data-aos="fade-up" data-aos-delay="150">
-                    <div class="bento-icon" style="background: #fef3c7;"><i class="fa-regular fa-file-pdf"
-                            style="color: #b45309;"></i></div>
-                    <h3>Detailed Roadmap</h3>
-                    <p>Download your 20-page personalized career PDF report.</p>
-                    <a href="/signup" class="btn-outline"
-                        style="margin-top: 1rem; padding: 0.5rem 1rem; font-size: 0.8rem; display: inline-flex;">Start
-                        for Free →</a>
-                </div>
-            </div>
-            <div class="text-center" style="margin-top: 2.5rem;" data-aos="fade-up">
-                <a href="/signup" class="btn-primary"
-                    style="background: var(--gradient-warm); box-shadow: 0 8px 20px rgba(217,119,6,0.2);">✨ Start free
-                    assessment — no credit card needed</a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Counsellors Section -->
-    <section id="counsellors" class="counsellors-section">
-        <div class="container">
-            <div class="counsellors-grid">
-                <div data-aos="fade-right">
-                    <div class="hero-badge" style="background: #e9e2d4;">👥 For Counsellors</div>
-                    <h2 class="hero-title" style="font-size: clamp(1.8rem, 4vw, 2.4rem);">Grow your practice <br><span
-                            style="color: var(--primary);">seamlessly</span></h2>
-                    <p>All-in-one dashboard: manage bookings, video sessions, earnings and analytics. Reach students
-                        globally.</p>
-                    <ul class="feature-list">
-                        <li><i class="fa-regular fa-circle-check" style="color: var(--secondary);"></i> Global verified
-                            student base</li>
-                        <li><i class="fa-regular fa-circle-check" style="color: var(--secondary);"></i> Automated
-                            calendar & Stripe payouts</li>
-                        <li><i class="fa-regular fa-circle-check" style="color: var(--secondary);"></i> Session
-                            recordings & insights</li>
-                    </ul>
-                    <a href="/signup" class="btn-outline">Apply as Counsellor →</a>
-                </div>
-                <div class="dashboard-card" data-aos="fade-left">
-                    <div class="dashboard-inner">
-                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;"><span
-                                class="font-display" style="font-weight: 700;">Counsellor Hub</span><span
-                                style="background: var(--primary-soft); padding: 0.2rem 0.7rem; border-radius: 2rem; font-size: 0.7rem;">●
-                                Active</span></div>
-                        <div class="session-card">
-                            <div><strong>Alex Rivera</strong>
-                                <div style="font-size: 0.75rem;">Today 2:00 PM</div>
-                            </div><button class="btn-primary"
-                                style="padding: 0.3rem 1rem; font-size: 0.75rem;">Join</button>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
-                            <div style="background: var(--bg-soft); padding: 1rem; border-radius: 1rem;">
-                                <div>Total earnings</div><strong style="font-size: 1.8rem;">$1,240</strong>
-                            </div>
-                            <div style="background: var(--bg-soft); padding: 1rem; border-radius: 1rem;">
-                                <div>Students helped</div><strong style="font-size: 1.8rem;">48</strong>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    
-    <!-- How it works -->
-    <section id="how-it-works" style="padding: 5rem 0;">
-        <div class="container text-center">
-            <div class="hero-badge" style="display: inline-flex;">🔍 The Process</div>
-            <h2 class="hero-title">Three steps to <span class="text-gradient">clarity</span></h2>
-            <div class="steps-grid">
-                <div class="step-card" data-aos="fade-up">
-                    <div class="step-number">01</div>
-                    <div class="bento-icon" style="background: var(--primary-soft);"><i
-                            class="fa-regular fa-pen-to-square"></i></div>
-                    <h3>Take assessment</h3>
-                    <p>20-minute scenario-based evaluation. Zero pressure, pure insight.</p>
-                </div>
-                <div class="step-card" data-aos="fade-up" data-aos-delay="100">
-                    <div class="step-number">02</div>
-                    <div class="bento-icon" style="background: var(--primary-soft);"><i
-                            class="fa-regular fa-chart-line"></i></div>
-                    <h3>AI deep analysis</h3>
-                    <p>Matches 5000+ careers, reveals top 3 paths with confidence score.</p>
-                </div>
-                <div class="step-card" data-aos="fade-up" data-aos-delay="200">
-                    <div class="step-number">03</div>
-                    <div class="bento-icon" style="background: var(--primary-soft);"><i
-                            class="fa-regular fa-calendar-check"></i></div>
-                    <h3>Plan with expert</h3>
-                    <p>Human-led roadmap, actionable milestones & resources.</p>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- ── AI CAREER DISCOVERY ── -->
+<section id="career-discovery" class="pipeline-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Career Discovery</div>
+    <h2 class="section-title">Multi-Phase Intelligence <span class="text-gradient">Pipeline</span></h2>
+    <p class="section-desc">Our AI processes your personality through 4 progressive phases — revealing career paths you never knew existed.</p>
+  </div>
+  <div class="pipeline-grid stagger-parent">
+    <div class="pipeline-card glass stagger-child">
+      <div class="pipe-num font-display">01</div>
+      <div class="pipe-icon pipe-icon-cyan"><i class="fa-solid fa-layer-group"></i></div>
+      <h3>Card Swipe Analysis</h3>
+      <p>50+ psychometric cards analyze your reactions, dwell time, and cognitive friction in real-time.</p>
+    </div>
+    <div class="pipeline-card glass stagger-child">
+      <div class="pipe-num font-display">02</div>
+      <div class="pipe-icon pipe-icon-purple"><i class="fa-solid fa-brain"></i></div>
+      <h3>AI Personality Drill</h3>
+      <p>Conversational RIASEC analysis with Alex, your AI mentor, across 6 cognitive dimensions.</p>
+    </div>
+    <div class="pipeline-card glass stagger-child">
+      <div class="pipe-num font-display">03</div>
+      <div class="pipe-icon pipe-icon-pink"><i class="fa-solid fa-flask-vial"></i></div>
+      <h3>Scenario Testing</h3>
+      <p>Real-world decision scenarios calibrate your risk tolerance, leadership style, and values.</p>
+    </div>
+    <div class="pipeline-card glass stagger-child">
+      <div class="pipe-num font-display">04</div>
+      <div class="pipe-icon pipe-icon-green"><i class="fa-solid fa-chart-line"></i></div>
+      <h3>Career Mapping</h3>
+      <p>AI matches 5000+ careers to your archetype with personalized roadmaps and guidance.</p>
+    </div>
+  </div>
+</div>
+</section>
 
-    <!-- FAQ -->
-    <section class="faq-section">
-        <div class="container">
-            <div class="text-center">
-                <h2 class="hero-title">Frequently asked</h2>
-                <p>Everything you need to know</p>
-            </div>
-            <div class="faq-list" style="max-width: 720px; margin: 2rem auto;">
-                <div class="faq-item"><button class="faq-trigger" onclick="toggleFaq(this)">Is the assessment free?
-                        <span><i class="fa-solid fa-chevron-down"></i></span></button>
-                    <div class="faq-body">
-                        <div class="faq-body-inner">Yes! The core personality & aptitude assessment is 100% free.
-                            Detailed PDF reports and counselling sessions are optional paid upgrades.</div>
-                    </div>
-                </div>
-                <div class="faq-item"><button class="faq-trigger" onclick="toggleFaq(this)">How do counsellors get paid?
-                        <span><i class="fa-solid fa-chevron-down"></i></span></button>
-                    <div class="faq-body">
-                        <div class="faq-body-inner">Weekly Stripe payouts. CareStance takes only 10% platform fee — you
-                            keep 90%.</div>
-                    </div>
-                </div>
-                <div class="faq-item"><button class="faq-trigger" onclick="toggleFaq(this)">Can working professionals
-                        use this? <span><i class="fa-solid fa-chevron-down"></i></span></button>
-                    <div class="faq-body">
-                        <div class="faq-body-inner">Absolutely! Career pivot module for professionals seeking industry
-                            shifts or growth.</div>
-                    </div>
-                </div>
-                <div class="faq-item"><button class="faq-trigger" onclick="toggleFaq(this)">How accurate is AI? <span><i
-                                class="fa-solid fa-chevron-down"></i></span></button>
-                    <div class="faq-body">
-                        <div class="faq-body-inner">98% validation rate across tracked students over 12 months.
-                            Continuously learning.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+<!-- ── PERSONALITY ARCHETYPES ── -->
+<section id="archetypes" class="archetype-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-dna"></i> Personality Archetypes</div>
+    <h2 class="section-title">Which Archetype <span class="text-gradient">Are You?</span></h2>
+    <p class="section-desc">Our AI identifies your dominant personality archetype from 6 career-aligned profiles.</p>
+  </div>
+  <div class="arch-grid stagger-parent">
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(0,212,255,0.1);--card-border:rgba(0,212,255,0.3)">
+      <div class="arch-icon" style="background:rgba(0,212,255,0.1);color:#00d4ff"><i class="fa-solid fa-crosshairs"></i></div>
+      <h3>Focused Specialist</h3>
+      <p>Deep expertise in a single domain. You thrive on mastery and precision.</p>
+      <span class="arch-tag" style="background:rgba(0,212,255,0.1);color:#00d4ff">Precision · Mastery</span>
+    </div>
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(123,97,255,0.1);--card-border:rgba(123,97,255,0.3)">
+      <div class="arch-icon" style="background:rgba(123,97,255,0.1);color:#7b61ff"><i class="fa-solid fa-magnifying-glass"></i></div>
+      <h3>Quiet Explorer</h3>
+      <p>Curious and introspective. You discover through observation and analysis.</p>
+      <span class="arch-tag" style="background:rgba(123,97,255,0.1);color:#7b61ff">Curiosity · Depth</span>
+    </div>
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(0,255,136,0.08);--card-border:rgba(0,255,136,0.3)">
+      <div class="arch-icon" style="background:rgba(0,255,136,0.1);color:#00ff88"><i class="fa-solid fa-chess"></i></div>
+      <h3>Strategic Builder</h3>
+      <p>Systems thinker who builds frameworks. You see patterns others miss.</p>
+      <span class="arch-tag" style="background:rgba(0,255,136,0.1);color:#00ff88">Strategy · Systems</span>
+    </div>
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(255,107,157,0.08);--card-border:rgba(255,107,157,0.3)">
+      <div class="arch-icon" style="background:rgba(255,107,157,0.1);color:#ff6b9d"><i class="fa-solid fa-shuffle"></i></div>
+      <h3>Adaptive Explorer</h3>
+      <p>Versatile and agile. You navigate uncertainty with confidence.</p>
+      <span class="arch-tag" style="background:rgba(255,107,157,0.1);color:#ff6b9d">Agility · Range</span>
+    </div>
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(255,182,72,0.08);--card-border:rgba(255,182,72,0.3)">
+      <div class="arch-icon" style="background:rgba(255,182,72,0.1);color:#ffb648"><i class="fa-solid fa-crown"></i></div>
+      <h3>Visionary Leader</h3>
+      <p>Born to lead and inspire. You transform ideas into movements.</p>
+      <span class="arch-tag" style="background:rgba(255,182,72,0.1);color:#ffb648">Vision · Impact</span>
+    </div>
+    <div class="arch-card glass stagger-child" style="--card-glow:rgba(0,212,255,0.08);--card-border:rgba(0,212,255,0.3)">
+      <div class="arch-icon" style="background:rgba(0,200,200,0.1);color:#00c8c8"><i class="fa-solid fa-arrows-spin"></i></div>
+      <h3>Dynamic Generalist</h3>
+      <p>Jack of all trades, master of integration. You connect diverse domains.</p>
+      <span class="arch-tag" style="background:rgba(0,200,200,0.1);color:#00c8c8">Breadth · Synthesis</span>
+    </div>
+  </div>
+</div>
+</section>
 
-    <!-- CTA -->
-    <section style="padding: 3rem 0 5rem;">
-        <div class="container">
-            <div class="cta-card" data-aos="zoom-in">
-                <h2 style="font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800;">Start your journey today</h2>
-                <p style="margin: 1rem auto; max-width: 480px;">Join 50k+ students and find your true calling — no risk,
-                    just progress.</p>
-                <a href="/signup" class="btn-primary"
-                    style="background: white; color: var(--primary); box-shadow: none;">Get started free →</a>
-            </div>
-        </div>
-    </section>
+<!-- ── CAREER SIMULATION ── -->
+<section id="simulations" class="sim-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-gamepad"></i> Career Simulations</div>
+    <h2 class="section-title">Experience Careers <span class="text-gradient">Before Choosing</span></h2>
+    <p class="section-desc">Immersive AI simulations let you test-drive careers with real-world scenarios and pressure testing.</p>
+  </div>
+  <div class="sim-grid stagger-parent">
+    <div class="sim-card glass stagger-child">
+      <div class="sim-header"><div class="sim-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span style="color:var(--primary)">ml_engineer_sim.py</span></div>
+      <div class="sim-body">
+        <div><span class="cmd">$</span> Loading ML Engineer Simulation...</div>
+        <div><span class="out">→</span> Dataset: 2.4M customer records</div>
+        <div><span class="out">→</span> Task: Build churn prediction model</div>
+        <div><span class="cmd">$</span> model.fit(X_train, y_train)</div>
+        <div><span class="out">→</span> Accuracy: <span style="color:#00ff88">94.7%</span></div>
+        <div class="sim-meter"><div class="sim-meter-label"><span>Stress Level</span><span style="color:#00ff88">Low</span></div><div class="sim-meter-bar"><div class="sim-meter-fill" style="width:35%;background:linear-gradient(90deg,#00ff88,#00d4ff)"></div></div></div>
+      </div>
+    </div>
+    <div class="sim-card glass stagger-child">
+      <div class="sim-header"><div class="sim-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span style="color:var(--accent)">diplomat_scenario.exe</span></div>
+      <div class="sim-body">
+        <div><span class="cmd">$</span> Loading Diplomat Simulation...</div>
+        <div><span class="out">→</span> Crisis: Trade dispute escalation</div>
+        <div><span class="out">→</span> Stakeholders: 4 nations</div>
+        <div><span class="cmd">$</span> Initiating negotiation protocol...</div>
+        <div><span class="warn">!</span> High-pressure decision required</div>
+        <div class="sim-meter"><div class="sim-meter-label"><span>Stress Level</span><span style="color:var(--accent2)">High</span></div><div class="sim-meter-bar"><div class="sim-meter-fill" style="width:78%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div></div></div>
+      </div>
+    </div>
+    <div class="sim-card glass stagger-child">
+      <div class="sim-header"><div class="sim-dots"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div><span style="color:var(--accent2)">navy_officer.sh</span></div>
+      <div class="sim-body">
+        <div><span class="cmd">$</span> Loading Navy Officer Simulation...</div>
+        <div><span class="out">→</span> Mission: Deep-sea patrol</div>
+        <div><span class="out">→</span> Crew: 120 personnel</div>
+        <div><span class="cmd">$</span> Emergency protocol activated</div>
+        <div><span class="warn">!</span> Command decision in 30 seconds</div>
+        <div class="sim-meter"><div class="sim-meter-label"><span>Stress Level</span><span style="color:#ff5f57">Critical</span></div><div class="sim-meter-bar"><div class="sim-meter-fill" style="width:92%;background:linear-gradient(90deg,var(--accent2),#ff5f57)"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div>
-                    <div class="footer-logo">
-                        <picture>
-                            <source srcset="/static/images/image.webp" type="image/webp"><img
-                                src="/static/images/image.png" height="32" alt="CareStance Logo" loading="lazy">
-                        </picture><span class="footer-logo-text">CareStance</span>
-                    </div>
-                    <p style="margin: 1rem 0;">AI + human career clarity platform.</p>
-                    <div class="social-links">
-                        <a href="https://www.instagram.com/carestance.in/" target="_blank" rel="noopener"
-                            class="social-btn" title="Follow us on Instagram"><i class="fa-brands fa-instagram"></i></a>
-                        <a href="https://www.linkedin.com/company/carestance" target="_blank" rel="noopener"
-                            class="social-btn" title="Follow us on LinkedIn"><i
-                                class="fa-brands fa-linkedin-in"></i></a>
-                    </div>
-                </div>
-                <div>
-                    <div class="footer-col-title">Platform</div>
-                    <ul style="list-style: none;">
-                        <li><a href="#students" style="color:#ccc; text-decoration: none;">Students</a></li>
-                        <li><a href="#counsellors" style="color:#ccc; text-decoration: none;">Counsellors</a></li>
-                        <li><a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener" style="color:#ccc; text-decoration: none;">Internships</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <div class="footer-col-title">Company</div>
-                    <ul style="list-style: none;">
-                        <li><a href="/founders" style="color:#ccc; text-decoration: none;">Founders</a></li>
-                        <li><a href="/articles" style="color:#ccc; text-decoration: none;">Articles</a></li>
-                        <li><a href="mailto:contact@carestance.me"
-                                style="color:#ccc; text-decoration: none;">Contact</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <div class="footer-col-title">Legal</div>
-                    <ul style="list-style: none;">
-                        <li><a href="/privacy" style="color:#ccc; text-decoration: none;">Privacy</a></li>
-                        <li><a href="/terms" style="color:#ccc; text-decoration: none;">Terms</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom"
-                style="border-top: 1px solid #333; margin-top: 2rem; padding-top: 1.5rem; text-align: center;">© 2026
-                CareStance — Empower your career.</div>
-        </div>
-    </footer>
+<!-- ── AI CHATBOT ── -->
+<section class="chat-section">
+<div class="container">
+  <div class="chat-layout">
+    <div class="reveal">
+      <div class="section-tag"><i class="fa-solid fa-robot"></i> AI Career Chatbot</div>
+      <h2 class="section-title">Your Personal <span class="text-gradient">AI Mentor</span></h2>
+      <p class="section-desc">Get instant, personalized career guidance powered by advanced AI. Ask anything about careers, streams, colleges, and skills.</p>
+      <div style="margin-top:2rem">
+        <a href="/signup" class="btn-primary"><i class="fa-solid fa-message"></i> Chat with AI</a>
+      </div>
+    </div>
+    <div class="chat-window glass reveal">
+      <div class="chat-titlebar"><div class="chat-avatar"><i class="fa-solid fa-robot"></i></div><div><div style="font-weight:600;font-size:.9rem">CareStance AI</div><div style="font-size:.7rem;color:#00ff88">● Online</div></div></div>
+      <div class="chat-msgs">
+        <div class="chat-msg msg-ai">Hi! I'm your AI career mentor. I've analyzed your archetype — you're a Strategic Builder. What would you like to explore?</div>
+        <div class="chat-msg msg-user">What careers fit my personality?</div>
+        <div class="chat-msg msg-ai">Great question! Based on your profile, I'd recommend: Product Management, Systems Architecture, or Management Consulting. Want me to create a roadmap?</div>
+        <div class="chat-msg msg-user">Yes, show me the roadmap!</div>
+      </div>
+      <div class="chat-input-bar"><input type="text" placeholder="Ask about your career..." disabled><button disabled><i class="fa-solid fa-paper-plane" style="font-size:.75rem"></i></button></div>
+    </div>
+  </div>
+</div>
+</section>
 
-    <script>
-        // Load AOS after page is interactive
-        window.addEventListener('load', function () {
-            var s = document.createElement('script');
-            s.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js';
-            s.onload = function () { AOS.init({ once: true, duration: 700 }); };
-            document.head.appendChild(s);
-        });
-        const nav = document.getElementById('main-nav');
-        window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 30); });
-        const toggleBtn = document.getElementById('menu-toggle'), mobileMenu = document.getElementById('mobile-menu'), icon = document.getElementById('menu-icon');
-        toggleBtn.addEventListener('click', () => { const open = mobileMenu.classList.toggle('open'); icon.className = open ? 'fa-solid fa-xmark' : 'fa-solid fa-bars'; });
-        window.closeMobile = () => { mobileMenu.classList.remove('open'); if (icon) icon.className = 'fa-solid fa-bars'; };
-        window.toggleFaq = (btn) => {
-            const item = btn.closest('.faq-item');
-            const body = item.querySelector('.faq-body');
-            const isOpen = item.classList.contains('open');
-            document.querySelectorAll('.faq-item').forEach(el => { el.classList.remove('open'); el.querySelector('.faq-body')?.classList.remove('open'); });
-            if (!isOpen) { item.classList.add('open'); body.classList.add('open'); }
-        };
-    </script>
+<!-- ── COUNSELLOR BOOKING ── -->
+<section class="counsel-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-video"></i> Live Counsellors</div>
+    <h2 class="section-title">Expert Guidance, <span class="text-gradient">One Click Away</span></h2>
+    <p class="section-desc">Book 1-on-1 video sessions with verified career counsellors. Real humans, real guidance.</p>
+  </div>
+  <div class="counsel-grid stagger-parent">
+    <div class="counsel-card glass stagger-child">
+      <div class="counsel-avatar" style="background:linear-gradient(135deg,#00d4ff,#7b61ff)"><i class="fa-solid fa-user" style="color:#fff"></i></div>
+      <h4>Dr. Priya Sharma</h4>
+      <div class="counsel-spec">Career Psychology • 12yr exp</div>
+      <div class="counsel-rating">⭐ 4.9 · 240+ sessions</div>
+    </div>
+    <div class="counsel-card glass stagger-child">
+      <div class="counsel-avatar" style="background:linear-gradient(135deg,#7b61ff,#ff6b9d)"><i class="fa-solid fa-user" style="color:#fff"></i></div>
+      <h4>Alex Rivera</h4>
+      <div class="counsel-spec">STEM Guidance • 8yr exp</div>
+      <div class="counsel-rating">⭐ 4.8 · 180+ sessions</div>
+    </div>
+    <div class="counsel-card glass stagger-child">
+      <div class="counsel-avatar" style="background:linear-gradient(135deg,#00ff88,#00d4ff)"><i class="fa-solid fa-user" style="color:#fff"></i></div>
+      <h4>Sarah Chen</h4>
+      <div class="counsel-spec">Abroad Studies • 10yr exp</div>
+      <div class="counsel-rating">⭐ 4.9 · 310+ sessions</div>
+    </div>
+  </div>
+  <div class="text-center" style="margin-top:2.5rem"><a href="/signup" class="btn-secondary"><i class="fa-solid fa-calendar-check"></i> Browse All Counsellors</a></div>
+</div>
+</section>
 
-    <!-- AdSense: deferred to bottom -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6546135271987768"
-        crossorigin="anonymous"></script>
+<!-- ── CAREER ROADMAPS ── -->
+<section class="roadmap-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-route"></i> Career Roadmaps</div>
+    <h2 class="section-title">AI-Generated <span class="text-gradient">Action Plans</span></h2>
+    <p class="section-desc">Personalized step-by-step roadmaps with milestones, skills, and resources for your chosen career.</p>
+  </div>
+  <div class="roadmap-timeline stagger-parent">
+    <div class="roadmap-step stagger-child"><div class="step-card glass"><h4>🎯 Discover Your Archetype</h4><p>Complete the AI assessment to unlock your personality profile and top career matches.</p></div></div>
+    <div class="roadmap-step stagger-child"><div class="step-card glass"><h4>📚 Build Core Skills</h4><p>AI-curated learning path with courses, certifications, and hands-on projects.</p></div></div>
+    <div class="roadmap-step stagger-child"><div class="step-card glass"><h4>🚀 Gain Experience</h4><p>Internship recommendations, portfolio building, and real-world simulations.</p></div></div>
+    <div class="roadmap-step stagger-child"><div class="step-card glass"><h4>🏆 Launch Your Career</h4><p>College recommendations, application guidance, and ongoing AI mentorship.</p></div></div>
+  </div>
+</div>
+</section>
+
+<!-- ── TRUST & SECURITY ── -->
+<section class="trust-section">
+<div class="container">
+  <div class="text-center reveal">
+    <div class="section-tag"><i class="fa-solid fa-shield-halved"></i> Trust & Security</div>
+    <h2 class="section-title">Built for <span class="text-gradient">Student Safety</span></h2>
+  </div>
+  <div class="trust-grid stagger-parent">
+    <div class="trust-card glass stagger-child">
+      <div class="trust-icon" style="background:rgba(0,212,255,0.1);color:#00d4ff"><i class="fa-solid fa-lock"></i></div>
+      <h3>Data Protection</h3>
+      <p>End-to-end encryption. Your assessment data is private and secure.</p>
+    </div>
+    <div class="trust-card glass stagger-child">
+      <div class="trust-icon" style="background:rgba(123,97,255,0.1);color:#7b61ff"><i class="fa-solid fa-brain"></i></div>
+      <h3>AI Reliability</h3>
+      <p>98% validation rate across 50K+ tracked student assessments.</p>
+    </div>
+    <div class="trust-card glass stagger-child">
+      <div class="trust-icon" style="background:rgba(0,255,136,0.1);color:#00ff88"><i class="fa-solid fa-user-shield"></i></div>
+      <h3>Safe Environment</h3>
+      <p>Content-moderated platform with verified counsellors and support.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ── FINAL CTA ── -->
+<section class="final-cta">
+<div class="container reveal">
+  <h2 class="font-display">Your Future Is Waiting<br><span class="text-gradient">to Be Discovered</span></h2>
+  <p>Start your AI-powered career journey today. No credit card needed.</p>
+  <a href="/signup" class="btn-primary" style="font-size:1.05rem;padding:1rem 2.5rem"><i class="fa-solid fa-rocket"></i> Begin Assessment</a>
+</div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="f-footer">
+<div class="container">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-logo"><img src="/static/images/image.webp" alt="CareStance" height="32"><span class="footer-logo-text">CareStance</span></div>
+      <p style="font-size:.88rem;color:var(--text-muted);margin-bottom:1.25rem">AI-powered career intelligence platform for students.</p>
+      <div>
+        <a href="https://www.instagram.com/carestance.in/" target="_blank" rel="noopener" class="social-btn-f"><i class="fab fa-instagram"></i></a>
+        <a href="https://www.linkedin.com/company/carestance" target="_blank" rel="noopener" class="social-btn-f"><i class="fab fa-linkedin-in"></i></a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Platform</div>
+      <ul>
+        <li><a href="#career-discovery">AI Discovery</a></li>
+        <li><a href="#archetypes">Archetypes</a></li>
+        <li><a href="#simulations">Simulations</a></li>
+        <li><a href="https://forms.gle/yEpw1tBG97sSnNaF7" target="_blank" rel="noopener">Internships</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Company</div>
+      <ul>
+        <li><a href="/founders">Founders</a></li>
+        <li><a href="/articles">Articles</a></li>
+        <li><a href="mailto:contact@carestance.me">Contact</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal</div>
+      <ul>
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-divider">
+    <p class="footer-copy">© 2026 CareStance AI. All rights reserved.</p>
+    <span style="font-size:.82rem;color:var(--text-dim)"><i class="fas fa-envelope" style="margin-right:.4rem;color:var(--primary)"></i>contact@carestance.me</span>
+  </div>
+</div>
+</footer>
+
+<!-- CDN Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="/static/js/landing-futuristic.js"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6546135271987768" crossorigin="anonymous"></script>
 </body>
-
 </html>
