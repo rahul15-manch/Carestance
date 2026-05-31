@@ -1,19 +1,44 @@
 import json
 import os
 import re
+from functools import lru_cache
 from typing import List, Dict, Optional
-import google.generativeai as genai
-from groq import AsyncGroq
+import httpx
 
 # Get API Keys
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-XAI_API_KEY = os.getenv("XAI_API_KEY") # Placeholder for Grok
+XAI_API_KEY = os.getenv("XAI_API_KEY")  # Placeholder for Grok
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+@lru_cache(maxsize=4)
+def get_genai_module():
+    import google.generativeai as genai
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+    return genai
 
-groq_client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+@lru_cache(maxsize=4)
+def get_gemini_model(model_name: str):
+    genai = get_genai_module()
+    return genai.GenerativeModel(model_name)
+
+@lru_cache(maxsize=1)
+def get_groq_client():
+    if not GROQ_API_KEY:
+        return None
+    from groq import AsyncGroq
+    return AsyncGroq(api_key=GROQ_API_KEY)
+_httpx_client: Optional[httpx.AsyncClient] = None
+
+@lru_cache(maxsize=4)
+def get_gemini_model(model_name: str):
+    return genai.GenerativeModel(model_name)
+
+def get_shared_async_client() -> httpx.AsyncClient:
+    global _httpx_client
+    if _httpx_client is None:
+        _httpx_client = httpx.AsyncClient(timeout=30.0)
+    return _httpx_client
 
 async def generate_ai_content(prompt: str, use_grok: bool = False) -> str:
     """
@@ -24,36 +49,22 @@ async def generate_ai_content(prompt: str, use_grok: bool = False) -> str:
     if use_grok and XAI_API_KEY:
         try:
             # Assuming OpenAI compatibility for Grok
-            import httpx
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://api.x.ai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {XAI_API_KEY}"},
-                    json={
-                        "model": "grok-beta",
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.7
-                    },
-                    timeout=30.0
-                )
-                data = response.json()
-                return data['choices'][0]['message']['content']
-        except Exception as e:
-            print(f"Grok Error (Falling back): {e}")
-
-    # 2. Try Gemini (Primary)
-    if GEMINI_API_KEY:
+            client = get_shared_async_client()
+            response = await client.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {XAI_API_KEY}"},
+                json={
+                    "model": "grok-beta",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.7
+                },
+            )
+            data = response.json()
+            return data['choices'][0]['message']['content']
+    gclient = get_groq_client()
+    if gclient:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash-latest")
-            response = await model.generate_content_async(prompt)
-            return response.text
-        except Exception as e:
-            print(f"Gemini Error (Falling back to Groq): {e}")
-
-    # 3. Try Groq (LPU)
-    if groq_client:
-        try:
-            chat_completion = await groq_client.chat.completions.create(
+            chat_completion = await gclient.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.3-70b-versatile",
             )

@@ -6,12 +6,11 @@ import asyncio
 import os
 import shutil
 import warnings
+from functools import lru_cache
 from types import SimpleNamespace
 from . import email_utils
 from .appwrite_client import databases, account, storage, DB_ID, COLLECTIONS
 from .appwrite_helper import get_user_by_id, get_user_by_email, update_assessment_simulation
-import google.generativeai as genai
-from groq import Groq, AsyncGroq
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
@@ -42,11 +41,27 @@ from .services import assessment_engine
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+RUN_MIGRATIONS_ON_STARTUP = os.getenv("RUN_MIGRATIONS_ON_STARTUP", "false").strip().lower() in ("1", "true", "yes")
+ENABLE_CLEANUP_TASK = os.getenv("ENABLE_CLEANUP_TASK", "false").strip().lower() in ("1", "true", "yes")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+@lru_cache(maxsize=4)
+def get_genai_module():
+    import google.generativeai as genai
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+    return genai
 
-groq_client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+@lru_cache(maxsize=4)
+def get_gemini_model(model_name: str):
+    genai = get_genai_module()
+    return genai.GenerativeModel(model_name)
+
+@lru_cache(maxsize=1)
+def get_groq_client():
+    if not GROQ_API_KEY:
+        return None
+    from groq import AsyncGroq
+    return AsyncGroq(api_key=GROQ_API_KEY)
 
 # OAuth Setup
 oauth = OAuth()
@@ -85,17 +100,19 @@ async def generate_content_with_fallback(prompt):
     print("AI CACHE MISS")
     try:
         # Using 1.5 Flash latest for stability
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = get_gemini_model("gemini-1.5-flash-latest")
         response = await model.generate_content_async(prompt)
         text = response.text
     except Exception as e:
         print(f"DEBUG: Gemini API Error Type: {type(e)}")
         print(f"Gemini Error (Switching to Groq): {e}")
-        if not groq_client: raise e
-        
+        gclient = get_groq_client()
+        if not gclient:
+            raise e
+
         try:
             # Fallback to high-reasoning Llama model
-            chat_completion = await groq_client.chat.completions.create(
+            chat_completion = await gclient.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.3-70b-versatile",
             )
@@ -298,24 +315,30 @@ app = FastAPI(title="CareStance")
 
 @app.on_event("startup")
 async def startup_event():
-    """Run migrations on startup asynchronously to not block the main process."""
+    """Run migrations on startup only when explicitly enabled."""
     try:
-        models.Base.metadata.create_all(bind=engine)
-        run_migrations()
+        if RUN_MIGRATIONS_ON_STARTUP:
+            models.Base.metadata.create_all(bind=engine)
+            await asyncio.to_thread(run_migrations)
+        else:
+            print("Startup: Skipping DB migration and schema creation. Set RUN_MIGRATIONS_ON_STARTUP=true to enable.")
     except Exception as e:
         print(f"Startup database error: {e}")
-    
-    # Start background task to auto-delete old completed video sessions (>2 days)
-    asyncio.create_task(_cleanup_old_sessions_loop())
 
-async def _cleanup_old_sessions_loop():
+    if ENABLE_CLEANUP_TASK:
+        app.state.cleanup_stop = asyncio.Event()
+        app.state.cleanup_task = asyncio.create_task(_cleanup_old_sessions_loop(app.state.cleanup_stop))
+    else:
+        print("Startup: Auto-cleanup task disabled. Set ENABLE_CLEANUP_TASK=true to enable.")
+
+async def _cleanup_old_sessions_loop(stop_event: asyncio.Event):
     """Periodically delete completed/expired video session appointments older than 2 days."""
-    while True:
+    while not stop_event.is_set():
         try:
             db = SessionLocal()
             cutoff = datetime.datetime.now() - datetime.timedelta(days=2)
             old_appointments = db.query(models.Appointment).filter(
-                models.Appointment.status.in_(["completed", "scheduled"]),
+                models.Appointment.status.in_("completed", "scheduled"),
                 models.Appointment.appointment_time < cutoff
             ).all()
             deleted_count = 0
@@ -334,8 +357,19 @@ async def _cleanup_old_sessions_loop():
             db.close()
         except Exception as e:
             print(f"AUTO-CLEANUP ERROR: {e}")
-        # Run every 6 hours
-        await asyncio.sleep(6 * 60 * 60)
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=6 * 60 * 60)
+        except asyncio.TimeoutError:
+            continue
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_event = getattr(app.state, 'cleanup_stop', None)
+    cleanup_task = getattr(app.state, 'cleanup_task', None)
+    if stop_event:
+        stop_event.set()
+    if cleanup_task:
+        await cleanup_task
 
 # ─── Include Split Payments Router (Razorpay Route) ───────────────────────────
 from .routes.payments import router as payments_router
@@ -3158,21 +3192,23 @@ Present the scenario story first, then clearly list Option A and Option B on sep
     try:
         if GEMINI_API_KEY:
             try:
-                model_ai = genai.GenerativeModel("gemini-2.0-flash")
+                model_ai = get_gemini_model("gemini-2.0-flash")
                 response = await model_ai.generate_content_async(prompt)
                 ai_text = response.text
             except Exception:
-                model_ai = genai.GenerativeModel("gemini-1.5-flash")
+                model_ai = get_gemini_model("gemini-1.5-flash")
                 response = await model_ai.generate_content_async(prompt)
                 ai_text = response.text
-        elif groq_client:
-            completion = await groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile",
-            )
-            ai_text = completion.choices[0].message.content
         else:
-            ai_text = f"[Demo Mode] {scenario_text}"
+            gclient = get_groq_client()
+            if gclient:
+                completion = await gclient.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model="llama-3.3-70b-versatile",
+                )
+                ai_text = completion.choices[0].message.content
+            else:
+                ai_text = f"[Demo Mode] {scenario_text}"
     except Exception as e:
         ai_text = f"I'm having a moment of reflection. ({str(e)}) Please try again."
 
@@ -3263,8 +3299,9 @@ Use this profile to tailor your questions. For example, if they are a "Focused S
 
     # Use Groq API directly
     try:
-        if groq_client:
-            completion = await groq_client.chat.completions.create(
+        gclient = get_groq_client()
+        if gclient:
+            completion = await gclient.chat.completions.create(
                 messages=messages,
                 model="llama-3.3-70b-versatile",
                 temperature=0.8,
@@ -3383,8 +3420,9 @@ async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest,
     try:
         import json
         raw_text = ""
-        if groq_client:
-            completion = await groq_client.chat.completions.create(
+        gclient = get_groq_client()
+        if gclient:
+            completion = await gclient.chat.completions.create(
                 messages=[{"role": "system", "content": "Return ONLY valid JSON."}, {"role": "user", "content": analysis_prompt}],
                 model="llama-3.3-70b-versatile",
                 temperature=0.4,
@@ -4127,21 +4165,23 @@ Welcome the student warmly (1 sentence), then present this first question:
     try:
         if GEMINI_API_KEY:
             try:
-                model_ai = genai.GenerativeModel("gemini-2.0-flash")
+                model_ai = get_gemini_model("gemini-2.0-flash")
                 response = await model_ai.generate_content_async(prompt)
                 ai_text = response.text
             except Exception:
-                model_ai = genai.GenerativeModel("gemini-1.5-flash")
+                model_ai = get_gemini_model("gemini-1.5-flash")
                 response = await model_ai.generate_content_async(prompt)
                 ai_text = response.text
-        elif groq_client:
-            completion = await groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile",
-            )
-            ai_text = completion.choices[0].message.content
         else:
-            ai_text = f"[Demo Mode] {current_q_text}"
+            gclient = get_groq_client()
+            if gclient:
+                completion = await gclient.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model="llama-3.3-70b-versatile",
+                )
+                ai_text = completion.choices[0].message.content
+            else:
+                ai_text = f"[Demo Mode] {current_q_text}"
     except Exception as e:
         ai_text = f"I seem to be in deep thought right now. ({str(e)}) Please try again."
 
@@ -4327,7 +4367,7 @@ Response (Concise, Markdown formatted):
             if GEMINI_API_KEY:
                 try:
                     print(f"AI Chat for User {user_id}: Trying Gemini...")
-                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    model = get_gemini_model("gemini-1.5-flash")
                     response = await model.generate_content_async(prompt, stream=True)
                     async for chunk in response:
                         if chunk.text:
@@ -4337,9 +4377,10 @@ Response (Concise, Markdown formatted):
                 except Exception as gemini_e:
                     print(f"Chatbot Gemini Error: {gemini_e}. Trying Groq fallback.")
                     # FALLBACK TO GROQ
-                    if groq_client:
+                    gclient = get_groq_client()
+                    if gclient:
                         try:
-                            stream = await groq_client.chat.completions.create(
+                            stream = await gclient.chat.completions.create(
                                 messages=[{"role": "user", "content": prompt}],
                                 model="llama-3.3-70b-versatile",
                                 stream=True,
@@ -4803,8 +4844,9 @@ async def roadmap_step_chat_message(path_id: int, step_index: int, request: Requ
         
     ai_text = ""
     try:
-        if groq_client:
-            completion = await groq_client.chat.completions.create(
+        gclient = get_groq_client()
+        if gclient:
+            completion = await gclient.chat.completions.create(
                 messages=messages,
                 model="llama-3.3-70b-versatile",
                 temperature=0.7,
@@ -5625,4 +5667,10 @@ async def debug_migrate(request: Request, db: Session = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    dev_reload = os.getenv("DEV_RELOAD", "false").strip().lower() in ("1", "true", "yes")
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=dev_reload,
+    )

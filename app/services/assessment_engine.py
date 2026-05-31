@@ -13,6 +13,7 @@ DATA_DIR = os.path.join(BASE_DIR, "assessment_data")
 
 # --- IN-MEMORY CACHE FOR PERFORMANCE OPTIMIZATION ---
 _JSON_CACHE = {}
+_RIASEC_KEYWORDS_CACHE = None
 
 def get_cached_json(path: str):
     if path not in _JSON_CACHE:
@@ -705,9 +706,15 @@ def extract_riasec_vector(transcript: List[Dict]) -> Dict:
         "C": ["organize", "spreadsheet", "schedule", "plan", "list"]
     }
 
-    # Dynamic database-backed keywords load
-    db_path = os.path.join(DATA_DIR, "onet_database.db")
-    if os.path.exists(db_path):
+    def load_riasec_keyword_overrides() -> Dict[str, List[str]]:
+        global _RIASEC_KEYWORDS_CACHE
+        if _RIASEC_KEYWORDS_CACHE is not None:
+            return _RIASEC_KEYWORDS_CACHE
+
+        db_path = os.path.join(DATA_DIR, "onet_database.db")
+        if not os.path.exists(db_path):
+            return {}
+
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -719,11 +726,15 @@ def extract_riasec_vector(transcript: List[Dict]) -> Dict:
                 key = name_to_key.get(el_name)
                 if key and isinstance(kw, str):
                     db_kws.setdefault(key, []).append(kw.lower())
-            if db_kws:
-                keywords = db_kws
             conn.close()
+            _RIASEC_KEYWORDS_CACHE = db_kws
+            return db_kws
         except Exception:
-            pass
+            return {}
+
+    db_kws = load_riasec_keyword_overrides()
+    if db_kws:
+        keywords = db_kws
 
     transcript_text = " ".join([m["content"].lower() for m in transcript if m["role"] == "user"])
     
