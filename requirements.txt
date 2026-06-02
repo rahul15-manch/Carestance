@@ -1,13 +1,13 @@
 fastapi
 jinja2
 sqlalchemy
+asyncpg
 bcrypt
 python-multipart
 python-jose[cryptography]
 google-generativeai
 python-dotenv
 groq
-psycopg2-binary
 authlib
 itsdangerous
 httpx
@@ -15,3 +15,4 @@ mangum
 razorpay
 redis
 appwrite==18.0.0
+aiosqlite

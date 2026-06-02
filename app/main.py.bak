@@ -21,9 +21,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse,
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlalchemy import select, and_, or_, func
-from .database import AsyncSessionLocal, engine, get_db, Base
+from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import select, and_, or_
+from .database import AsyncSessionLocal, SessionLocal, engine, get_db, get_async_db
 import re
 from . import models
 from .email_utils import (
@@ -515,7 +515,7 @@ def get_password_hash(password):
     bcrypt = _get_bcrypt()
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
+def get_current_user(request: Request, db: Session = Depends(get_db)):
     user_id = request.cookies.get("user_id")
     if not user_id: return None
     try:
@@ -609,7 +609,7 @@ async def sitemap_xml():
 async def create_adsense_test_user(db: AsyncSession = Depends(get_db)):
     # Create a user for AdSense crawler to use
     email = "adsense-tester@carestance.me"
-    existing = (await db.execute(select(models.User).where(models.User.email == email))).scalars().first()
+    existing = db.query(models.User).filter(models.User.email == email).first()
     if existing:
         return {"message": "User already exists", "email": email, "password": "CareStance2026!"}
     
@@ -794,7 +794,7 @@ async def forgot_password(
     email: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = (await db.execute(select(models.User).where(models.User.email == email))).scalars().first()
+    user = db.query(models.User).filter(models.User.email == email).first()
     if user:
         token = serializer.dumps(email, salt="password-reset-salt")
         reset_link = f"{request.base_url}reset-password/{token}"
@@ -865,7 +865,7 @@ async def reset_password(
             "error": "Passwords do not match"
         })
     
-    user = (await db.execute(select(models.User).where(models.User.email == email))).scalars().first()
+    user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -921,14 +921,14 @@ async def auth_callback(request: Request, db: AsyncSession = Depends(get_db)):
         full_name = user_info.get('name', 'Google User')
         
         # Check if user exists, otherwise create with no role (will be selected next)
-        user = (await db.execute(select(models.User).where(models.User.email == email))).scalars().first()
+        user = db.query(models.User).filter(models.User.email == email).first()
         is_new_user = False
         if not user:
             hashed_pw = get_password_hash(os.urandom(24).hex())
             user = models.User(email=email, hashed_password=hashed_pw, full_name=full_name, contact_number=None, role=None)
             db.add(user)
             await db.commit()
-            await db.refresh(user)
+            db.refresh(user)
             is_new_user = True
         
         # Pre-populate suspension cache
@@ -988,7 +988,7 @@ async def select_role(
         
         # Create counsellor profile if needed
         if role == "counsellor":
-            existing_profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == user.id))).scalars().first()
+            existing_profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
             if not existing_profile:
                 profile = models.CounsellorProfile(user_id=user.id)
                 db.add(profile)
@@ -1020,7 +1020,7 @@ async def assessment_start(
     
     try:
         # Check/Create Result
-        result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+        result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
         
         # Grade 12 starts at current_phase=0 (Intake Chat), Grade 10 starts at current_phase=1 (Swipe)
         start_phase = 0 if student_type == "12th" else 1
@@ -1089,7 +1089,7 @@ async def assessment_reset(request: Request, db: AsyncSession = Depends(get_db))
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
         start_phase = 0 if result.student_type == "12th" else 1
         result.current_phase = start_phase
@@ -1130,7 +1130,7 @@ async def assessment_page(request: Request, db: AsyncSession = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
         
@@ -1144,7 +1144,7 @@ async def assessment_api_state(request: Request, db: AsyncSession = Depends(get_
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return {"status": "no_assessment"}
         
@@ -1165,7 +1165,7 @@ async def assessment_api_intake(request: Request, payload: dict, db: AsyncSessio
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result or result.student_type != "12th":
         raise HTTPException(status_code=404, detail="Assessment not found or invalid type")
         
@@ -1226,7 +1226,7 @@ async def assessment_api_questions(request: Request, db: AsyncSession = Depends(
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1259,7 +1259,7 @@ async def assessment_api_swipe(request: Request, payload: dict, db: AsyncSession
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1282,7 +1282,7 @@ async def assessment_api_chat(request: Request, payload: dict, db: AsyncSession 
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1333,7 +1333,7 @@ async def assessment_api_proxy(request: Request, payload: dict, db: AsyncSession
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1350,7 +1350,7 @@ async def assessment_api_scenarios(request: Request, payload: dict, db: AsyncSes
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1367,7 +1367,7 @@ async def assessment_api_compile(request: Request, db: AsyncSession = Depends(ge
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment not found")
         
@@ -1521,7 +1521,7 @@ async def assessment_result(request: Request, db: AsyncSession = Depends(get_db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
 
@@ -1539,11 +1539,11 @@ async def assessment_result(request: Request, db: AsyncSession = Depends(get_db)
 @app.get("/share/report/{result_id}", response_class=HTMLResponse)
 async def share_report(result_id: int, request: Request, mode: str = "full", db: AsyncSession = Depends(get_db)):
     """Publicly shareable route for career reports."""
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.id == result_id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.id == result_id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Report not found")
     
-    owner = (await db.execute(select(models.User).where(models.User.id == result.user_id))).scalars().first()
+    owner = db.query(models.User).filter(models.User.id == result.user_id).first()
     current_user = get_current_user(request, db)
     
     # Ensure a stable high confidence (82-98%) is saved and displayed
@@ -1576,21 +1576,17 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         return RedirectResponse(url="/select-role", status_code=status.HTTP_302_FOUND)
     
     if user.role == "counsellor":
-        profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == user.id))).scalars().first()
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
         # Show active/scheduled, requested, accepted, and completed appointments on dashboard
-        appointments = (await db.execute(
-            select(models.Appointment).where(
-                models.Appointment.counsellor_id == user.id,
-                models.Appointment.status.in_(["scheduled", "requested", "accepted", "completed"])
-            ).order_by(models.Appointment.appointment_time.desc())
-        )).scalars().all()
+        appointments = db.query(models.Appointment).filter(
+            models.Appointment.counsellor_id == user.id,
+            models.Appointment.status.in_(["scheduled", "requested", "accepted", "completed"])
+        ).order_by(models.Appointment.appointment_time.desc()).all()
         # Fetch unread notifications for this counsellor
-        notifications = (await db.execute(
-            select(models.Notification).where(
-                models.Notification.user_id == user.id,
-                models.Notification.is_read == False
-            ).order_by(models.Notification.created_at.desc())
-        )).scalars().all()
+        notifications = db.query(models.Notification).filter(
+            models.Notification.user_id == user.id,
+            models.Notification.is_read == False
+        ).order_by(models.Notification.created_at.desc()).all()
 
         # --- Overview Panel Metrics ---
         from sqlalchemy import func
@@ -1600,59 +1596,47 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
         month_start = today.replace(day=1)
 
         # 👥 Total Clients (Unique students who have booked at least one session)
-        total_clients = (await db.execute(
-            select(func.count(func.distinct(models.Appointment.student_id))).where(
-                models.Appointment.counsellor_id == user.id
-            )
-        )).scalar() or 0
+        total_clients = db.query(models.Appointment.student_id).filter(
+            models.Appointment.counsellor_id == user.id
+        ).distinct().count()
 
-        # 📅 Today's Sessions
-        today_sessions = (await db.execute(
-            select(func.count()).select_from(models.Appointment).where(
-                models.Appointment.counsellor_id == user.id,
-                func.date(models.Appointment.appointment_time) == today,
-                models.Appointment.status == "scheduled"
-            )
-        )).scalar() or 0
+        # 📅 Today’s Sessions
+        today_sessions = db.query(models.Appointment).filter(
+            models.Appointment.counsellor_id == user.id,
+            func.date(models.Appointment.appointment_time) == today,
+            models.Appointment.status == "scheduled"
+        ).count()
 
         # 💰 Earnings
         # Daily Earnings (Transfers processed today)
-        earnings_daily = (await db.execute(
-            select(func.sum(models.Transfer.amount)).where(
-                models.Transfer.counsellor_id == user.id,
-                func.date(models.Transfer.created_at) == today,
-                models.Transfer.status == "processed"
-            )
-        )).scalar() or 0.0
+        earnings_daily = db.query(func.sum(models.Transfer.amount)).filter(
+            models.Transfer.counsellor_id == user.id,
+            func.date(models.Transfer.created_at) == today,
+            models.Transfer.status == "processed"
+        ).scalar() or 0.0
 
         # Monthly Earnings (Transfers processed this month)
-        earnings_monthly = (await db.execute(
-            select(func.sum(models.Transfer.amount)).where(
-                models.Transfer.counsellor_id == user.id,
-                models.Transfer.created_at >= month_start,
-                models.Transfer.status == "processed"
-            )
-        )).scalar() or 0.0
+        earnings_monthly = db.query(func.sum(models.Transfer.amount)).filter(
+            models.Transfer.counsellor_id == user.id,
+            models.Transfer.created_at >= month_start,
+            models.Transfer.status == "processed"
+        ).scalar() or 0.0
 
         # 📈 Active vs Inactive Clients (Active = had a session in the last 30 days)
         last_30_days = today - timedelta(days=30)
-        active_clients = (await db.execute(
-            select(func.count(func.distinct(models.Appointment.student_id))).where(
-                models.Appointment.counsellor_id == user.id,
-                models.Appointment.appointment_time >= last_30_days
-            )
-        )).scalar() or 0
+        active_clients = db.query(models.Appointment.student_id).filter(
+            models.Appointment.counsellor_id == user.id,
+            models.Appointment.appointment_time >= last_30_days
+        ).distinct().count()
         inactive_clients = total_clients - active_clients
 
         # ⭐ Rating
         avg_rating = profile.average_rating if (profile and profile.average_rating is not None) else 5.0
 
         # Fetch recent reviews
-        recent_reviews = (await db.execute(
-            select(models.CounselorRating).where(
-                models.CounselorRating.counsellor_id == user.id
-            ).order_by(models.CounselorRating.timestamp.desc()).limit(5)
-        )).scalars().all()
+        recent_reviews = db.query(models.CounselorRating).filter(
+            models.CounselorRating.counsellor_id == user.id
+        ).order_by(models.CounselorRating.timestamp.desc()).limit(5).all()
 
         dashboard_stats = {
             "total_clients": total_clients,
@@ -1681,7 +1665,7 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
             return HTMLResponse(content=f"Template Error: {e}<br><pre>{traceback.format_exc()}</pre>", status_code=500)
     
     # Fetch assessment result to show on dashboard
-    assessment = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     
     # Ensure confidence is populated if assessment exists but analysis is partial
     if assessment and (not assessment.confidence or assessment.confidence < 0.81):
@@ -1693,26 +1677,22 @@ async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
             await db.rollback()
     
     # Fetch student appointments (scheduled & completed for rating) with eager loading to prevent N+1
-    appointments = (await db.execute(
-        select(models.Appointment).options(
-            joinedload(models.Appointment.counsellor),
-            joinedload(models.Appointment.rating_record)
-        ).where(
-            models.Appointment.student_id == user.id,
-            models.Appointment.status.in_(["scheduled", "completed", "requested", "accepted"])
-        ).order_by(models.Appointment.appointment_time.desc())
-    )).scalars().all()
+    appointments = db.query(models.Appointment).options(
+        joinedload(models.Appointment.counsellor),
+        joinedload(models.Appointment.rating_record)
+    ).filter(
+        models.Appointment.student_id == user.id,
+        models.Appointment.status.in_(["scheduled", "completed", "requested", "accepted"])
+    ).order_by(models.Appointment.appointment_time.desc()).all()
     
     # Fetch student tickets
-    tickets = (await db.execute(select(models.Ticket).where(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()))).scalars().all()
+    tickets = db.query(models.Ticket).filter(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()).all()
     
     # Count pending connection requests for badge
-    pending_conn_count = (await db.execute(
-        select(func.count()).select_from(models.StudentConnection).where(
-            models.StudentConnection.receiver_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalar() or 0
+    pending_conn_count = db.query(models.StudentConnection).filter(
+        models.StudentConnection.receiver_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).count()
     
     try:
         template = templates.get_template("dashboard.html")
@@ -1755,76 +1735,71 @@ async def admin_dashboard(
         if user_search:
             # Search across the entire database by name or email
             search_filter = models.User.full_name.ilike(f"%{user_search}%") | models.User.email.ilike(f"%{user_search}%")
-            all_users = (await db.execute(select(models.User).where(search_filter).order_by(models.User.id.desc()))).scalars().all()
+            all_users = db.query(models.User).filter(search_filter).order_by(models.User.id.desc()).all()
             total_users = len(all_users)
         else:
-            all_users = (await db.execute(select(models.User).order_by(models.User.id.desc()).offset((user_page - 1) * page_size).limit(page_size))).scalars().all()
-            total_users = (await db.execute(select(func.count()).select_from(models.User))).scalar()
+            all_users = db.query(models.User).order_by(models.User.id.desc()).offset((user_page - 1) * page_size).limit(page_size).all()
+            total_users = db.query(models.User).count()
 
-        all_feedback = (await db.execute(select(models.Feedback).order_by(models.Feedback.timestamp.desc()).offset((feedback_page - 1) * page_size).limit(page_size))).scalars().all()
-        total_feedback = (await db.execute(select(func.count()).select_from(models.Feedback))).scalar()
+        all_feedback = db.query(models.Feedback).order_by(models.Feedback.timestamp.desc()).offset((feedback_page - 1) * page_size).limit(page_size).all()
+        total_feedback = db.query(models.Feedback).count()
 
-        all_tickets = (await db.execute(select(models.Ticket).order_by(models.Ticket.timestamp.desc()).offset((ticket_page - 1) * page_size).limit(page_size))).scalars().all()
-        total_tickets = (await db.execute(select(func.count()).select_from(models.Ticket))).scalar()
+        all_tickets = db.query(models.Ticket).order_by(models.Ticket.timestamp.desc()).offset((ticket_page - 1) * page_size).limit(page_size).all()
+        total_tickets = db.query(models.Ticket).count()
 
-        pending_counsellors = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.verification_status == "pending"))).scalars().all()
+        pending_counsellors = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.verification_status == "pending").all()
         
         # ─── Optimized Counsellor Stats (Single Query) ───────────────────
         from sqlalchemy import func as sql_func
         
         # Get all completed sessions count per counsellor
-        _completed_rows = (await db.execute(
-            select(models.Appointment.counsellor_id, sql_func.count(models.Appointment.id).label("count"))
-            .where(models.Appointment.status == "completed")
-            .group_by(models.Appointment.counsellor_id)
-        )).all()
-        completed_map = {row.counsellor_id: row.count for row in _completed_rows}
+        completed_sessions = db.query(
+            models.Appointment.counsellor_id,
+            sql_func.count(models.Appointment.id).label("count")
+        ).filter(models.Appointment.status == "completed").group_by(models.Appointment.counsellor_id).all()
+        completed_map = {row.counsellor_id: row.count for row in completed_sessions}
 
         # Get total sessions count per counsellor
-        _total_rows = (await db.execute(
-            select(models.Appointment.counsellor_id, sql_func.count(models.Appointment.id).label("count"))
-            .group_by(models.Appointment.counsellor_id)
-        )).all()
-        total_map = {row.counsellor_id: row.count for row in _total_rows}
+        total_sessions = db.query(
+            models.Appointment.counsellor_id,
+            sql_func.count(models.Appointment.id).label("count")
+        ).group_by(models.Appointment.counsellor_id).all()
+        total_map = {row.counsellor_id: row.count for row in total_sessions}
 
         counsellor_search = counsellor_search.strip()
         if counsellor_search:
             # Search across all counsellors by name or email
             search_filter = models.User.full_name.ilike(f"%{counsellor_search}%") | models.User.email.ilike(f"%{counsellor_search}%")
-            all_counsellors = (await db.execute(
-                select(models.CounsellorProfile).join(models.User).where(search_filter)
-            )).scalars().all()
+            all_counsellors = db.query(models.CounsellorProfile).join(models.User).filter(search_filter).all()
         else:
-            all_counsellors = (await db.execute(select(models.CounsellorProfile))).scalars().all()
+            all_counsellors = db.query(models.CounsellorProfile).all()
         for cp in all_counsellors:
             cp.session_count = completed_map.get(cp.user_id, 0)
             cp.total_sessions = total_map.get(cp.user_id, 0)
 
         # ─── Payment Split Analytics ──────────────────────────────────────
         try:
-            all_payments = (await db.execute(select(models.Payment).order_by(models.Payment.created_at.desc()).limit(20))).scalars().all()
+            all_payments = db.query(models.Payment).order_by(models.Payment.created_at.desc()).limit(20).all()
             
             # Using scalars directly for performance
-            session_revenue = (await db.execute(
-                select(sql_func.sum(models.Payment.amount)).where(models.Payment.status == "captured")
-            )).scalar() or 0.0
+            session_revenue = db.query(sql_func.sum(models.Payment.amount)).filter(
+                models.Payment.status == "captured"
+            ).scalar() or 0.0
 
-            sim_revenue = (await db.execute(
-                select(sql_func.sum(models.SimulationPayment.amount))
-            )).scalar() or 0.0
+            sim_revenue = db.query(sql_func.sum(models.SimulationPayment.amount)).scalar() or 0.0
             
             total_revenue = session_revenue + sim_revenue
 
-            total_counselor_payouts = (await db.execute(
-                select(sql_func.sum(models.Transfer.amount)).where(models.Transfer.status == "processed")
-            )).scalar() or 0.0
+            total_counselor_payouts = db.query(sql_func.sum(models.Transfer.amount)).filter(
+                models.Transfer.status == "processed"
+            ).scalar() or 0.0
 
             platform_commission = session_revenue - total_counselor_payouts + sim_revenue
 
-            pending_transfers = (await db.execute(select(func.count()).select_from(models.Transfer).where(models.Transfer.status == "pending"))).scalar()
-            failed_transfers = (await db.execute(select(func.count()).select_from(models.Transfer).where(models.Transfer.status == "failed"))).scalar()
-            captured_payments_count = (await db.execute(select(func.count()).select_from(models.Payment).where(models.Payment.status == "captured"))).scalar()
-            sim_payments_count = (await db.execute(select(func.count()).select_from(models.SimulationPayment))).scalar()
+            pending_transfers = db.query(models.Transfer).filter(models.Transfer.status == "pending").count()
+            failed_transfers = db.query(models.Transfer).filter(models.Transfer.status == "failed").count()
+            captured_payments_count = db.query(models.Payment).filter(models.Payment.status == "captured").count()
+            sim_payments_count = db.query(models.SimulationPayment).count()
         except Exception as pe:
             print(f"Payment analytics error: {pe}")
             all_payments, total_revenue, total_counselor_payouts, platform_commission = [], 0.0, 0.0, 0.0
@@ -1832,22 +1807,18 @@ async def admin_dashboard(
             pending_transfers, failed_transfers, captured_payments_count = 0, 0, 0
         
         # Fetch Moderation Flags (Limited for performance)
-        moderation_flags = (await db.execute(select(models.ModerationFlag).order_by(models.ModerationFlag.timestamp.desc()).limit(50))).scalars().all()
+        moderation_flags = db.query(models.ModerationFlag).order_by(models.ModerationFlag.timestamp.desc()).limit(50).all()
 
         # Fetch all appointments for admin Session Management table
-        all_appointments = (await db.execute(
-            select(models.Appointment).options(
-                joinedload(models.Appointment.student),
-                joinedload(models.Appointment.counsellor)
-            ).order_by(models.Appointment.appointment_time.desc()).limit(50)
-        )).scalars().all()
+        all_appointments = db.query(models.Appointment).options(
+            joinedload(models.Appointment.student),
+            joinedload(models.Appointment.counsellor)
+        ).order_by(models.Appointment.appointment_time.desc()).limit(50).all()
 
         # Fetch simulation payments
-        simulation_payments = (await db.execute(
-            select(models.SimulationPayment).options(
-                joinedload(models.SimulationPayment.user)
-            ).order_by(models.SimulationPayment.id.desc()).limit(50)
-        )).scalars().all()
+        simulation_payments = db.query(models.SimulationPayment).options(
+            joinedload(models.SimulationPayment.user)
+        ).order_by(models.SimulationPayment.id.desc()).limit(50).all()
 
         try:
             template = templates.get_template("admin_dashboard.html")
@@ -1902,7 +1873,7 @@ async def send_completion_reminders(request: Request, db: AsyncSession = Depends
         return RedirectResponse(url="/dashboard?error=Admin access denied", status_code=status.HTTP_302_FOUND)
 
     # Fetch all users and filter in Python to handle NULL roles correctly
-    all_users = (await db.execute(select(models.User))).scalars().all()
+    all_users = db.query(models.User).all()
     count = 0
     
     for u in all_users:
@@ -1918,13 +1889,13 @@ async def send_completion_reminders(request: Request, db: AsyncSession = Depends
             
         # 2. Student with missing assessment phases
         elif u.role == "student":
-            assessment = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == u.id))).scalars().first()
+            assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == u.id).first()
             if not assessment or not assessment.final_answers:
                 is_incomplete = True
                 
         # 3. Counsellor with missing profile details
         elif u.role == "counsellor":
-            prof = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == u.id))).scalars().first()
+            prof = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == u.id).first()
             # Check for missing experience, availability, or certificates
             if not prof or not prof.experience or not prof.availability or not prof.certificates:
                 is_incomplete = True
@@ -1950,16 +1921,16 @@ async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     # 2. Get User
-    user_to_delete = (await db.execute(select(models.User).where(models.User.id == user_id))).scalars().first()
+    user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
     if not user_to_delete:
          raise HTTPException(status_code=404, detail="User not found")
 
     # 3. Delete Assessment Result first (ForeignKey)
     if user_to_delete.assessment:
-        await db.delete(user_to_delete.assessment)
+        db.delete(user_to_delete.assessment)
     
     # 4. Delete User
-    await db.delete(user_to_delete)
+    db.delete(user_to_delete)
     await db.commit()
     
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
@@ -1970,7 +1941,7 @@ async def suspend_user(user_id: int, request: Request, db: AsyncSession = Depend
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalars().first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
         user.is_suspended = True
         await db.commit()
@@ -1983,7 +1954,7 @@ async def unsuspend_user(user_id: int, request: Request, db: AsyncSession = Depe
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalars().first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if user:
         user.is_suspended = False
         await db.commit()
@@ -1996,7 +1967,7 @@ async def handle_flag(flag_id: int, request: Request, action: str = Form(...), d
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    flag = (await db.execute(select(models.ModerationFlag).where(models.ModerationFlag.id == flag_id))).scalars().first()
+    flag = db.query(models.ModerationFlag).filter(models.ModerationFlag.id == flag_id).first()
     if flag:
         if action == "dismiss":
             flag.status = "dismissed"
@@ -2013,7 +1984,7 @@ async def accept_tnc(request: Request, db: AsyncSession = Depends(get_db)):
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == user.id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
     if profile:
         profile.tnc_accepted = True
         profile.tnc_accepted_at = datetime.datetime.utcnow()
@@ -2038,7 +2009,7 @@ async def counsellor_update(
          return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
     try:
-        profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == user.id))).scalars().first()
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
         if not profile:
             profile = models.CounsellorProfile(user_id=user.id)
             db.add(profile)
@@ -2127,7 +2098,7 @@ async def upload_certificates(
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     try:
-        profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == user.id))).scalars().first()
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == user.id).first()
         if not profile:
             profile = models.CounsellorProfile(user_id=user.id)
             db.add(profile)
@@ -2180,7 +2151,7 @@ async def verify_counsellor(
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
             
     try:
-        profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
         if profile:
             profile.verification_status = verification_status
             profile.is_verified = (verification_status == "approved")
@@ -2214,7 +2185,7 @@ async def block_counsellor(
         if not admin_email or current_user.email != admin_email:
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if profile:
         profile.is_blocked = True
         profile.block_reason = block_reason
@@ -2235,7 +2206,7 @@ async def unblock_counsellor(
         if not admin_email or current_user.email != admin_email:
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if profile:
         profile.is_blocked = False
         profile.block_reason = None
@@ -2256,11 +2227,11 @@ async def give_founding_badge(
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
     # Check if limit of 100 is reached
-    founding_count = (await db.execute(select(func.count()).select_from(models.CounsellorProfile).where(models.CounsellorProfile.is_founding_counsellor == True))).scalar()
+    founding_count = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.is_founding_counsellor == True).count()
     if founding_count >= 100:
         return RedirectResponse(url="/admin?error=Founding+counsellor+limit+reached", status_code=status.HTTP_302_FOUND)
 
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if profile:
         profile.is_founding_counsellor = True
         profile.founding_badge_awarded_at = datetime.datetime.now()
@@ -2290,7 +2261,7 @@ async def take_founding_badge(
         if not admin_email or current_user.email != admin_email:
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if profile:
         profile.is_founding_counsellor = False
         profile.commission_free_until = None
@@ -2319,7 +2290,7 @@ async def admin_update_counsellor_fee(
         if not admin_email or current_user.email != admin_email:
             return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if profile:
         old_fee = profile.fee or 0.0
         profile.fee = new_fee
@@ -2355,12 +2326,10 @@ async def dismiss_notification(
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    notif = (await db.execute(
-        select(models.Notification).where(
-            models.Notification.id == notif_id,
-            models.Notification.user_id == user.id
-        )
-    )).scalars().first()
+    notif = db.query(models.Notification).filter(
+        models.Notification.id == notif_id,
+        models.Notification.user_id == user.id
+    ).first()
     if notif:
         notif.is_read = True
         await db.commit()
@@ -2375,14 +2344,12 @@ async def list_counsellors(request: Request, db: AsyncSession = Depends(get_db))
         
     # Only show verified AND non-blocked counsellors to students
     # Eager load 'user' to prevent N+1 queries in the template loop
-    counsellors = (await db.execute(
-        select(models.CounsellorProfile).options(
-            joinedload(models.CounsellorProfile.user)
-        ).where(
-            models.CounsellorProfile.is_verified == True,
-            models.CounsellorProfile.is_blocked == False
-        )
-    )).scalars().all()
+    counsellors = db.query(models.CounsellorProfile).options(
+        joinedload(models.CounsellorProfile.user)
+    ).filter(
+        models.CounsellorProfile.is_verified == True,
+        models.CounsellorProfile.is_blocked == False
+    ).all()
     
     try:
         template = templates.get_template("counsellors_list.html")
@@ -2421,7 +2388,7 @@ async def create_razorpay_order(counsellor_id: int, request: Request, fee: float
             )
             db.add(payment_record)
             await db.commit()
-            await db.refresh(payment_record)
+            db.refresh(payment_record)
             print(f"DEBUG: Payment record created: order={order['id']}, amount=₹{fee}")
         except Exception as pe:
             print(f"DEBUG: Payment record creation skipped: {pe}")
@@ -2475,7 +2442,7 @@ async def check_availability_api(counsellor_id: int, appointment_time: str, db: 
     except ValueError:
         return {"available": False, "error": "Invalid time format."}
     
-    profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     error = _check_availability(profile, appt_time)
     if error:
         return {"available": False, "error": error}
@@ -2488,7 +2455,7 @@ async def book_free_counsellor(counsellor_id: int, request: Request, background_
          return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
          
     # Verify counsellor is free
-    counsellor_profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == counsellor_id))).scalars().first()
+    counsellor_profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == counsellor_id).first()
     if not counsellor_profile or (counsellor_profile.fee > 0):
         # Allow a small margin for float comparison
         if counsellor_profile and counsellor_profile.fee > 0.01:
@@ -2523,11 +2490,11 @@ async def book_free_counsellor(counsellor_id: int, request: Request, background_
     )
     db.add(appointment)
     await db.commit()
-    await db.refresh(appointment)
+    db.refresh(appointment)
     
     # Send Emails
     student_email = user.email
-    counsellor_user = (await db.execute(select(models.User).where(models.User.id == counsellor_id))).scalars().first()
+    counsellor_user = db.query(models.User).filter(models.User.id == counsellor_id).first()
     if counsellor_user:
         appt_time_str = appt_time.strftime('%b %d, %I:%M %p')
         # To Student
@@ -2555,7 +2522,7 @@ async def join_meeting(appointment_id: int, request: Request, db: AsyncSession =
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -2595,7 +2562,7 @@ async def meeting_page(appointment_id: int, request: Request, db: AsyncSession =
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -2611,7 +2578,7 @@ async def meeting_page(appointment_id: int, request: Request, db: AsyncSession =
     await db.commit()
     
     other_user_id = appointment.student_id if user.id == appointment.counsellor_id else appointment.counsellor_id
-    other_user = (await db.execute(select(models.User).where(models.User.id == other_user_id))).scalars().first()
+    other_user = db.query(models.User).filter(models.User.id == other_user_id).first()
     
     return templates.TemplateResponse(request=request, name="meeting.html", context={
         "user": user, 
@@ -2625,7 +2592,7 @@ async def track_join(appointment_id: int, request: Request, db: AsyncSession = D
     if not user:
         raise HTTPException(status_code=401)
     
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404)
     
@@ -2648,7 +2615,7 @@ async def appointment_heartbeat(appointment_id: int, request: Request, db: Async
     if not user:
         raise HTTPException(status_code=401)
     
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404)
     
@@ -2666,7 +2633,7 @@ async def appointment_heartbeat(appointment_id: int, request: Request, db: Async
 
 @app.get("/appointment_status/{appointment_id}")
 async def appointment_status(appointment_id: int, db: AsyncSession = Depends(get_db)):
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         return {"error": "Not found"}, 404
     return {
@@ -2680,7 +2647,7 @@ async def delete_appointment(appointment_id: int, request: Request, background_t
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -2689,8 +2656,8 @@ async def delete_appointment(appointment_id: int, request: Request, background_t
         raise HTTPException(status_code=403, detail="Not authorized to delete this appointment")
     
     # Send Cancellation Emails
-    student = (await db.execute(select(models.User).where(models.User.id == appointment.student_id))).scalars().first()
-    counsellor = (await db.execute(select(models.User).where(models.User.id == appointment.counsellor_id))).scalars().first()
+    student = db.query(models.User).filter(models.User.id == appointment.student_id).first()
+    counsellor = db.query(models.User).filter(models.User.id == appointment.counsellor_id).first()
     appt_time_str = appointment.appointment_time.strftime('%b %d, %I:%M %p') if appointment.appointment_time else "To Be Decided"
     
     if student and counsellor:
@@ -2724,12 +2691,10 @@ async def complete_appointment(appointment_id: int, request: Request, db: AsyncS
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appointment = (await db.execute(
-        select(models.Appointment).where(
-            models.Appointment.id == appointment_id,
-            models.Appointment.counsellor_id == user.id
-        )
-    )).scalars().first()
+    appointment = db.query(models.Appointment).filter(
+        models.Appointment.id == appointment_id, 
+        models.Appointment.counsellor_id == user.id
+    ).first()
     
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found or not yours")
@@ -2746,7 +2711,7 @@ async def rate_appointment(appointment_id: int, request: Request, rating: int = 
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     # Verify appointment student
-    appointment = (await db.execute(select(models.Appointment).where(models.Appointment.id == appointment_id))).scalars().first()
+    appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     
     if not appointment:
         raise HTTPException(status_code=404, detail=f"Appointment {appointment_id} does not exist.")
@@ -2758,7 +2723,7 @@ async def rate_appointment(appointment_id: int, request: Request, rating: int = 
         raise HTTPException(status_code=400, detail="Only completed appointments can be rated")
     
     # Check for existing rating
-    existing = (await db.execute(select(models.CounselorRating).where(models.CounselorRating.appointment_id == appointment_id))).scalars().first()
+    existing = db.query(models.CounselorRating).filter(models.CounselorRating.appointment_id == appointment_id).first()
     if existing:
         return RedirectResponse(url="/dashboard?error=Session already rated", status_code=status.HTTP_302_FOUND)
     
@@ -2774,7 +2739,7 @@ async def rate_appointment(appointment_id: int, request: Request, rating: int = 
         db.add(new_rating)
         
         # Update Counselor profile stats
-        profile = (await db.execute(select(models.CounsellorProfile).where(models.CounsellorProfile.user_id == appointment.counsellor_id))).scalars().first()
+        profile = db.query(models.CounsellorProfile).filter(models.CounsellorProfile.user_id == appointment.counsellor_id).first()
         if profile:
             # Handle potential None values safely
             avg = profile.average_rating if profile.average_rating is not None else 5.0
@@ -2801,7 +2766,7 @@ async def reply_ticket(ticket_id: int, request: Request, reply_content: str = Fo
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    ticket = (await db.execute(select(models.Ticket).where(models.Ticket.id == ticket_id))).scalars().first()
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
@@ -2816,7 +2781,7 @@ async def close_ticket(ticket_id: int, request: Request, db: AsyncSession = Depe
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    ticket = (await db.execute(select(models.Ticket).where(models.Ticket.id == ticket_id))).scalars().first()
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
@@ -2831,11 +2796,11 @@ async def delete_ticket(ticket_id: int, request: Request, db: AsyncSession = Dep
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    ticket = (await db.execute(select(models.Ticket).where(models.Ticket.id == ticket_id))).scalars().first()
+    ticket = db.query(models.Ticket).filter(models.Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
-    await db.delete(ticket)
+    db.delete(ticket)
     await db.commit()
     return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
 
@@ -2873,11 +2838,9 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
     if appointment_time_str:
         try:
             appt_time_check = datetime.datetime.fromisoformat(appointment_time_str)
-            counsellor_profile_check = (await db.execute(
-                select(models.CounsellorProfile).where(
-                    models.CounsellorProfile.user_id == counsellor_id
-                )
-            )).scalars().first()
+            counsellor_profile_check = db.query(models.CounsellorProfile).filter(
+                models.CounsellorProfile.user_id == counsellor_id
+            ).first()
             avail_error = _check_availability(counsellor_profile_check, appt_time_check)
             if avail_error:
                 return RedirectResponse(url=f"/counsellors?error={avail_error}", status_code=status.HTTP_302_FOUND)
@@ -2906,18 +2869,14 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
         await db.flush() # Get appointment.id
 
         # 2. Update/Create Payment record
-        counsellor_profile = (await db.execute(
-            select(models.CounsellorProfile).where(
-                models.CounsellorProfile.user_id == counsellor_id
-            )
-        )).scalars().first()
+        counsellor_profile = db.query(models.CounsellorProfile).filter(
+            models.CounsellorProfile.user_id == counsellor_id
+        ).first()
         fee_amount = counsellor_profile.fee if counsellor_profile else 0.0
 
-        payment_record = (await db.execute(
-            select(models.Payment).where(
-                models.Payment.razorpay_order_id == razorpay_order_id
-            )
-        )).scalars().first()
+        payment_record = db.query(models.Payment).filter(
+            models.Payment.razorpay_order_id == razorpay_order_id
+        ).first()
 
         if payment_record:
             payment_record.razorpay_payment_id = razorpay_payment_id
@@ -2963,7 +2922,7 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
         db.add(notif)
 
         # 5. Dispatch confirmation emails
-        counsellor_user = (await db.execute(select(models.User).where(models.User.id == counsellor_id))).scalars().first()
+        counsellor_user = db.query(models.User).filter(models.User.id == counsellor_id).first()
         if counsellor_user:
             appt_time_str = appt_time.strftime('%b %d, %I:%M %p')
             # To Student
@@ -2996,7 +2955,7 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appt = (await db.execute(select(models.Appointment).where(models.Appointment.id == appt_id, models.Appointment.counsellor_id == user.id))).scalars().first()
+    appt = db.query(models.Appointment).filter(models.Appointment.id == appt_id, models.Appointment.counsellor_id == user.id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -3022,7 +2981,7 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
     await db.commit()
 
     # 3. Notify Student and Counsellor
-    student = (await db.execute(select(models.User).where(models.User.id == appt.student_id))).scalars().first()
+    student = db.query(models.User).filter(models.User.id == appt.student_id).first()
     if student:
         appt_time_str = appt.appointment_time.strftime('%b %d, %I:%M %p')
         # To Student
@@ -3057,7 +3016,7 @@ async def reject_appointment(appt_id: int, request: Request, background_tasks: B
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    appt = (await db.execute(select(models.Appointment).where(models.Appointment.id == appt_id, models.Appointment.counsellor_id == user.id))).scalars().first()
+    appt = db.query(models.Appointment).filter(models.Appointment.id == appt_id, models.Appointment.counsellor_id == user.id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
@@ -3077,7 +3036,7 @@ async def reject_appointment(appt_id: int, request: Request, background_tasks: B
     await db.commit()
 
     # 3. Notify Student
-    student = (await db.execute(select(models.User).where(models.User.id == appt.student_id))).scalars().first()
+    student = db.query(models.User).filter(models.User.id == appt.student_id).first()
     if student:
         appt_time_str = appt.appointment_time.strftime('%b %d, %I:%M %p')
         background_tasks.add_task(
@@ -3102,11 +3061,11 @@ async def delete_roadmap(path_id: int, request: Request, db: AsyncSession = Depe
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
     
-    await db.delete(path)
+    db.delete(path)
     await db.commit()
     return RedirectResponse(url="/career/roadmaps?message=Roadmap+deleted", status_code=status.HTTP_302_FOUND)
 
@@ -3139,7 +3098,7 @@ async def assessment_phase3_submit(
         answers[key] = value
 
     # Save to DB
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         # Should likely have a phase 2 result first, but if not, create new?
         # For simplicity, we assume result exists. If not, redirect to start.
@@ -3200,7 +3159,7 @@ async def phase3_chat(request: Request, chat_req: Phase3ChatRequest, db: AsyncSe
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result or not result.phase_2_category:
         return jsonify({"error": "No phase 2 category found"})
     
@@ -3348,7 +3307,7 @@ async def phase3_chat_v2(request: Request, chat_req: Phase3V2ChatRequest, db: As
 
     from fastapi.responses import JSONResponse
 
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     phase2_category = result.phase_2_category if result else "Unknown"
     phase2_personality = result.personality if result else "Unknown"
 
@@ -3419,7 +3378,7 @@ async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest,
 
     from fastapi.responses import JSONResponse
 
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return JSONResponse({"redirect": "/assessment"})
 
@@ -3620,12 +3579,12 @@ async def simulation_verify_payment(request: Request, db: AsyncSession = Depends
     credits_to_add = 3 if package == "bundle" else 1
     amount_paid = 35.0 if package == "bundle" else 15.0
         
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if result:
         result.simulation_paid = True
         result.simulation_credits = (result.simulation_credits or 0) + credits_to_add
         
-    db_user = (await db.execute(select(models.User).where(models.User.id == user.id))).scalars().first()
+    db_user = db.query(models.User).filter(models.User.id == user.id).first()
     if db_user:
         db_user.simulation_paid = True
         db_user.simulation_credits = (db_user.simulation_credits or 0) + credits_to_add
@@ -3655,11 +3614,11 @@ async def simulation_start(career_title: str, request: Request, db: AsyncSession
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
     
-    db_user = (await db.execute(select(models.User).where(models.User.id == user.id))).scalars().first()
+    db_user = db.query(models.User).filter(models.User.id == user.id).first()
     sims_completed = max(result.simulations_completed or 0, db_user.simulations_completed or 0 if db_user else 0)
     sim_credits = max(result.simulation_credits or 0, db_user.simulation_credits or 0 if db_user else 0)
 
@@ -3705,7 +3664,7 @@ async def simulation_question(index: int, request: Request, db: AsyncSession = D
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result or not result.simulation_questions:
         return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
     
@@ -3733,7 +3692,7 @@ async def simulation_answer(
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         return RedirectResponse(url="/assessment", status_code=status.HTTP_302_FOUND)
     
@@ -3763,7 +3722,7 @@ async def simulation_result(request: Request, db: AsyncSession = Depends(get_db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result or not result.simulation_answers:
         return RedirectResponse(url="/assessment/result", status_code=status.HTTP_302_FOUND)
     
@@ -3788,7 +3747,7 @@ async def simulation_result(request: Request, db: AsyncSession = Depends(get_db)
         # SQL Fallback
         result.simulation_evaluation = evaluation
         result.simulations_completed += 1
-        db_user = (await db.execute(select(models.User).where(models.User.id == user.id))).scalars().first()
+        db_user = db.query(models.User).filter(models.User.id == user.id).first()
         if db_user:
             db_user.simulations_completed += 1
         await db.commit()
@@ -3803,11 +3762,11 @@ async def simulation_result(request: Request, db: AsyncSession = Depends(get_db)
 # --- Public Shareable Simulation Result ---
 @app.get("/share/simulation/{result_id}", response_class=HTMLResponse)
 async def share_simulation_result(result_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.id == result_id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.id == result_id).first()
     if not result or not result.simulation_evaluation:
         raise HTTPException(status_code=404, detail="Simulation result not found")
     
-    owner = (await db.execute(select(models.User).where(models.User.id == result.user_id))).scalars().first()
+    owner = db.query(models.User).filter(models.User.id == result.user_id).first()
     return templates.TemplateResponse(request=request, name="simulation_result.html", context={
         "user": None,
         "owner": owner,
@@ -3830,7 +3789,7 @@ async def assessment_final(request: Request, db: AsyncSession = Depends(get_db))
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     # Get user class selection
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     selected_class = result.selected_class if result else "10th" # Default to 10th if not found
 
     context = {
@@ -3867,7 +3826,7 @@ async def assessment_final_submit(request: Request, db: AsyncSession = Depends(g
             answers[key] = value
         
     # fetch result object
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     
     # --- Logic Branching based on Mode ---
     
@@ -4334,7 +4293,7 @@ async def chatbot_page(request: Request, db: AsyncSession = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
     # Fetch History
-    history = (await db.execute(select(models.ChatMessage).where(models.ChatMessage.user_id == user.id).order_by(models.ChatMessage.timestamp))).scalars().all()
+    history = db.query(models.ChatMessage).filter(models.ChatMessage.user_id == user.id).order_by(models.ChatMessage.timestamp).all()
     
     try:
         template = templates.get_template("chatbot.html")
@@ -4396,7 +4355,7 @@ async def chatbot_message(request: Request, chat_req: ChatRequest, db: AsyncSess
     await db.commit()
     
     # 1. Build Context from DB
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     
     context_str = f"User Name: {user.full_name}\n"
     if result:
@@ -4412,7 +4371,7 @@ async def chatbot_message(request: Request, chat_req: ChatRequest, db: AsyncSess
              context_str += f"Work Style Analysis: {result.phase3_analysis[:200]}...\n"
 
     # Fetch recent history for context
-    recent_history = (await db.execute(select(models.ChatMessage).where(models.ChatMessage.user_id == user.id).order_by(models.ChatMessage.timestamp.desc()).limit(10))).scalars().all()
+    recent_history = db.query(models.ChatMessage).filter(models.ChatMessage.user_id == user.id).order_by(models.ChatMessage.timestamp.desc()).limit(10).all()
     recent_history.reverse() # Oldest first
     history_str = "\n".join([f"{msg.sender.upper()}: {msg.content}" for msg in recent_history])
 
@@ -4553,7 +4512,7 @@ async def ticket_page(request: Request, db: AsyncSession = Depends(get_db)):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    tickets = (await db.execute(select(models.Ticket).where(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()))).scalars().all()
+    tickets = db.query(models.Ticket).filter(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()).all()
     return templates.TemplateResponse(request=request, name="ticket.html", context={"user": user, "tickets": tickets})
 
 @app.post("/ticket/submit")
@@ -4592,7 +4551,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
     if not result:
         raise HTTPException(status_code=404, detail="Assessment results not found")
 
@@ -4715,7 +4674,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
         
         db.add(new_path)
         await db.commit()
-        await db.refresh(new_path)
+        db.refresh(new_path)
 
         return {"success": True, "path_id": new_path.id}
     except Exception as e:
@@ -4728,7 +4687,7 @@ async def toggle_step_completion(path_id: int, step_index: int, request: Request
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
     
@@ -4764,7 +4723,7 @@ async def toggle_step_completion(path_id: int, step_index: int, request: Request
     
     db.add(path) # Ensure it's in the session correctly
     await db.commit()
-    await db.refresh(path)
+    db.refresh(path)
     
     return {
         "success": True, 
@@ -4778,7 +4737,7 @@ async def view_roadmaps(request: Request, db: AsyncSession = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    paths = (await db.execute(select(models.CareerPath).where(models.CareerPath.user_id == user.id))).scalars().all()
+    paths = db.query(models.CareerPath).filter(models.CareerPath.user_id == user.id).all()
     return templates.TemplateResponse(request=request, name="career_roadmaps.html", context={"user": user, "paths": paths})
 
 ROADMAP_STEP_SYSTEM_PROMPT = """
@@ -4848,7 +4807,7 @@ async def roadmap_step_chat_page(path_id: int, step_index: int, request: Request
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
@@ -4881,7 +4840,7 @@ async def roadmap_step_chat_message(path_id: int, step_index: int, request: Requ
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
@@ -4980,7 +4939,7 @@ async def roadmap_step_chat_finalize(path_id: int, step_index: int, request: Req
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
@@ -5005,7 +4964,7 @@ async def roadmap_step_chat_finalize(path_id: int, step_index: int, request: Req
         
         db.add(path)
         await db.commit()
-        await db.refresh(path)
+        db.refresh(path)
         
     return {"redirect": f"/career/roadmap/{path_id}"}
 
@@ -5015,12 +4974,12 @@ async def view_roadmap_detail(path_id: int, request: Request, db: AsyncSession =
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
-    assessment = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
-    appointments = (await db.execute(select(models.Appointment).where(models.Appointment.student_id == user.id))).scalars().all()
+    assessment = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
+    appointments = db.query(models.Appointment).filter(models.Appointment.student_id == user.id).all()
         
     return templates.TemplateResponse(request=request, name="career_roadmap_v2.html", context={
         "user": user, 
@@ -5037,7 +4996,7 @@ async def view_roadmap_resources(path_id: int, request: Request, db: AsyncSessio
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
-    path = (await db.execute(select(models.CareerPath).where(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id))).scalars().first()
+    path = db.query(models.CareerPath).filter(models.CareerPath.id == path_id, models.CareerPath.user_id == user.id).first()
     if not path:
         raise HTTPException(status_code=404, detail="Roadmap not found")
         
@@ -5073,7 +5032,7 @@ async def generate_college_recommendations(request: Request, req: CollegeRecRequ
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    result = (await db.execute(select(models.AssessmentResult).where(models.AssessmentResult.user_id == user.id))).scalars().first()
+    result = db.query(models.AssessmentResult).filter(models.AssessmentResult.user_id == user.id).first()
 
     current_class = result.selected_class if result else "12th"
     archetype = result.phase_2_category if result else "Explorer"
@@ -5156,7 +5115,7 @@ async def generate_college_recommendations(request: Request, req: CollegeRecRequ
         )
         db.add(new_rec)
         await db.commit()
-        await db.refresh(new_rec)
+        db.refresh(new_rec)
 
         return {"success": True, "rec_id": new_rec.id}
     except Exception as e:
@@ -5170,7 +5129,7 @@ async def view_college_recommendations(request: Request, db: AsyncSession = Depe
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    recs = (await db.execute(select(models.CollegeRecommendation).where(models.CollegeRecommendation.user_id == user.id).order_by(models.CollegeRecommendation.created_at.desc()))).scalars().all()
+    recs = db.query(models.CollegeRecommendation).filter(models.CollegeRecommendation.user_id == user.id).order_by(models.CollegeRecommendation.created_at.desc()).all()
     return templates.TemplateResponse(request=request, name="college_recommendations.html", context={"user": user, "recs": recs})
 
 
@@ -5180,12 +5139,10 @@ async def view_college_detail(rec_id: int, request: Request, db: AsyncSession = 
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    rec = (await db.execute(
-        select(models.CollegeRecommendation).where(
-            models.CollegeRecommendation.id == rec_id,
-            models.CollegeRecommendation.user_id == user.id
-        )
-    )).scalars().first()
+    rec = db.query(models.CollegeRecommendation).filter(
+        models.CollegeRecommendation.id == rec_id,
+        models.CollegeRecommendation.user_id == user.id
+    ).first()
     if not rec:
         raise HTTPException(status_code=404, detail="College recommendation not found")
 
@@ -5202,34 +5159,28 @@ async def community_page(request: Request, db: AsyncSession = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     # Get current user's archetype
-    my_assessment = (await db.execute(
-        select(models.AssessmentResult).where(
-            models.AssessmentResult.user_id == user.id
-        )
-    )).scalars().first()
+    my_assessment = db.query(models.AssessmentResult).filter(
+        models.AssessmentResult.user_id == user.id
+    ).first()
     my_archetype = my_assessment.phase_2_category if my_assessment else None
 
     # Get all students (except current user) who have completed their assessment
-    _rows = (await db.execute(
-        select(models.User, models.AssessmentResult)
+    students_with_assessments = (
+        db.query(models.User, models.AssessmentResult)
         .join(models.AssessmentResult, models.User.id == models.AssessmentResult.user_id)
-        .where(
+        .filter(
             models.User.role == "student",
             models.User.id != user.id,
             models.AssessmentResult.phase_2_category.isnot(None)
         )
-    )).all()
-    students_with_assessments = [(row[0], row[1]) for row in _rows]
+        .all()
+    )
 
     # Build connection status map for current user
-    my_connections = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                models.StudentConnection.requester_id == user.id,
-                models.StudentConnection.receiver_id == user.id
-            )
-        )
-    )).scalars().all()
+    my_connections = db.query(models.StudentConnection).filter(
+        (models.StudentConnection.requester_id == user.id) |
+        (models.StudentConnection.receiver_id == user.id)
+    ).all()
 
     connection_map = {}  # user_id -> {"status": ..., "conn_id": ..., "is_requester": bool}
     for conn in my_connections:
@@ -5258,12 +5209,10 @@ async def community_page(request: Request, db: AsyncSession = Depends(get_db)):
             other_archetypes[archetype].append(student_data)
 
     # Count pending received requests
-    pending_count = (await db.execute(
-        select(func.count()).select_from(models.StudentConnection).where(
-            models.StudentConnection.receiver_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalar() or 0
+    pending_count = db.query(models.StudentConnection).filter(
+        models.StudentConnection.receiver_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).count()
 
     return templates.TemplateResponse(request=request, name="community.html", context={
         "user": user,
@@ -5281,30 +5230,22 @@ async def student_profile(user_id: int, request: Request, db: AsyncSession = Dep
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    student = (await db.execute(
-        select(models.User).where(
-            models.User.id == user_id,
-            models.User.role == "student"
-        )
-    )).scalars().first()
+    student = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.role == "student"
+    ).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    assessment = (await db.execute(
-        select(models.AssessmentResult).where(
-            models.AssessmentResult.user_id == user_id
-        )
-    )).scalars().first()
+    assessment = db.query(models.AssessmentResult).filter(
+        models.AssessmentResult.user_id == user_id
+    ).first()
 
     # Connection status between current user and this student
-    connection = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                and_(models.StudentConnection.requester_id == user.id, models.StudentConnection.receiver_id == user_id),
-                and_(models.StudentConnection.requester_id == user_id, models.StudentConnection.receiver_id == user.id)
-            )
-        )
-    )).scalars().first()
+    connection = db.query(models.StudentConnection).filter(
+        ((models.StudentConnection.requester_id == user.id) & (models.StudentConnection.receiver_id == user_id)) |
+        ((models.StudentConnection.requester_id == user_id) & (models.StudentConnection.receiver_id == user.id))
+    ).first()
 
     conn_info = None
     if connection:
@@ -5315,20 +5256,16 @@ async def student_profile(user_id: int, request: Request, db: AsyncSession = Dep
         }
 
     # Get this student's accepted connections (for sidebar)
-    accepted_connections = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                models.StudentConnection.requester_id == user_id,
-                models.StudentConnection.receiver_id == user_id
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().all()
+    accepted_connections = db.query(models.StudentConnection).filter(
+        ((models.StudentConnection.requester_id == user_id) |
+         (models.StudentConnection.receiver_id == user_id)),
+        models.StudentConnection.status == "accepted"
+    ).all()
 
     connected_users = []
     for conn in accepted_connections:
         other_id = conn.receiver_id if conn.requester_id == user_id else conn.requester_id
-        other_user = (await db.execute(select(models.User).where(models.User.id == other_id))).scalars().first()
+        other_user = db.query(models.User).filter(models.User.id == other_id).first()
         if other_user:
             connected_users.append(other_user)
 
@@ -5355,19 +5292,15 @@ async def send_connection_request(user_id: int, request: Request, db: AsyncSessi
         return RedirectResponse(url="/community", status_code=status.HTTP_302_FOUND)
 
     # Check receiver exists and is a student
-    receiver = (await db.execute(select(models.User).where(models.User.id == user_id, models.User.role == "student"))).scalars().first()
+    receiver = db.query(models.User).filter(models.User.id == user_id, models.User.role == "student").first()
     if not receiver:
         raise HTTPException(status_code=404, detail="Student not found")
 
     # Check for existing connection
-    existing = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                and_(models.StudentConnection.requester_id == user.id, models.StudentConnection.receiver_id == user_id),
-                and_(models.StudentConnection.requester_id == user_id, models.StudentConnection.receiver_id == user.id)
-            )
-        )
-    )).scalars().first()
+    existing = db.query(models.StudentConnection).filter(
+        ((models.StudentConnection.requester_id == user.id) & (models.StudentConnection.receiver_id == user_id)) |
+        ((models.StudentConnection.requester_id == user_id) & (models.StudentConnection.receiver_id == user.id))
+    ).first()
 
     if existing:
         # Already exists – redirect back
@@ -5402,13 +5335,11 @@ async def accept_connection(conn_id: int, request: Request, db: AsyncSession = D
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            models.StudentConnection.receiver_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        models.StudentConnection.receiver_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).first()
 
     if not conn:
         raise HTTPException(status_code=404, detail="Connection request not found")
@@ -5427,18 +5358,16 @@ async def reject_connection(conn_id: int, request: Request, db: AsyncSession = D
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            models.StudentConnection.receiver_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        models.StudentConnection.receiver_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).first()
 
     if not conn:
         raise HTTPException(status_code=404, detail="Connection request not found")
 
-    await db.delete(conn)
+    db.delete(conn)
     await db.commit()
 
     referer = request.headers.get("referer", "/my-connections")
@@ -5452,18 +5381,16 @@ async def withdraw_connection(conn_id: int, request: Request, db: AsyncSession =
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            models.StudentConnection.requester_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        models.StudentConnection.requester_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).first()
 
     if not conn:
         raise HTTPException(status_code=404, detail="Connection request not found or cannot be withdrawn")
 
-    await db.delete(conn)
+    db.delete(conn)
     await db.commit()
 
     referer = request.headers.get("referer", "/community")
@@ -5477,18 +5404,14 @@ async def disconnect_user(user_id: int, request: Request, db: AsyncSession = Dep
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                and_(models.StudentConnection.requester_id == user.id, models.StudentConnection.receiver_id == user_id),
-                and_(models.StudentConnection.requester_id == user_id, models.StudentConnection.receiver_id == user.id)
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        ((models.StudentConnection.requester_id == user.id) & (models.StudentConnection.receiver_id == user_id)) |
+        ((models.StudentConnection.requester_id == user_id) & (models.StudentConnection.receiver_id == user.id)),
+        models.StudentConnection.status == "accepted"
+    ).first()
 
     if conn:
-        await db.delete(conn)
+        db.delete(conn)
         await db.commit()
 
     referer = request.headers.get("referer", "/community")
@@ -5517,26 +5440,20 @@ async def my_connections_page(request: Request, db: AsyncSession = Depends(get_d
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     # Accepted connections
-    accepted = (await db.execute(
-        select(models.StudentConnection).where(
-            or_(
-                models.StudentConnection.requester_id == user.id,
-                models.StudentConnection.receiver_id == user.id
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().all()
+    accepted = db.query(models.StudentConnection).filter(
+        ((models.StudentConnection.requester_id == user.id) |
+         (models.StudentConnection.receiver_id == user.id)),
+        models.StudentConnection.status == "accepted"
+    ).all()
 
     connected_users = []
     for conn in accepted:
         other_id = conn.receiver_id if conn.requester_id == user.id else conn.requester_id
-        other_user = (await db.execute(select(models.User).where(models.User.id == other_id))).scalars().first()
+        other_user = db.query(models.User).filter(models.User.id == other_id).first()
         if other_user:
-            other_assessment = (await db.execute(
-                select(models.AssessmentResult).where(
-                    models.AssessmentResult.user_id == other_id
-                )
-            )).scalars().first()
+            other_assessment = db.query(models.AssessmentResult).filter(
+                models.AssessmentResult.user_id == other_id
+            ).first()
             connected_users.append({
                 "user": other_user,
                 "assessment": other_assessment,
@@ -5544,22 +5461,18 @@ async def my_connections_page(request: Request, db: AsyncSession = Depends(get_d
             })
 
     # Pending received requests
-    pending_received = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.receiver_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalars().all()
+    pending_received = db.query(models.StudentConnection).filter(
+        models.StudentConnection.receiver_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).all()
 
     pending_requests = []
     for conn in pending_received:
-        requester = (await db.execute(select(models.User).where(models.User.id == conn.requester_id))).scalars().first()
+        requester = db.query(models.User).filter(models.User.id == conn.requester_id).first()
         if requester:
-            req_assessment = (await db.execute(
-                select(models.AssessmentResult).where(
-                    models.AssessmentResult.user_id == conn.requester_id
-                )
-            )).scalars().first()
+            req_assessment = db.query(models.AssessmentResult).filter(
+                models.AssessmentResult.user_id == conn.requester_id
+            ).first()
             pending_requests.append({
                 "user": requester,
                 "assessment": req_assessment,
@@ -5567,16 +5480,14 @@ async def my_connections_page(request: Request, db: AsyncSession = Depends(get_d
             })
 
     # Pending sent requests
-    pending_sent = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.requester_id == user.id,
-            models.StudentConnection.status == "pending"
-        )
-    )).scalars().all()
+    pending_sent = db.query(models.StudentConnection).filter(
+        models.StudentConnection.requester_id == user.id,
+        models.StudentConnection.status == "pending"
+    ).all()
 
     sent_requests = []
     for conn in pending_sent:
-        receiver = (await db.execute(select(models.User).where(models.User.id == conn.receiver_id))).scalars().first()
+        receiver = db.query(models.User).filter(models.User.id == conn.receiver_id).first()
         if receiver:
             sent_requests.append({
                 "user": receiver,
@@ -5599,44 +5510,30 @@ async def student_chat_page(conn_id: int, request: Request, db: AsyncSession = D
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
     # Verify connection exists and is accepted
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            or_(
-                models.StudentConnection.requester_id == user.id,
-                models.StudentConnection.receiver_id == user.id
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        ((models.StudentConnection.requester_id == user.id) | (models.StudentConnection.receiver_id == user.id)),
+        models.StudentConnection.status == "accepted"
+    ).first()
 
     if not conn:
         raise HTTPException(status_code=403, detail="Not connected or unauthorized")
 
     other_id = conn.receiver_id if conn.requester_id == user.id else conn.requester_id
-    other_user = (await db.execute(select(models.User).where(models.User.id == other_id))).scalars().first()
+    other_user = db.query(models.User).filter(models.User.id == other_id).first()
 
     # Get message history
-    messages = (await db.execute(
-        select(models.StudentMessage).where(
-            or_(
-                and_(models.StudentMessage.sender_id == user.id, models.StudentMessage.receiver_id == other_id),
-                and_(models.StudentMessage.sender_id == other_id, models.StudentMessage.receiver_id == user.id)
-            )
-        ).order_by(models.StudentMessage.timestamp.asc())
-    )).scalars().all()
+    messages = db.query(models.StudentMessage).filter(
+        ((models.StudentMessage.sender_id == user.id) & (models.StudentMessage.receiver_id == other_id)) |
+        ((models.StudentMessage.sender_id == other_id) & (models.StudentMessage.receiver_id == user.id))
+    ).order_by(models.StudentMessage.timestamp.asc()).all()
 
     # Mark as read
-    from sqlalchemy import update as sql_update
-    await db.execute(
-        sql_update(models.StudentMessage)
-        .where(
-            models.StudentMessage.receiver_id == user.id,
-            models.StudentMessage.sender_id == other_id,
-            models.StudentMessage.is_read == False
-        )
-        .values(is_read=True)
-    )
+    db.query(models.StudentMessage).filter(
+        models.StudentMessage.receiver_id == user.id,
+        models.StudentMessage.sender_id == other_id,
+        models.StudentMessage.is_read == False
+    ).update({models.StudentMessage.is_read: True})
     await db.commit()
 
     try:
@@ -5679,16 +5576,11 @@ async def send_student_message(
         raise HTTPException(status_code=400, detail="Message content is required")
 
     # Verify connection
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            or_(
-                models.StudentConnection.requester_id == user.id,
-                models.StudentConnection.receiver_id == user.id
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        ((models.StudentConnection.requester_id == user.id) | (models.StudentConnection.receiver_id == user.id)),
+        models.StudentConnection.status == "accepted"
+    ).first()
 
     if not conn:
         raise HTTPException(status_code=403, detail="Not connected or unauthorized")
@@ -5753,31 +5645,22 @@ async def get_student_messages(conn_id: int, request: Request, after_id: int = 0
     if not user:
         return {"error": "Unauthorized"}
 
-    conn = (await db.execute(
-        select(models.StudentConnection).where(
-            models.StudentConnection.id == conn_id,
-            or_(
-                models.StudentConnection.requester_id == user.id,
-                models.StudentConnection.receiver_id == user.id
-            ),
-            models.StudentConnection.status == "accepted"
-        )
-    )).scalars().first()
+    conn = db.query(models.StudentConnection).filter(
+        models.StudentConnection.id == conn_id,
+        ((models.StudentConnection.requester_id == user.id) | (models.StudentConnection.receiver_id == user.id)),
+        models.StudentConnection.status == "accepted"
+    ).first()
 
     if not conn:
         return {"error": "Forbidden"}
 
     other_id = conn.receiver_id if conn.requester_id == user.id else conn.requester_id
 
-    messages = (await db.execute(
-        select(models.StudentMessage).where(
-            or_(
-                and_(models.StudentMessage.sender_id == user.id, models.StudentMessage.receiver_id == other_id),
-                and_(models.StudentMessage.sender_id == other_id, models.StudentMessage.receiver_id == user.id)
-            ),
-            models.StudentMessage.id > after_id
-        ).order_by(models.StudentMessage.timestamp.asc())
-    )).scalars().all()
+    messages = db.query(models.StudentMessage).filter(
+        ((models.StudentMessage.sender_id == user.id) & (models.StudentMessage.receiver_id == other_id)) |
+        ((models.StudentMessage.sender_id == other_id) & (models.StudentMessage.receiver_id == user.id)),
+        models.StudentMessage.id > after_id
+    ).order_by(models.StudentMessage.timestamp.asc()).all()
 
     return {
         "messages": [
