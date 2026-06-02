@@ -16,4 +16,4 @@ razorpay
 redis
 appwrite==18.0.0
 aiosqlite
-psycopg2
+
