@@ -14,7 +14,6 @@ Flow:
 import os
 import hmac
 import hashlib
-import razorpay
 import httpx
 from dotenv import load_dotenv
 
@@ -25,13 +24,20 @@ RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_your_key_id")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "your_key_secret")
 RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
 
+razorpay_client = None
+
+def get_razorpay_client():
+    global razorpay_client
+    if razorpay_client is None:
+        import razorpay
+        razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+    return razorpay_client
+
 # RazorpayX account number (found in RazorpayX Dashboard → Account Settings)
 # This is the account from which payouts are debited
 RAZORPAYX_ACCOUNT_NUMBER = os.getenv("RAZORPAYX_ACCOUNT_NUMBER", "")
 
 RAZORPAY_BASE_URL = "https://api.razorpay.com/v1"
-
-client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # ─── Commission Split Configuration ────────────────────────────────────────────
 COUNSELOR_SHARE_PERCENT = 70  # 70% goes to counselor via UPI
@@ -73,7 +79,8 @@ def create_order(
     if notes:
         order_data["notes"] = notes
 
-    order = client.order.create(data=order_data)
+    razorpay_client = get_razorpay_client()
+    order = razorpay_client.order.create(data=order_data)
     return order
 
 
@@ -231,7 +238,7 @@ def verify_payment_signature(
         "razorpay_payment_id": razorpay_payment_id,
         "razorpay_signature": razorpay_signature
     }
-    client.utility.verify_payment_signature(params_dict)
+    get_razorpay_client().utility.verify_payment_signature(params_dict)
     return True
 
 

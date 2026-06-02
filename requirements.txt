@@ -1,5 +1,4 @@
 fastapi
-uvicorn
 jinja2
 sqlalchemy
 bcrypt
@@ -15,7 +14,4 @@ httpx
 mangum
 razorpay
 redis
-gunicorn
-uvicorn[standard]
 appwrite==18.0.0
-numpy

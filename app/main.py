@@ -22,9 +22,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload
 from .database import SessionLocal, engine, get_db
-import bcrypt
 import re
-import razorpay
 from . import models
 from .email_utils import (
     send_email, 
@@ -81,7 +79,14 @@ serializer = URLSafeTimedSerializer(os.getenv("SECRET_KEY", "a_very_secret_key_f
 # Razorpay Client
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "rzp_test_your_key_id")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "your_key_secret")
-razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+razorpay_client = None
+
+def get_razorpay_client():
+    global razorpay_client
+    if razorpay_client is None:
+        import razorpay
+        razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+    return razorpay_client
 
 from .utils.redis_cache import ai_cache
 from .utils.cache_utils import user_cache
@@ -470,13 +475,20 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 # Re-enabled cache as standard practice
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto"]) # Removed
 
+def _get_bcrypt():
+    import bcrypt
+    return bcrypt
+
+
 def verify_password(plain_password, hashed_password):
+    bcrypt = _get_bcrypt()
     # Ensure bytes for bcrypt
     if isinstance(hashed_password, str):
         hashed_password = hashed_password.encode('utf-8')
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
 def get_password_hash(password):
+    bcrypt = _get_bcrypt()
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def get_current_user(request: Request, db: Session = Depends(get_db)):
@@ -2335,7 +2347,7 @@ async def create_razorpay_order(counsellor_id: int, request: Request, fee: float
     }
     
     try:
-        order = razorpay_client.order.create(data=data)
+        order = get_razorpay_client().order.create(data=data)
 
         # ── Record Payment in DB for admin split tracking ──────────────────
         try:
@@ -2783,7 +2795,7 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
     }
     
     try:
-        razorpay_client.utility.verify_payment_signature(params_dict)
+        get_razorpay_client().utility.verify_payment_signature(params_dict)
     except Exception as e:
         print(f"Payment verification failed: {e}")
         return RedirectResponse(url="/counsellors?error=Payment verification failed", status_code=status.HTTP_302_FOUND)
@@ -2921,9 +2933,9 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
     if appt.payment_status == "authorized" and appt.razorpay_payment_id:
         try:
             # Get payment details to find amount
-            payment_info = razorpay_client.payment.fetch(appt.razorpay_payment_id)
+            payment_info = get_razorpay_client().payment.fetch(appt.razorpay_payment_id)
             amount = payment_info['amount']
-            razorpay_client.payment.capture(appt.razorpay_payment_id, amount)
+            get_razorpay_client().payment.capture(appt.razorpay_payment_id, amount)
             appt.payment_status = "paid"
         except Exception as e:
             print(f"Razorpay Capture Error: {e}")
@@ -2984,7 +2996,7 @@ async def reject_appointment(appt_id: int, request: Request, background_tasks: B
     if appt.payment_status == "authorized" and appt.razorpay_payment_id:
         try:
             # Refunding an authorized payment effectively releases the hold
-            razorpay_client.payment.refund(appt.razorpay_payment_id, {})
+            get_razorpay_client().payment.refund(appt.razorpay_payment_id, {})
             appt.payment_status = "refunded/released"
         except Exception as e:
             print(f"Razorpay Release Error: {e}")
@@ -3504,7 +3516,7 @@ async def simulation_create_order(request: Request, db: Session = Depends(get_db
     }
     
     try:
-        order = razorpay_client.order.create(data=data)
+        order = get_razorpay_client().order.create(data=data)
         return order
     except Exception as e:
         print(f"Razorpay Simulation Order Create Error: {e}")
@@ -3529,7 +3541,7 @@ async def simulation_verify_payment(request: Request, db: Session = Depends(get_
     }
     
     try:
-        razorpay_client.utility.verify_payment_signature(params_dict)
+        get_razorpay_client().utility.verify_payment_signature(params_dict)
     except Exception as e:
         print(f"Simulation Payment Verification Failed: {e}")
         raise HTTPException(status_code=400, detail="Signature verification failed")
