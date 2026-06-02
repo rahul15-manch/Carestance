@@ -545,7 +545,7 @@ async def ads_txt():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     try:
         # Bypassing Starlette's TemplateResponse to avoid internal dict vs string ambiguity
         template = templates.get_template("landing.html")
@@ -557,7 +557,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_db)):
 
 @app.get("/founders", response_class=HTMLResponse)
 async def founders_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     try:
         template = templates.get_template("founders.html")
         content = template.render({"request": request, "user": user})
@@ -568,7 +568,7 @@ async def founders_page(request: Request, db: AsyncSession = Depends(get_db)):
 
 @app.post("/complete-onboarding")
 async def complete_onboarding(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if user:
         user.onboarded = True
         await db.commit()
@@ -576,7 +576,7 @@ async def complete_onboarding(request: Request, db: AsyncSession = Depends(get_d
 
 @app.get("/articles", response_class=HTMLResponse)
 async def articles_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     try:
         template = templates.get_template("articles.html")
         content = template.render({"request": request, "user": user})
@@ -955,7 +955,7 @@ async def suspended_page(request: Request):
 
 @app.get("/select-role", response_class=HTMLResponse)
 async def select_role_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     # If user already has a role, skip this page
@@ -975,7 +975,7 @@ async def select_role(
     role: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1012,7 +1012,7 @@ async def assessment_start(
     db: AsyncSession = Depends(get_db)
 ):
     """Phase 0 / Start: Reset and initialize assessment"""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1085,7 +1085,7 @@ async def assessment_start(
 @app.get("/assessment/reset")
 async def assessment_reset(request: Request, db: AsyncSession = Depends(get_db)):
     """Explicitly reset assessment and go to dashboard"""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1126,7 +1126,7 @@ async def assessment_reset(request: Request, db: AsyncSession = Depends(get_db))
 
 @app.get("/assessment", response_class=HTMLResponse)
 async def assessment_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1140,7 +1140,7 @@ async def assessment_page(request: Request, db: AsyncSession = Depends(get_db)):
 
 @app.get("/assessment/api/state")
 async def assessment_api_state(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1161,7 +1161,7 @@ async def assessment_api_state(request: Request, db: AsyncSession = Depends(get_
 
 @app.post("/assessment/api/intake")
 async def assessment_api_intake(request: Request, payload: dict, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1222,7 +1222,7 @@ async def assessment_api_intake(request: Request, payload: dict, db: AsyncSessio
 
 @app.get("/assessment/api/questions")
 async def assessment_api_questions(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1255,7 +1255,7 @@ async def assessment_api_questions(request: Request, db: AsyncSession = Depends(
 
 @app.post("/assessment/api/swipe")
 async def assessment_api_swipe(request: Request, payload: dict, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1278,7 +1278,7 @@ async def assessment_api_swipe(request: Request, payload: dict, db: AsyncSession
 
 @app.post("/assessment/api/chat")
 async def assessment_api_chat(request: Request, payload: dict, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1329,7 +1329,7 @@ async def assessment_api_chat(request: Request, payload: dict, db: AsyncSession 
 
 @app.post("/assessment/api/proxy")
 async def assessment_api_proxy(request: Request, payload: dict, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1346,7 +1346,7 @@ async def assessment_api_proxy(request: Request, payload: dict, db: AsyncSession
 
 @app.post("/assessment/api/scenarios")
 async def assessment_api_scenarios(request: Request, payload: dict, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1363,7 +1363,7 @@ async def assessment_api_scenarios(request: Request, payload: dict, db: AsyncSes
 
 @app.post("/assessment/api/compile")
 async def assessment_api_compile(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -1517,7 +1517,7 @@ async def assessment_api_compile(request: Request, db: AsyncSession = Depends(ge
 
 @app.get("/assessment/result", response_class=HTMLResponse)
 async def assessment_result(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1544,7 +1544,7 @@ async def share_report(result_id: int, request: Request, mode: str = "full", db:
         raise HTTPException(status_code=404, detail="Report not found")
     
     owner = (await db.execute(select(models.User).where(models.User.id == result.user_id))).scalars().first()
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     
     # Ensure a stable high confidence (82-98%) is saved and displayed
     if not result.confidence or result.confidence < 0.81:
@@ -1567,7 +1567,7 @@ async def share_report(result_id: int, request: Request, mode: str = "full", db:
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1741,7 +1741,7 @@ async def admin_dashboard(
     counsellor_search: str = ""
 ):
     try:
-        current_user = get_current_user(request, db)
+        current_user = await get_current_user(request, db)
         if not current_user:
              return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
         
@@ -1893,7 +1893,7 @@ async def admin_dashboard(
 
 @app.post("/admin/send-completion-reminders")
 async def send_completion_reminders(request: Request, db: AsyncSession = Depends(get_db)):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1945,7 +1945,7 @@ async def send_completion_reminders(request: Request, db: AsyncSession = Depends
 @app.post("/admin/users/{user_id}/delete")
 async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     # 1. Check admin auth
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1966,7 +1966,7 @@ async def delete_user(user_id: int, request: Request, db: AsyncSession = Depends
 
 @app.post("/admin/users/{user_id}/suspend")
 async def suspend_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1979,7 +1979,7 @@ async def suspend_user(user_id: int, request: Request, db: AsyncSession = Depend
 
 @app.post("/admin/users/{user_id}/unsuspend")
 async def unsuspend_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -1992,7 +1992,7 @@ async def unsuspend_user(user_id: int, request: Request, db: AsyncSession = Depe
 
 @app.post("/admin/flags/{flag_id}/action")
 async def handle_flag(flag_id: int, request: Request, action: str = Form(...), db: AsyncSession = Depends(get_db)):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2009,7 +2009,7 @@ async def handle_flag(flag_id: int, request: Request, action: str = Form(...), d
 
 @app.post("/counsellor/accept-tnc")
 async def accept_tnc(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
@@ -2033,7 +2033,7 @@ async def counsellor_update(
     upi_id: str = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user or user.role != "counsellor":
          return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     
@@ -2087,7 +2087,7 @@ async def upload_profile_photo(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2122,7 +2122,7 @@ async def upload_certificates(
     files: List[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2172,7 +2172,7 @@ async def verify_counsellor(
     verification_status: str = Form(...), # "approved" or "rejected"
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
          # Safety Check: Allow access if user email matches ADMIN_EMAIL env var
         admin_email = os.getenv("ADMIN_EMAIL")
@@ -2208,7 +2208,7 @@ async def block_counsellor(
     block_reason: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         admin_email = os.getenv("ADMIN_EMAIL")
         if not admin_email or current_user.email != admin_email:
@@ -2229,7 +2229,7 @@ async def unblock_counsellor(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         admin_email = os.getenv("ADMIN_EMAIL")
         if not admin_email or current_user.email != admin_email:
@@ -2249,7 +2249,7 @@ async def give_founding_badge(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         admin_email = os.getenv("ADMIN_EMAIL")
         if not admin_email or current_user.email != admin_email:
@@ -2284,7 +2284,7 @@ async def take_founding_badge(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         admin_email = os.getenv("ADMIN_EMAIL")
         if not admin_email or current_user.email != admin_email:
@@ -2313,7 +2313,7 @@ async def admin_update_counsellor_fee(
     new_fee: float = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    current_user = get_current_user(request, db)
+    current_user = await get_current_user(request, db)
     if not current_user or current_user.role != "admin":
         admin_email = os.getenv("ADMIN_EMAIL")
         if not admin_email or current_user.email != admin_email:
@@ -2351,7 +2351,7 @@ async def dismiss_notification(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -2369,7 +2369,7 @@ async def dismiss_notification(
 
 @app.get("/counsellors", response_class=HTMLResponse)
 async def list_counsellors(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
         
@@ -2397,7 +2397,7 @@ import uuid
 
 @app.post("/create_razorpay_order/{counsellor_id}")
 async def create_razorpay_order(counsellor_id: int, request: Request, fee: float = Form(...), db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if fee < 1.0:
          raise HTTPException(status_code=400, detail="Minimum fee for Razorpay is ₹1.00. Please update the counsellor profile fee.")
          
@@ -2483,7 +2483,7 @@ async def check_availability_api(counsellor_id: int, appointment_time: str, db: 
 
 @app.post("/book_free_counsellor/{counsellor_id}")
 async def book_free_counsellor(counsellor_id: int, request: Request, background_tasks: BackgroundTasks, appointment_time: str = Form(...), db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
          return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
          
@@ -2551,7 +2551,7 @@ async def book_free_counsellor(counsellor_id: int, request: Request, background_
 
 @app.get("/join_meeting/{appointment_id}")
 async def join_meeting(appointment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2591,7 +2591,7 @@ async def join_meeting(appointment_id: int, request: Request, db: AsyncSession =
 
 @app.get("/meeting/{appointment_id}", response_class=HTMLResponse)
 async def meeting_page(appointment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2621,7 +2621,7 @@ async def meeting_page(appointment_id: int, request: Request, db: AsyncSession =
 
 @app.post("/appointment/track-join/{appointment_id}")
 async def track_join(appointment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401)
     
@@ -2644,7 +2644,7 @@ async def track_join(appointment_id: int, request: Request, db: AsyncSession = D
 
 @app.post("/appointment/heartbeat/{appointment_id}")
 async def appointment_heartbeat(appointment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401)
     
@@ -2676,7 +2676,7 @@ async def appointment_status(appointment_id: int, db: AsyncSession = Depends(get
 
 @app.api_route("/appointment/delete/{appointment_id}", methods=["GET", "POST"])
 async def delete_appointment(appointment_id: int, request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2719,7 +2719,7 @@ async def delete_appointment(appointment_id: int, request: Request, background_t
 
 @app.post("/appointment/complete/{appointment_id}")
 async def complete_appointment(appointment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     # Only counsellors can mark sessions as complete
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -2741,7 +2741,7 @@ async def complete_appointment(appointment_id: int, request: Request, db: AsyncS
 
 @app.post("/appointment/rate/{appointment_id}")
 async def rate_appointment(appointment_id: int, request: Request, rating: int = Form(...), review: str = Form(None), db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -2796,7 +2796,7 @@ async def rate_appointment(appointment_id: int, request: Request, rating: int = 
 async def reply_ticket(ticket_id: int, request: Request, reply_content: str = Form(None), db: AsyncSession = Depends(get_db)):
     if reply_content is None:
         return RedirectResponse(url="/admin", status_code=status.HTTP_302_FOUND)
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     admin_email = os.getenv("ADMIN_EMAIL")
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -2811,7 +2811,7 @@ async def reply_ticket(ticket_id: int, request: Request, reply_content: str = Fo
 
 @app.post("/admin/tickets/{ticket_id}/close")
 async def close_ticket(ticket_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     admin_email = os.getenv("ADMIN_EMAIL")
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -2826,7 +2826,7 @@ async def close_ticket(ticket_id: int, request: Request, db: AsyncSession = Depe
 
 @app.post("/admin/tickets/{ticket_id}/delete")
 async def delete_ticket(ticket_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     admin_email = os.getenv("ADMIN_EMAIL")
     if not user or (user.role != "admin" and user.email != admin_email):
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -2841,7 +2841,7 @@ async def delete_ticket(ticket_id: int, request: Request, db: AsyncSession = Dep
 
 @app.post("/verify_payment")
 async def verify_payment(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
          return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
          
@@ -2992,7 +2992,7 @@ async def verify_payment(request: Request, background_tasks: BackgroundTasks, db
 
 @app.post("/appointment/accept/{appt_id}")
 async def accept_appointment(appt_id: int, request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3053,7 +3053,7 @@ async def accept_appointment(appt_id: int, request: Request, background_tasks: B
 
 @app.post("/appointment/reject/{appt_id}")
 async def reject_appointment(appt_id: int, request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user or user.role != "counsellor":
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3098,7 +3098,7 @@ async def reject_appointment(appt_id: int, request: Request, background_tasks: B
 
 @app.post("/career/roadmap/delete/{path_id}")
 async def delete_roadmap(path_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3124,7 +3124,7 @@ async def assessment_phase3_submit(
     request: Request, 
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -3196,7 +3196,7 @@ Your role is to present scenario questions warmly and professionally.
 
 @app.post("/assessment/phase3/chat")
 async def phase3_chat(request: Request, chat_req: Phase3ChatRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -3342,7 +3342,7 @@ class Phase3V2ChatRequest(BaseModel):
 
 @app.post("/assessment/phase3/chat_v2")
 async def phase3_chat_v2(request: Request, chat_req: Phase3V2ChatRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -3413,7 +3413,7 @@ class Phase3FinalizeRequest(BaseModel):
 
 @app.post("/assessment/phase3/finalize")
 async def phase3_finalize(request: Request, finalize_req: Phase3FinalizeRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -3557,7 +3557,7 @@ async def simulation_pay_with_category(category: str, career_title: str, request
 
 @app.get("/assessment/simulation/pay/{career_title}", response_class=HTMLResponse)
 async def simulation_pay(career_title: str, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
 
 
     if not user:
@@ -3571,7 +3571,7 @@ async def simulation_pay(career_title: str, request: Request, db: AsyncSession =
 
 @app.post("/assessment/simulation/create-order")
 async def simulation_create_order(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401)
         
@@ -3595,7 +3595,7 @@ async def simulation_create_order(request: Request, db: AsyncSession = Depends(g
 
 @app.post("/assessment/simulation/verify-payment")
 async def simulation_verify_payment(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401)
         
@@ -3650,7 +3650,7 @@ async def simulation_start_with_category(category: str, career_title: str, reque
 
 @app.get("/assessment/simulation/start/{career_title}", response_class=HTMLResponse)
 async def simulation_start(career_title: str, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
 
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
@@ -3701,7 +3701,7 @@ async def simulation_start(career_title: str, request: Request, db: AsyncSession
 
 @app.get("/assessment/simulation/question/{index}", response_class=HTMLResponse)
 async def simulation_question(index: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3729,7 +3729,7 @@ async def simulation_answer(
     answer: str = Form(...), 
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3759,7 +3759,7 @@ async def simulation_answer(
 
 @app.get("/assessment/simulation/result", response_class=HTMLResponse)
 async def simulation_result(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3825,7 +3825,7 @@ from data.questions_above_12th import questions_above_12th
 
 @app.get("/assessment/final", response_class=HTMLResponse)
 async def assessment_final(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -3853,7 +3853,7 @@ async def assessment_final(request: Request, db: AsyncSession = Depends(get_db))
 
 @app.post("/assessment/final/submit")
 async def assessment_final_submit(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -4145,7 +4145,7 @@ Your tone is encouraging, curious, and professional.
 
 @app.post("/assessment/final/chat")
 async def final_chat(request: Request, chat_req: FinalChatRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -4329,7 +4329,7 @@ class ResolveVoiceRequest(BaseModel):
 
 @app.get("/chatbot", response_class=HTMLResponse)
 async def chatbot_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -4373,7 +4373,7 @@ async def resolve_voice(req: ResolveVoiceRequest):
 
 @app.post("/chatbot/message")
 async def chatbot_message(request: Request, chat_req: ChatRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
@@ -4514,7 +4514,7 @@ Response (Concise, Markdown formatted):
 
 @app.get("/feedback", response_class=HTMLResponse)
 async def feedback_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     try:
@@ -4532,7 +4532,7 @@ async def submit_feedback(
     rating: int = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -4550,7 +4550,7 @@ async def submit_feedback(
 
 @app.get("/ticket", response_class=HTMLResponse)
 async def ticket_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     tickets = (await db.execute(select(models.Ticket).where(models.Ticket.user_id == user.id).order_by(models.Ticket.timestamp.desc()))).scalars().all()
@@ -4563,7 +4563,7 @@ async def submit_ticket(
     description: str = Form(...),
     db: AsyncSession = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -4588,7 +4588,7 @@ class CareerPathRequest(BaseModel):
 
 @app.post("/assessment/generate_path")
 async def generate_career_path(request: Request, path_req: CareerPathRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -4724,7 +4724,7 @@ async def generate_career_path(request: Request, path_req: CareerPathRequest, db
 
 @app.post("/career/roadmap/{path_id}/step/{step_index}/toggle")
 async def toggle_step_completion(path_id: int, step_index: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
@@ -4774,7 +4774,7 @@ async def toggle_step_completion(path_id: int, step_index: int, request: Request
 
 @app.get("/career/roadmaps", response_class=HTMLResponse)
 async def view_roadmaps(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -4844,7 +4844,7 @@ class RoadmapStepChatRequest(BaseModel):
 
 @app.get("/career/roadmap/{path_id}/step/{step_index}/chat", response_class=HTMLResponse)
 async def roadmap_step_chat_page(path_id: int, step_index: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -4877,7 +4877,7 @@ async def roadmap_step_chat_page(path_id: int, step_index: int, request: Request
 
 @app.post("/career/roadmap/{path_id}/step/{step_index}/chat/message")
 async def roadmap_step_chat_message(path_id: int, step_index: int, request: Request, chat_req: RoadmapStepChatRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -4976,7 +4976,7 @@ async def roadmap_step_chat_message(path_id: int, step_index: int, request: Requ
 
 @app.post("/career/roadmap/{path_id}/step/{step_index}/chat/finalize")
 async def roadmap_step_chat_finalize(path_id: int, step_index: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
@@ -5011,7 +5011,7 @@ async def roadmap_step_chat_finalize(path_id: int, step_index: int, request: Req
 
 @app.get("/career/roadmap/{path_id}", response_class=HTMLResponse)
 async def view_roadmap_detail(path_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -5033,7 +5033,7 @@ async def view_roadmap_detail(path_id: int, request: Request, db: AsyncSession =
 
 @app.get("/career/roadmap/{path_id}/resources", response_class=HTMLResponse)
 async def view_roadmap_resources(path_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -5069,7 +5069,7 @@ class CollegeRecRequest(BaseModel):
 
 @app.post("/career/colleges/generate")
 async def generate_college_recommendations(request: Request, req: CollegeRecRequest, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -5166,7 +5166,7 @@ async def generate_college_recommendations(request: Request, req: CollegeRecRequ
 
 @app.get("/career/colleges", response_class=HTMLResponse)
 async def view_college_recommendations(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5176,7 +5176,7 @@ async def view_college_recommendations(request: Request, db: AsyncSession = Depe
 
 @app.get("/career/colleges/{rec_id}", response_class=HTMLResponse)
 async def view_college_detail(rec_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5197,7 +5197,7 @@ async def view_college_detail(rec_id: int, request: Request, db: AsyncSession = 
 @app.get("/community", response_class=HTMLResponse)
 async def community_page(request: Request, db: AsyncSession = Depends(get_db)):
     """Community page: discover students grouped by archetype."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5277,7 +5277,7 @@ async def community_page(request: Request, db: AsyncSession = Depends(get_db)):
 @app.get("/student/{user_id}", response_class=HTMLResponse)
 async def student_profile(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Public profile page for a student."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5347,7 +5347,7 @@ async def student_profile(user_id: int, request: Request, db: AsyncSession = Dep
 @app.post("/connect/{user_id}")
 async def send_connection_request(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Send a connection request to another student."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5398,7 +5398,7 @@ async def send_connection_request(user_id: int, request: Request, db: AsyncSessi
 @app.post("/connection/{conn_id}/accept")
 async def accept_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Accept a pending connection request."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5423,7 +5423,7 @@ async def accept_connection(conn_id: int, request: Request, db: AsyncSession = D
 @app.post("/connection/{conn_id}/reject")
 async def reject_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Reject a pending connection request."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5448,7 +5448,7 @@ async def reject_connection(conn_id: int, request: Request, db: AsyncSession = D
 @app.post("/connection/{conn_id}/withdraw")
 async def withdraw_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Withdraw a pending connection request sent by the current user."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5473,7 +5473,7 @@ async def withdraw_connection(conn_id: int, request: Request, db: AsyncSession =
 @app.post("/disconnect/{user_id}")
 async def disconnect_user(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Remove an existing connection."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5498,7 +5498,7 @@ async def disconnect_user(user_id: int, request: Request, db: AsyncSession = Dep
 @app.post("/profile/update-bio")
 async def update_bio(request: Request, bio: str = Form(""), db: AsyncSession = Depends(get_db)):
     """Update the current user's bio."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5512,7 +5512,7 @@ async def update_bio(request: Request, bio: str = Form(""), db: AsyncSession = D
 @app.get("/my-connections", response_class=HTMLResponse)
 async def my_connections_page(request: Request, db: AsyncSession = Depends(get_db)):
     """View accepted connections and pending requests."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5594,7 +5594,7 @@ async def my_connections_page(request: Request, db: AsyncSession = Depends(get_d
 @app.get("/connection/{conn_id}/chat", response_class=HTMLResponse)
 async def student_chat_page(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     """Private chat page between connected students."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
 
@@ -5663,7 +5663,7 @@ async def send_student_message(
     db: AsyncSession = Depends(get_db)
 ):
     """Send a private message to a connected student."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     
@@ -5749,7 +5749,7 @@ async def send_student_message(
 @app.get("/connection/{conn_id}/chat/messages")
 async def get_student_messages(conn_id: int, request: Request, after_id: int = 0, db: AsyncSession = Depends(get_db)):
     """Fetch new messages for real-time polling."""
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     if not user:
         return {"error": "Unauthorized"}
 
@@ -5796,7 +5796,7 @@ async def get_student_messages(conn_id: int, request: Request, after_id: int = 0
 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     try:
         template = templates.get_template("privacy.html")
         content = template.render({"request": request, "user": user})
@@ -5807,7 +5807,7 @@ async def privacy_page(request: Request, db: AsyncSession = Depends(get_db)):
 
 @app.get("/terms", response_class=HTMLResponse)
 async def terms_page(request: Request, db: AsyncSession = Depends(get_db)):
-    user = get_current_user(request, db)
+    user = await get_current_user(request, db)
     try:
         template = templates.get_template("terms.html")
         content = template.render({"request": request, "user": user})
