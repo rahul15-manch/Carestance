@@ -738,9 +738,19 @@ async def login(
     if not appwrite_user and (not user or not verify_password(password, user.hashed_password)):
          return templates.TemplateResponse(request=request, name="login.html", context={"error": "Invalid credentials"})
     
-    # Use Appwrite user as primary if available
-    effective_user = appwrite_user if appwrite_user else user
-    
+    # Use local user if present; Appwrite user only if no local record exists.
+    effective_user = user if user else appwrite_user
+    effective_user_id = None
+    if user:
+        effective_user_id = user.id
+    elif appwrite_user:
+        effective_user_id = getattr(appwrite_user, "local_id", None)
+        if effective_user_id is not None:
+            try:
+                effective_user_id = int(effective_user_id)
+            except ValueError:
+                pass
+
     try:
         # 2. Create Appwrite Session (Server-side)
         # Note: In a production app, you might want to handle sessions differently
@@ -757,14 +767,17 @@ async def login(
     except Exception as e:
         print(f"Login/Appwrite error: {e}")
 
+    if effective_user_id is None and effective_user is not None:
+        effective_user_id = getattr(effective_user, "id", None)
+
     # Pre-populate suspension cache
-    user_cache.set_user_status(effective_user.id, {"is_suspended": getattr(effective_user, 'is_suspended', False)})
+    user_cache.set_user_status(effective_user_id, {"is_suspended": getattr(effective_user, 'is_suspended', False)})
     
     response = RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
     # 30 day persistent session
     response.set_cookie(
         key="user_id", 
-        value=str(effective_user.id), 
+        value=str(effective_user_id), 
         max_age=30 * 24 * 60 * 60,
         httponly=True,
         samesite="lax"
