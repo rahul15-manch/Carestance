@@ -30,10 +30,6 @@ def get_groq_client():
     return AsyncGroq(api_key=GROQ_API_KEY)
 _httpx_client: Optional[httpx.AsyncClient] = None
 
-@lru_cache(maxsize=4)
-def get_gemini_model(model_name: str):
-    return genai.GenerativeModel(model_name)
-
 def get_shared_async_client() -> httpx.AsyncClient:
     global _httpx_client
     if _httpx_client is None:
@@ -61,6 +57,11 @@ async def generate_ai_content(prompt: str, use_grok: bool = False) -> str:
             )
             data = response.json()
             return data['choices'][0]['message']['content']
+        except Exception as e:
+            print(f"Grok Error: {e}")
+            # Fallback to Groq if Grok fails
+            pass
+
     gclient = get_groq_client()
     if gclient:
         try:
