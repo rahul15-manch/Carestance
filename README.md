@@ -403,8 +403,6 @@ All AI responses are cleaned with robust JSON extraction (handles markdown block
 
 ---
 
-## License
-MIT License - 2026 CareStance Team
 
 ---
 
