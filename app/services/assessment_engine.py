@@ -4,7 +4,6 @@ import math
 import sqlite3
 import re
 from typing import List, Dict
-import numpy as np
 import copy
 
 # --- PATH CONFIGURATION ---
@@ -876,12 +875,29 @@ for title, category, degree, job_zone in CAREER_CATALOG_TEMPLATE:
         "power_req": 0.7 if category in ["Business", "Finance", "Public"] else 0.5
     })
 
+def _vector_norm(v: List[float]) -> float:
+    return math.sqrt(sum(x * x for x in v))
+
+
+def _normalize_vector(v: List[float]) -> List[float]:
+    norm = _vector_norm(v)
+    if norm == 0:
+        return [0.0] * len(v)
+    return [x / norm for x in v]
+
+
+def _dot_product(a: List[float], b: List[float]) -> float:
+    return sum(x * y for x, y in zip(a, b))
+
+
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
-    a_arr = np.array(a, dtype=np.float32)
-    b_arr = np.array(b, dtype=np.float32)
-    if np.linalg.norm(a_arr) == 0 or np.linalg.norm(b_arr) == 0:
+    if not a or not b:
         return 0.0
-    return float(np.dot(a_arr, b_arr) / (np.linalg.norm(a_arr) * np.linalg.norm(b_arr)))
+    a_norm = _vector_norm(a)
+    b_norm = _vector_norm(b)
+    if a_norm == 0 or b_norm == 0:
+        return 0.0
+    return float(_dot_product(a, b) / (a_norm * b_norm))
 
 def score_career_profile(career: Dict, latent_profile: Dict, riasec: Dict, feasibility: Dict) -> float:
     trait_weights = career.get("trait_profile", {})
@@ -982,8 +998,7 @@ def reconcile_results(ann_predictions: List[Dict], feasibility: Dict, identity: 
         r_vector.get("E", 5.0),
         r_vector.get("C", 5.0)
     ]
-    r_user = np.array(r_user, dtype=np.float32)
-    r_user_norm = r_user / (np.linalg.norm(r_user) + 1e-9)
+    r_user_norm = _normalize_vector(r_user)
     
     # Fetch all occupations (basic info only)
     cursor.execute("SELECT soc_code, title, description, job_zone FROM occupations")
@@ -1018,10 +1033,9 @@ def reconcile_results(ann_predictions: List[Dict], feasibility: Dict, identity: 
     for row in rows:
         soc_code, title, description, job_zone = row
         r_vals = derive_riasec(soc_code)
-        r_occ = np.array(r_vals, dtype=np.float32)
-        r_occ_norm = r_occ / (np.linalg.norm(r_occ) + 1e-9)
+        r_occ_norm = _normalize_vector(r_vals)
         
-        cos_sim = float(np.dot(r_user_norm, r_occ_norm))
+        cos_sim = float(_dot_product(r_user_norm, r_occ_norm))
         scored_occupations.append({
             "soc_code": soc_code,
             "title": title,

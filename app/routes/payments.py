@@ -16,7 +16,8 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
 
@@ -58,7 +59,7 @@ class VerifyPaymentRequest(BaseModel):
 @router.post("/setup-counselor-upi")
 async def setup_counselor_upi(
     req: SetupCounselorUPIRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Register a counselor's UPI ID with RazorpayX for receiving payouts.
@@ -70,17 +71,21 @@ async def setup_counselor_upi(
     when an admin approves their profile.
     """
     # ── Validate: Counselor must exist ─────────────────────────────────────
-    counsellor = db.query(models.User).filter(
+    counsellor_stmt = select(models.User).where(
         models.User.id == req.counsellor_user_id,
         models.User.role == "counsellor"
-    ).first()
+    )
+    counsellor_res = await db.execute(counsellor_stmt)
+    counsellor = counsellor_res.scalars().first()
 
     if not counsellor:
         raise HTTPException(status_code=404, detail="Counselor not found")
 
-    profile = db.query(models.CounsellorProfile).filter(
+    profile_stmt = select(models.CounsellorProfile).where(
         models.CounsellorProfile.user_id == req.counsellor_user_id
-    ).first()
+    )
+    profile_res = await db.execute(profile_stmt)
+    profile = profile_res.scalars().first()
 
     if not profile:
         raise HTTPException(
@@ -134,7 +139,7 @@ async def setup_counselor_upi(
         profile.razorpay_contact_id = contact_id
         profile.razorpay_fund_account_id = fund_account_id
         profile.onboarding_status = "activated"
-        db.commit()
+        await db.commit()
 
         logger.info(
             f"UPI payout setup for counselor {counsellor.id}: "
@@ -162,7 +167,7 @@ async def setup_counselor_upi(
 @router.post("/create-order")
 async def create_order(
     req: CreateOrderRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Create a standard Razorpay order for the full session amount.
@@ -181,9 +186,11 @@ async def create_order(
         )
 
     # ── Get counselor profile ────────────────────────────────────────────
-    profile = db.query(models.CounsellorProfile).filter(
+    profile_stmt = select(models.CounsellorProfile).where(
         models.CounsellorProfile.user_id == req.counsellor_id
-    ).first()
+    )
+    profile_res = await db.execute(profile_stmt)
+    profile = profile_res.scalars().first()
 
     if not profile:
         raise HTTPException(status_code=404, detail="Counselor profile not found")
@@ -216,8 +223,8 @@ async def create_order(
             status="created"
         )
         db.add(payment)
-        db.commit()
-        db.refresh(payment)
+        await db.commit()
+        await db.refresh(payment)
 
         # ── Calculate split for frontend display ─────────────────────────
         split = razorpay_service.get_split_amounts(req.amount)
@@ -230,7 +237,7 @@ async def create_order(
             status="pending"
         )
         db.add(transfer)
-        db.commit()
+        await db.commit()
 
         logger.info(
             f"Order {order['id']} created: ₹{req.amount} "
@@ -261,7 +268,7 @@ async def create_order(
 @router.post("/verify-payment")
 async def verify_payment(
     req: VerifyPaymentRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Verify payment signature, then trigger 70% UPI payout to counselor.
@@ -273,9 +280,11 @@ async def verify_payment(
     4. Update Transfer record with payout ID
     """
     # ── Guard: Duplicate verification ─────────────────────────────────────
-    existing = db.query(models.Payment).filter(
+    existing_stmt = select(models.Payment).where(
         models.Payment.razorpay_payment_id == req.razorpay_payment_id
-    ).first()
+    )
+    existing_res = await db.execute(existing_stmt)
+    existing = existing_res.scalars().first()
 
     if existing and existing.status == "captured":
         return JSONResponse(
@@ -302,9 +311,11 @@ async def verify_payment(
         )
 
     # ── Update payment record ────────────────────────────────────────────
-    payment = db.query(models.Payment).filter(
+    payment_stmt = select(models.Payment).where(
         models.Payment.razorpay_order_id == req.razorpay_order_id
-    ).first()
+    )
+    payment_res = await db.execute(payment_stmt)
+    payment = payment_res.scalars().first()
 
     if not payment:
         payment = models.Payment(
@@ -314,31 +325,35 @@ async def verify_payment(
             status="captured"
         )
         db.add(payment)
-        db.commit()
-        db.refresh(payment)
+        await db.commit()
+        await db.refresh(payment)
 
     payment.razorpay_payment_id = req.razorpay_payment_id
     payment.status = "captured"
 
     # ── Update linked appointment ────────────────────────────────────────
     if payment.session_id:
-        appointment = db.query(models.Appointment).filter(
+        appt_stmt = select(models.Appointment).where(
             models.Appointment.id == payment.session_id
-        ).first()
+        )
+        appt_res = await db.execute(appt_stmt)
+        appointment = appt_res.scalars().first()
         if appointment:
             appointment.payment_status = "paid"
             appointment.razorpay_order_id = req.razorpay_order_id
             appointment.razorpay_payment_id = req.razorpay_payment_id
 
-    db.commit()
+    await db.commit()
 
     # ── Trigger UPI Payout (70% to counselor) ────────────────────────────
     payout_status = "not_attempted"
     payout_message = ""
 
-    profile = db.query(models.CounsellorProfile).filter(
+    profile_stmt = select(models.CounsellorProfile).where(
         models.CounsellorProfile.user_id == req.counsellor_id
-    ).first()
+    )
+    profile_res = await db.execute(profile_stmt)
+    profile = profile_res.scalars().first()
 
     if profile and profile.razorpay_fund_account_id:
         split = razorpay_service.get_split_amounts(payment.amount)
@@ -351,14 +366,16 @@ async def verify_payment(
             )
 
             # Update transfer record
-            transfer = db.query(models.Transfer).filter(
+            transfer_stmt = select(models.Transfer).where(
                 models.Transfer.payment_id == payment.id
-            ).first()
+            )
+            transfer_res = await db.execute(transfer_stmt)
+            transfer = transfer_res.scalars().first()
             if transfer:
                 transfer.razorpay_transfer_id = payout.get("id")
                 transfer.status = "processed" if payout.get("status") == "processed" else "pending"
 
-            db.commit()
+            await db.commit()
 
             payout_status = payout.get("status", "initiated")
             payout_message = f"₹{split['counselor_amount']} payout initiated to counselor UPI"
@@ -374,12 +391,14 @@ async def verify_payment(
             logger.error(f"UPI payout failed for counselor {req.counsellor_id}: {e}")
 
             # Mark transfer as failed
-            transfer = db.query(models.Transfer).filter(
+            transfer_stmt = select(models.Transfer).where(
                 models.Transfer.payment_id == payment.id
-            ).first()
+            )
+            transfer_res = await db.execute(transfer_stmt)
+            transfer = transfer_res.scalars().first()
             if transfer:
                 transfer.status = "failed"
-                db.commit()
+                await db.commit()
     else:
         payout_message = "Counselor UPI payout not configured. Payment collected; manual transfer needed."
         logger.warning(f"No UPI fund account for counselor {req.counsellor_id}")
@@ -396,7 +415,7 @@ async def verify_payment(
 # ─── Endpoint 4: Webhook Handler ──────────────────────────────────────────────
 
 @router.post("/webhook")
-async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
+async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Handle Razorpay/RazorpayX webhook events.
     
@@ -437,23 +456,27 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         amount_paise = payment_entity.get("amount", 0)
 
         if order_id:
-            payment_record = db.query(models.Payment).filter(
+            payment_record_stmt = select(models.Payment).where(
                 models.Payment.razorpay_order_id == order_id
-            ).first()
+            )
+            payment_record_res = await db.execute(payment_record_stmt)
+            payment_record = payment_record_res.scalars().first()
             if payment_record:
                 payment_record.razorpay_payment_id = payment_id
                 payment_record.status = "captured"
                 payment_record.amount = amount_paise / 100
 
                 if payment_record.session_id:
-                    appointment = db.query(models.Appointment).filter(
+                    appt_stmt = select(models.Appointment).where(
                         models.Appointment.id == payment_record.session_id
-                    ).first()
+                    )
+                    appt_res = await db.execute(appt_stmt)
+                    appointment = appt_res.scalars().first()
                     if appointment:
                         appointment.payment_status = "paid"
                         appointment.razorpay_payment_id = payment_id
 
-                db.commit()
+                await db.commit()
                 logger.info(f"payment.captured processed for order {order_id}")
 
     # ── Handle: payout.processed (UPI payout successful) ─────────────────
@@ -464,14 +487,16 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         reference_id = payout_entity.get("reference_id", "")
 
         # Find transfer record by the payout ID
-        transfer = db.query(models.Transfer).filter(
+        transfer_stmt = select(models.Transfer).where(
             models.Transfer.razorpay_transfer_id == payout_id
-        ).first()
+        )
+        transfer_res = await db.execute(transfer_stmt)
+        transfer = transfer_res.scalars().first()
 
         if transfer:
             transfer.status = "processed"
             transfer.amount = amount_paise / 100
-            db.commit()
+            await db.commit()
             logger.info(
                 f"payout.processed: ₹{amount_paise/100} to counselor "
                 f"{transfer.counsellor_id} via UPI"
@@ -483,13 +508,15 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         payout_id = payout_entity.get("id")
         failure_reason = payout_entity.get("failure_reason", "Unknown")
 
-        transfer = db.query(models.Transfer).filter(
+        transfer_stmt = select(models.Transfer).where(
             models.Transfer.razorpay_transfer_id == payout_id
-        ).first()
+        )
+        transfer_res = await db.execute(transfer_stmt)
+        transfer = transfer_res.scalars().first()
 
         if transfer:
             transfer.status = "failed"
-            db.commit()
+            await db.commit()
             logger.error(
                 f"payout.failed: Payout {payout_id} for counselor "
                 f"{transfer.counsellor_id} FAILED. Reason: {failure_reason}"
@@ -503,18 +530,22 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         amount_paise = transfer_entity.get("amount", 0)
 
         if payment_id:
-            payment_record = db.query(models.Payment).filter(
+            payment_record_stmt = select(models.Payment).where(
                 models.Payment.razorpay_payment_id == payment_id
-            ).first()
+            )
+            payment_record_res = await db.execute(payment_record_stmt)
+            payment_record = payment_record_res.scalars().first()
             if payment_record:
-                transfer_record = db.query(models.Transfer).filter(
+                transfer_record_stmt = select(models.Transfer).where(
                     models.Transfer.payment_id == payment_record.id
-                ).first()
+                )
+                transfer_record_res = await db.execute(transfer_record_stmt)
+                transfer_record = transfer_record_res.scalars().first()
                 if transfer_record:
                     transfer_record.razorpay_transfer_id = transfer_id
                     transfer_record.status = "processed"
                     transfer_record.amount = amount_paise / 100
-                    db.commit()
+                    await db.commit()
 
     # ── Handle: transfer.failed (legacy/fallback) ────────────────────────
     elif event == "transfer.failed":
@@ -523,16 +554,20 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         payment_id = transfer_entity.get("source")
 
         if payment_id:
-            payment_record = db.query(models.Payment).filter(
+            payment_record_stmt = select(models.Payment).where(
                 models.Payment.razorpay_payment_id == payment_id
-            ).first()
+            )
+            payment_record_res = await db.execute(payment_record_stmt)
+            payment_record = payment_record_res.scalars().first()
             if payment_record:
-                transfer_record = db.query(models.Transfer).filter(
+                transfer_record_stmt = select(models.Transfer).where(
                     models.Transfer.payment_id == payment_record.id
-                ).first()
+                )
+                transfer_record_res = await db.execute(transfer_record_stmt)
+                transfer_record = transfer_record_res.scalars().first()
                 if transfer_record:
                     transfer_record.razorpay_transfer_id = transfer_id
                     transfer_record.status = "failed"
-                    db.commit()
+                    await db.commit()
 
     return {"status": "ok"}

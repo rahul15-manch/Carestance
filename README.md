@@ -382,6 +382,17 @@ python scripts/verify_classification.py
 python scripts/rename_images.py
 ```
 
+## Archived Legacy Files
+
+A new `archive/` folder contains legacy scripts and assets that are not part of the main application runtime. This keeps the root clean and makes it easier for new team members to find the active code.
+
+The archive contains:
+- old migration helpers
+- legacy DB repair and schema files
+- unused assets and documentation
+
+If you need one of these files, restore it from `archive/`.
+
 ---
 
 ## AI Fallback Strategy
