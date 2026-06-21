@@ -417,6 +417,3 @@ All AI responses are cleaned with robust JSON extraction (handles markdown block
 
 ---
 
-## Support
-
-For issues, questions, or suggestions, please open an issue on GitHub.
